@@ -1106,6 +1106,7 @@ enum class ECoMRace : uint8
     // Infernyx — Plane IV (Fire)
     Demons          UMETA(DisplayName = "Demons"),
     Efreeti         UMETA(DisplayName = "Efreeti"),
+    Djinn           UMETA(DisplayName = "Djinn"),           // Air genie — Aethermist native, flying magic units
     FireGiants      UMETA(DisplayName = "Fire Giants"),
     ChaosWarriors   UMETA(DisplayName = "Chaos Warriors"),
     Minotaurs       UMETA(DisplayName = "Minotaurs"),

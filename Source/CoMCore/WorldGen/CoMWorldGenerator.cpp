@@ -5,6 +5,8 @@
 #include "CoreTypes/CoMConstants.h"
 #include "CoreTypes/CoMEnums.h"
 #include "CoreTypes/CoMStructs.h"
+#include "Data/CoMTerrainWeightDataAsset.h"
+#include "WorldGen/TerrainDistribution/CoMTerrainDistributionDataAsset.h"
 
 using namespace CoM;
 
@@ -22,7 +24,40 @@ FCoMWorldData UCoMWorldGenerator::GenerateWorld(UCoMWorldMapSubsystem* Map, int3
 
 	TArray<TArray<int32>> HeightMaps;
 	GenerateLandmass(Map, Seed, HeightMaps);    // Stage 1
-	DistributeTerrain(Map, HeightMaps);         // Stage 2
+	DistributeTerrain(Map, HeightMaps, TArray<UCoMTerrainWeightDataAsset*>{}); // Stage 2
+	PlaceRivers(Map, Seed, Out);               // Stage 3
+	SeedResources(Map, Seed, Out);             // Stage 4
+	PlaceFeatures(Map, Seed, Out);             // Stage 5
+
+	Out.bIsValid = true;
+	return Out;
+}
+
+// S3-T2: DataAsset-driven overload — reads from UCoMTerrainDistributionDataAsset.
+FCoMWorldData UCoMWorldGenerator::GenerateWorld(UCoMWorldMapSubsystem* Map, int32 Seed,
+                                                const UCoMTerrainDistributionDataAsset* TerrainDist) const
+{
+	FCoMWorldData Out;
+	Out.Seed = Seed;
+
+	if (!ensureMsgf(Map, TEXT("UCoMWorldGenerator::GenerateWorld(Dist) — Map is null")))
+	{
+		return Out;
+	}
+
+	TArray<TArray<int32>> HeightMaps;
+	GenerateLandmass(Map, Seed, HeightMaps);    // Stage 1
+
+	// Stage 2: use per-plane DataAsset tables when available.
+	if (TerrainDist)
+	{
+		DistributeTerrain(Map, HeightMaps, TerrainDist->BuildPlaneWeightsArray());
+	}
+	else
+	{
+		DistributeTerrain(Map, HeightMaps, TArray<UCoMTerrainWeightDataAsset*>{});
+	}
+
 	PlaceRivers(Map, Seed, Out);               // Stage 3
 	SeedResources(Map, Seed, Out);             // Stage 4
 	PlaceFeatures(Map, Seed, Out);             // Stage 5
@@ -119,13 +154,98 @@ void UCoMWorldGenerator::BuildHeightMap(TArray<int32>& OutMap, ECoMPlane Plane, 
 void UCoMWorldGenerator::DistributeTerrain(UCoMWorldMapSubsystem* Map,
                                             const TArray<TArray<int32>>& HeightMaps) const
 {
+	// Delegate to DataAsset overload; empty array triggers hardcoded fallback for all planes.
+	DistributeTerrain(Map, HeightMaps, TArray<UCoMTerrainWeightDataAsset*>{});
+}
+
+// Weighted random terrain pick from a FCoMTerrainWeightEntry table.
+// NormLatitude and NormAltitude must be in [0, 1].
+// RngState is advanced in-place (Knuth LCG, same as FWorldGenRNG).
+// Returns false when no eligible entry exists or total weight == 0; caller must fall back.
+bool UCoMWorldGenerator::PickWeightedTerrain(
+	const TArray<FCoMTerrainWeightEntry>& Weights,
+	float NormLatitude, float NormAltitude,
+	uint32& RngState, ECoMTerrain& OutTerrain)
+{
+	// First pass: sum eligible weights.
+	float TotalWeight = 0.0f;
+	for (const FCoMTerrainWeightEntry& E : Weights)
+	{
+		if (NormLatitude  >= E.MinLatitude  && NormLatitude  <= E.MaxLatitude &&
+		    NormAltitude  >= E.MinAltitude  && NormAltitude  <= E.MaxAltitude &&
+		    E.Weight > 0.0f)
+		{
+			TotalWeight += E.Weight;
+		}
+	}
+
+	if (TotalWeight <= 0.0f)
+	{
+		return false;
+	}
+
+	// Advance LCG and map to [0, TotalWeight).
+	RngState = RngState * 1664525u + 1013904223u;
+	const float Pick = (static_cast<float>(RngState) / static_cast<float>(0xFFFFFFFFu)) * TotalWeight;
+
+	// Second pass: pick by cumulative weight.
+	float Cursor = 0.0f;
+	for (const FCoMTerrainWeightEntry& E : Weights)
+	{
+		if (NormLatitude  >= E.MinLatitude  && NormLatitude  <= E.MaxLatitude &&
+		    NormAltitude  >= E.MinAltitude  && NormAltitude  <= E.MaxAltitude &&
+		    E.Weight > 0.0f)
+		{
+			Cursor += E.Weight;
+			if (Pick < Cursor)
+			{
+				OutTerrain = E.Terrain;
+				return true;
+			}
+		}
+	}
+
+	// Floating-point edge case: return last eligible entry.
+	for (int32 I = Weights.Num() - 1; I >= 0; --I)
+	{
+		const FCoMTerrainWeightEntry& E = Weights[I];
+		if (NormLatitude  >= E.MinLatitude  && NormLatitude  <= E.MaxLatitude &&
+		    NormAltitude  >= E.MinAltitude  && NormAltitude  <= E.MaxAltitude &&
+		    E.Weight > 0.0f)
+		{
+			OutTerrain = E.Terrain;
+			return true;
+		}
+	}
+	return false;
+}
+
+void UCoMWorldGenerator::DistributeTerrain(UCoMWorldMapSubsystem* Map,
+                                            const TArray<TArray<int32>>& HeightMaps,
+                                            const TArray<UCoMTerrainWeightDataAsset*>& PlaneWeights) const
+{
 	const int32 NumPlanes = static_cast<int32>(ECoMPlane::MAX);
 
 	for (int32 P = 0; P < NumPlanes; ++P)
 	{
 		const ECoMPlane Plane = static_cast<ECoMPlane>(P);
 
-		// Surface
+		// Find a matching DataAsset for this plane (null when none provided).
+		const UCoMTerrainWeightDataAsset* Asset = nullptr;
+		for (const UCoMTerrainWeightDataAsset* Candidate : PlaneWeights)
+		{
+			if (Candidate && Candidate->Plane == Plane)
+			{
+				Asset = Candidate;
+				break;
+			}
+		}
+
+		// Per-plane deterministic RNG seed for weighted picks; does not share state with
+		// other stages so DataAsset usage never shifts river/resource/feature outcomes.
+		uint32 RngState = static_cast<uint32>(P + 1) * 0xd2a98b73u;
+
+		// Surface layer
 		for (int32 Y = 0; Y < MAP_HEIGHT; ++Y)
 		{
 			for (int32 X = 0; X < MAP_WIDTH; ++X)
@@ -141,24 +261,60 @@ void UCoMWorldGenerator::DistributeTerrain(UCoMWorldMapSubsystem* Map,
 				{
 					// Latitude proxy: 0 = equator, 100 = poles
 					const int32 Latitude = FMath::Abs(Y - MAP_HEIGHT / 2) * 200 / MAP_HEIGHT;
-					Tile->Terrain = GetSurfaceLandTerrain(
-						Plane, HeightMaps[P][Y * MAP_WIDTH + X], Latitude);
+					const int32 Height   = HeightMaps[P][Y * MAP_WIDTH + X];
+
+					bool bPicked = false;
+					if (Asset && Asset->SurfaceWeights.Num() > 0)
+					{
+						// Normalise to [0,1] for DataAsset range filters.
+						const float NormLat = static_cast<float>(Latitude) / 100.0f;
+						const float NormAlt = static_cast<float>(Height)   / 999.0f;
+						bPicked = PickWeightedTerrain(Asset->SurfaceWeights,
+						                              NormLat, NormAlt,
+						                              RngState, Tile->Terrain);
+					}
+
+					if (!bPicked)
+					{
+						// Fallback: original hardcoded per-plane logic.
+						Tile->Terrain = GetSurfaceLandTerrain(Plane, Height, Latitude);
+					}
 				}
 			}
 		}
 
-		// Underdark — one primary cave terrain per plane (none are "surface-only" in the test)
-		const ECoMTerrain CaveTerrain = GetUnderdarkTerrain(Plane);
-		for (int32 Y = 0; Y < MAP_HEIGHT; ++Y)
+		// Underdark layer
+		if (Asset && Asset->UnderdarkWeights.Num() > 0)
 		{
-			for (int32 X = 0; X < MAP_WIDTH; ++X)
+			// No heightmap for underdark; use mid-range lat/alt so entries with wide ranges match.
+			for (int32 Y = 0; Y < MAP_HEIGHT; ++Y)
 			{
-				FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMMapLayer::Underdark, X, Y);
-				if (Tile) Tile->Terrain = CaveTerrain;
+				for (int32 X = 0; X < MAP_WIDTH; ++X)
+				{
+					FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMMapLayer::Underdark, X, Y);
+					if (!Tile) continue;
+					ECoMTerrain Picked = GetUnderdarkTerrain(Plane);
+					PickWeightedTerrain(Asset->UnderdarkWeights, 0.5f, 0.5f, RngState, Picked);
+					Tile->Terrain = Picked;
+				}
+			}
+		}
+		else
+		{
+			// Fallback: one primary cave terrain per plane.
+			const ECoMTerrain CaveTerrain = GetUnderdarkTerrain(Plane);
+			for (int32 Y = 0; Y < MAP_HEIGHT; ++Y)
+			{
+				for (int32 X = 0; X < MAP_WIDTH; ++X)
+				{
+					FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMMapLayer::Underdark, X, Y);
+					if (Tile) Tile->Terrain = CaveTerrain;
+				}
 			}
 		}
 
 		// Underwater already set to OceanFloor in Stage 1.
+		// UnderwaterWeights reserved for future sprint; not wired here.
 	}
 }
 

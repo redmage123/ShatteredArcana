@@ -430,6 +430,8 @@ namespace CoMTags
 		UE_DEFINE_GAMEPLAY_TAG(PlaneConquered,              "CoM.Condition.PlaneConquered")
 		UE_DEFINE_GAMEPLAY_TAG(LeyNexusControlled,          "CoM.Condition.LeyNexusControlled")
 		UE_DEFINE_GAMEPLAY_TAG(SpellOfMasteryResearched,    "CoM.Condition.SpellOfMasteryResearched")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Wizard_DjinnSorcerer, "CoM.Wizard.DjinnSorcerer");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Wizard_EfreetiLord, "CoM.Wizard.EfreetiLord");
 	}
 
 } // namespace CoMTags

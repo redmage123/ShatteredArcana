@@ -1,0 +1,145 @@
+{
+  "_comment": "Terrain weight defaults for all 8 planes. Mirrors Stage2_TerrainDistribution hardcoded palettes.",
+  "_note": "Weight tables are consumed by UCoMTerrainWeightDataAsset (CoMCore S3-T2).",
+  "_normalisation": "MinAltitude/MaxAltitude map height [0,999] -> [0,1]. MinLatitude/MaxLatitude map [0,100] -> [0,1]. 0=equator/sea-level, 1=pole/peak.",
+  "planes": [
+    {
+      "plane": "Aurelith",
+      "assetName": "TW_Aurelith",
+      "surfaceWeights": [
+        { "terrain": "Mountains",  "weight": 1.0, "minAlt": 0.821, "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "Hills",      "weight": 1.0, "minAlt": 0.711, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "Tundra",     "weight": 1.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.80, "maxLat": 1.0 },
+        { "terrain": "Jungle",     "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.640, "minLat": 0.0, "maxLat": 0.12 },
+        { "terrain": "Desert",     "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.600, "minLat": 0.0, "maxLat": 0.20 },
+        { "terrain": "Swamp",      "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.555, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "Forest",     "weight": 1.0, "minAlt": 0.660, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "Plains",     "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.580, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "Grassland",  "weight": 2.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underdarkWeights": [
+        { "terrain": "CavernFloor", "weight": 1.0, "minAlt": 0.0, "maxAlt": 1.0, "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underwaterWeights": []
+    },
+    {
+      "plane": "Noctharion",
+      "assetName": "TW_Noctharion",
+      "surfaceWeights": [
+        { "terrain": "DarkMountains",  "weight": 1.0, "minAlt": 0.821, "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "TwilightHills",  "weight": 1.0, "minAlt": 0.701, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "GloomTundra",    "weight": 1.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.70, "maxLat": 1.0 },
+        { "terrain": "CorruptedSwamp", "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.560, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "ShadowForest",   "weight": 1.0, "minAlt": 0.640, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "CrystalDesert",  "weight": 1.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 0.20 },
+        { "terrain": "ObsidianPlains", "weight": 2.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underdarkWeights": [
+        { "terrain": "ShadowCavern", "weight": 1.0, "minAlt": 0.0, "maxAlt": 1.0, "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underwaterWeights": []
+    },
+    {
+      "plane": "Verdantis",
+      "assetName": "TW_Verdantis",
+      "surfaceWeights": [
+        { "terrain": "RootMountains", "weight": 1.0, "minAlt": 0.821, "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "VineHills",     "weight": 1.0, "minAlt": 0.701, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "LivingSwamp",   "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.530, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "SporeDesert",   "weight": 1.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 0.15 },
+        { "terrain": "FungalForest",  "weight": 1.0, "minAlt": 0.640, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "PollenPlains",  "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.575, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "MegaJungle",    "weight": 2.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underdarkWeights": [
+        { "terrain": "RootTunnel", "weight": 1.0, "minAlt": 0.0, "maxAlt": 1.0, "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underwaterWeights": []
+    },
+    {
+      "plane": "Infernyx",
+      "assetName": "TW_Infernyx",
+      "surfaceWeights": [
+        { "terrain": "BasaltMountains", "weight": 1.0, "minAlt": 0.821, "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "CinderHills",     "weight": 1.0, "minAlt": 0.701, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "AshDesert",       "weight": 1.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.75, "maxLat": 1.0 },
+        { "terrain": "LavaFields",      "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.530, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "ScorchedForest",  "weight": 1.0, "minAlt": 0.640, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "EmberPlains",     "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.575, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "ObsidianSpires",  "weight": 2.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underdarkWeights": [
+        { "terrain": "MagmaChamber", "weight": 1.0, "minAlt": 0.0, "maxAlt": 1.0, "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underwaterWeights": []
+    },
+    {
+      "plane": "Aethermist",
+      "assetName": "TW_Aethermist",
+      "surfaceWeights": [
+        { "terrain": "ResonancePeaks",  "weight": 1.0, "minAlt": 0.821, "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "CrystalSpires",   "weight": 1.0, "minAlt": 0.701, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "FloatingIslands", "weight": 1.0, "minAlt": 0.640, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "StarlightTundra", "weight": 1.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.70, "maxLat": 1.0 },
+        { "terrain": "EtherMarshes",    "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.550, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "DreamMeadows",    "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.580, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "CloudPlains",     "weight": 2.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underdarkWeights": [
+        { "terrain": "PhaseCavern", "weight": 1.0, "minAlt": 0.0, "maxAlt": 1.0, "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underwaterWeights": []
+    },
+    {
+      "plane": "Abyssal",
+      "assetName": "TW_Abyssal",
+      "surfaceWeights": [
+        { "terrain": "ScreamingChasms", "weight": 1.0, "minAlt": 0.821, "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "DemonPillars",    "weight": 1.0, "minAlt": 0.701, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "CarrionDesert",   "weight": 1.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.70, "maxLat": 1.0 },
+        { "terrain": "GoreMarshes",     "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.540, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "LivingWalls",     "weight": 1.0, "minAlt": 0.640, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "BloodRivers",     "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.580, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "BonePlains",      "weight": 2.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underdarkWeights": [
+        { "terrain": "ChasmFloor", "weight": 1.0, "minAlt": 0.0, "maxAlt": 1.0, "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underwaterWeights": []
+    },
+    {
+      "plane": "Ethereal",
+      "assetName": "TW_Ethereal",
+      "surfaceWeights": [
+        { "terrain": "ThoughtStorms",        "weight": 1.0, "minAlt": 0.821, "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "EchoRuins",            "weight": 1.0, "minAlt": 0.701, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "FadeZones",            "weight": 1.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.70, "maxLat": 1.0 },
+        { "terrain": "VoidWhisperFields",    "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.550, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "SpiritArchipelagos",   "weight": 1.0, "minAlt": 0.640, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "DreamDeserts",         "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.580, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "CrystallizedMemories", "weight": 2.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underdarkWeights": [
+        { "terrain": "MemoryPool", "weight": 1.0, "minAlt": 0.0, "maxAlt": 1.0, "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underwaterWeights": []
+    },
+    {
+      "plane": "Feywild",
+      "assetName": "TW_Feywild",
+      "surfaceWeights": [
+        { "terrain": "BlossomPeaks",     "weight": 1.0, "minAlt": 0.821, "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "ThorncraftHollow", "weight": 1.0, "minAlt": 0.701, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "FeyWastes",        "weight": 1.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.75, "maxLat": 1.0 },
+        { "terrain": "ShiftingGlades",   "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.540, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "EternalForest",    "weight": 1.0, "minAlt": 0.640, "maxAlt": 0.820, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "SilverMistPlains", "weight": 1.0, "minAlt": 0.0,   "maxAlt": 0.580, "minLat": 0.0, "maxLat": 1.0 },
+        { "terrain": "MushroomRings",    "weight": 2.0, "minAlt": 0.0,   "maxAlt": 1.0,  "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underdarkWeights": [
+        { "terrain": "FeyRootLair", "weight": 1.0, "minAlt": 0.0, "maxAlt": 1.0, "minLat": 0.0, "maxLat": 1.0 }
+      ],
+      "underwaterWeights": []
+    }
+  ]
+}

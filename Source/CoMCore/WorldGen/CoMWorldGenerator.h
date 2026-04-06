@@ -7,6 +7,8 @@
 #include "CoMWorldGenerator.generated.h"
 
 class UCoMWorldMapSubsystem;
+class UCoMTerrainWeightDataAsset;
+class UCoMTerrainDistributionDataAsset;
 
 /**
  * UCoMWorldGenerator
@@ -14,9 +16,9 @@ class UCoMWorldMapSubsystem;
  * Stateless UObject that runs the 5-stage deterministic world-generation pipeline and
  * writes the result directly into a UCoMWorldMapSubsystem (all 24 layers):
  *
- *   Stage 1 — Landmass generation:    seeded noise heightmap → ocean/land split
+ *   Stage 1 — Landmass generation:    seeded noise heightmap -> ocean/land split
  *   Stage 2 — Terrain distribution:   plane-specific biome palette from height + latitude
- *   Stage 3 — River placement:        hill→ocean flow paths; respects MAP_WRAP_X
+ *   Stage 3 — River placement:        hill->ocean flow paths; respects MAP_WRAP_X
  *   Stage 4 — Resource node seeding:  plane-specific ECoMResource at configured density
  *   Stage 5 — Feature placement:      portals, ley-line chains, site markers (min 4-tile spacing)
  *
@@ -38,26 +40,65 @@ class COMCORE_API UCoMWorldGenerator : public UObject
 public:
 	/**
 	 * Generate a complete world into Map (must have InitializeLayers() called first).
-	 * Populates all 24 layers: 8 planes × (Surface + Underdark + Underwater).
+	 * Populates all 24 layers: 8 planes x (Surface + Underdark + Underwater).
 	 * Thread-safe: reads no shared mutable state outside Map.
 	 *
 	 * @param Map   Target subsystem; must not be null. InitializeLayers() must be called first.
-	 * @param Seed  Master generation seed. Same seed → identical world.
+	 * @param Seed  Master generation seed. Same seed -> identical world.
 	 * @return FCoMWorldData metadata (seed, counters, bIsValid).
 	 */
 	UFUNCTION(BlueprintCallable, Category="WorldGen")
 	FCoMWorldData GenerateWorld(UCoMWorldMapSubsystem* Map, int32 Seed) const;
 
-private:
-	// ─── Pipeline stages — each writes directly into Map ────────────────────
+	/**
+	 * Generate a complete world with config-driven per-plane terrain distribution (S3-T2).
+	 * When TerrainDist is non-null, Stage 2 reads weight tables from the DataAsset instead
+	 * of the hardcoded GetSurfaceLandTerrain / GetUnderdarkTerrain fallbacks.
+	 * Planes without a DataAsset entry continue to use the hardcoded logic.
+	 * All other stages (landmass, rivers, resources, features) are identical.
+	 *
+	 * @param Map          Target subsystem; must have InitializeLayers() called first.
+	 * @param Seed         Master generation seed. Same seed + same asset -> identical world.
+	 * @param TerrainDist  Per-plane terrain distribution asset (null = pure hardcoded fallback).
+	 * @return FCoMWorldData metadata (seed, counters, bIsValid).
+	 */
+	FCoMWorldData GenerateWorld(UCoMWorldMapSubsystem* Map, int32 Seed,
+	                            const UCoMTerrainDistributionDataAsset* TerrainDist) const;
 
-	/** Stage 1: heightmap per plane → ocean/land split on Surface tiles; populates Underwater. */
+	/**
+	 * Weighted random pick from a terrain weight table.  Public for unit-test access.
+	 * Filters entries by NormLatitude [0,1] and NormAltitude [0,1], normalises surviving
+	 * weights, then picks via the caller-supplied RNG state (Knuth LCG, advanced in-place).
+	 * Returns false (and leaves OutTerrain unchanged) when no entry passes the filters or
+	 * the total weight is zero — caller must fall back to hardcoded logic.
+	 */
+	static bool PickWeightedTerrain(const TArray<struct FCoMTerrainWeightEntry>& Weights,
+	                                float NormLatitude, float NormAltitude,
+	                                uint32& RngState, ECoMTerrain& OutTerrain);
+
+private:
+	// --- Pipeline stages — each writes directly into Map --------------------
+
+	/** Stage 1: heightmap per plane -> ocean/land split on Surface tiles; populates Underwater. */
 	void GenerateLandmass(UCoMWorldMapSubsystem* Map, int32 Seed,
 	                      TArray<TArray<int32>>& OutHeightMaps) const;
 
-	/** Stage 2: assign ECoMTerrain to every tile using height + plane palette. */
+	/**
+	 * Stage 2 (hardcoded): assign ECoMTerrain to every tile using height + plane palette.
+	 * Delegates to the DataAsset overload with an empty PlaneWeights array.
+	 */
 	void DistributeTerrain(UCoMWorldMapSubsystem* Map,
 	                       const TArray<TArray<int32>>& HeightMaps) const;
+
+	/**
+	 * Stage 2 (DataAsset-driven): assign ECoMTerrain using per-plane weight tables from
+	 * PlaneWeights DataAssets.  When PlaneWeights is empty or contains no entry for the
+	 * current plane, falls back to the hardcoded GetSurfaceLandTerrain / GetUnderdarkTerrain
+	 * logic so existing behaviour is fully preserved.
+	 */
+	void DistributeTerrain(UCoMWorldMapSubsystem* Map,
+	                       const TArray<TArray<int32>>& HeightMaps,
+	                       const TArray<UCoMTerrainWeightDataAsset*>& PlaneWeights) const;
 
 	/** Stage 3: carve rivers from highland sources to ocean sinks. */
 	void PlaceRivers(UCoMWorldMapSubsystem* Map, int32 Seed, FCoMWorldData& OutData) const;
@@ -68,7 +109,7 @@ private:
 	/** Stage 5: place portals, ley-line node chains, and site markers (4-tile min spacing). */
 	void PlaceFeatures(UCoMWorldMapSubsystem* Map, int32 Seed, FCoMWorldData& OutData) const;
 
-	// ─── Per-plane terrain helpers ────────────────────────────────────────────
+	// --- Per-plane terrain helpers -------------------------------------------
 
 	static void BuildHeightMap(TArray<int32>& OutMap, ECoMPlane Plane, uint32 PlaneSeed);
 
@@ -87,7 +128,7 @@ private:
 	/** Underdark resource types for a given plane. */
 	static TArray<ECoMResource> GetUnderdarkResources(ECoMPlane Plane);
 
-	// ─── Deterministic LCG — Knuth multiplier; period 2^32 ───────────────────
+	// --- Deterministic LCG — Knuth multiplier; period 2^32 ------------------
 
 	struct FWorldGenRNG
 	{
@@ -110,12 +151,12 @@ private:
 		}
 	};
 
-	// ─── Integer noise — X-tileable (MAP_WRAP_X = true) ──────────────────────
+	// --- Integer noise — X-tileable (MAP_WRAP_X = true) ----------------------
 
-	/** Wang-hash 2D → [0, 65535]. X is wrapped to MAP_WIDTH for east-west tileability. */
+	/** Wang-hash 2D -> [0, 65535]. X is wrapped to MAP_WIDTH for east-west tileability. */
 	static uint32 HashNoise(uint32 Seed, int32 X, int32 Y);
 
-	/** Multi-octave bilinear value noise → [0, 999]. Scale = base cell size in tiles. */
+	/** Multi-octave bilinear value noise -> [0, 999]. Scale = base cell size in tiles. */
 	static int32 OctaveNoise(uint32 Seed, int32 X, int32 Y, int32 Octaves, int32 Scale);
 
 	/** Chebyshev distance between two points, accounting for X-wrap. */

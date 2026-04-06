@@ -1,5 +1,5 @@
 # Shattered Arcana — Kanban Board
-**Last updated:** 2026-04-04T23:45 UTC | Updated by: QA Lead (post BV-03)
+**Last updated:** 2026-04-06T06:00 UTC | Updated by: Gameplay Dev (S3-T2 DONE)
 
 ---
 
