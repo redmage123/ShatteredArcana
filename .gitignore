@@ -1,0 +1,25 @@
+# UE5 generated
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+.vs/
+.idea/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+
+# Build artifacts
+*.o
+*.d
+*.pch
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Memory bank
+memory-bank/

@@ -1,0 +1,330 @@
+// Copyright Shattered Arcana. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Subsystems/GameInstanceSubsystem.h"
+#include "CoMCore/CoreTypes/CoMEnums.h"
+#include "CoMCore/CoreTypes/CoMStructs.h"
+#include "CoMHeroSubsystem.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHeroDeserted, int32, HeroUnitID, FFixed64, FinalLoyalty);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDragonDomainExpanded, int32, DomainID, int32, NewRadius);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDragonEggHatched, int32, EggID, int32, DragonID);
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Hero Tiers — based on Master of Magic / Caster of Magic hero/champion system
+// expanded to four tiers for Shattered Arcana
+// ═══════════════════════════════════════════════════════════════════════════
+
+UENUM(BlueprintType)
+enum class ECoMHeroTier : uint8
+{
+	/** Common sellswords, scouts, hedge wizards. Appear in taverns. */
+	Adventurer  UMETA(DisplayName = "Adventurer"),   // Tier 1 — CoM basic Heroes
+
+	/** Proven warriors and mages. Attracted by Fame >= 5. */
+	Hero        UMETA(DisplayName = "Hero"),          // Tier 2 — CoM mid-tier Heroes
+
+	/** Legendary named figures. Require Fame >= 15. */
+	Champion    UMETA(DisplayName = "Champion"),      // Tier 3 — CoM Champions (Roland, Mortu, Torin)
+
+	/** Planar entities, ascended mortals. Quest-only recruitment. One per plane. */
+	Demigod     UMETA(DisplayName = "Demigod"),       // Tier 4 — New for Shattered Arcana
+
+	MAX UMETA(Hidden)
+};
+
+/** Per-tier configuration: stat ranges, ability slots, hiring mechanics. */
+USTRUCT(BlueprintType)
+struct COMCORE_API FCoMHeroTierConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) ECoMHeroTier Tier = ECoMHeroTier::Adventurer;
+
+	// Stat multiplier applied to base hero stats (1.0 = normal)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) FFixed64 StatMultiplier = FFixed64(1);
+
+	// Number of ability/skill slots this tier gets
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 AbilitySlots = 1;
+
+	// Maximum level cap for this tier
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 MaxLevel = 6;
+
+	// XP multiplier (higher tiers need more XP per level)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) FFixed64 XPMultiplier = FFixed64(1);
+
+	// Hiring cost in gold (0 = cannot be hired with gold)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 HireCostMin = 25;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 HireCostMax = 50;
+
+	// Minimum wizard Fame required to attract this tier
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 FameRequired = 0;
+
+	// Can this tier be hired from taverns?
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) bool bHirableFromTavern = true;
+
+	// Must this tier be earned through a quest?
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) bool bQuestRequired = false;
+
+	// Maximum number of this tier a single wizard can have simultaneously
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) int32 MaxPerWizard = 4;
+
+	// Base loyalty at recruitment
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) FFixed64 BaseLoyalty = FFixed64(100);
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Hero Classes — every hero has a class that determines their ability set
+// Based on CoM hero/champion types + Psyker/Warlock expansion
+// ═══════════════════════════════════════════════════════════════════════════
+
+UENUM(BlueprintType)
+enum class ECoMHeroClass : uint8
+{
+	// ── Wizard-aligned classes (traditional spellcasting) ──────────────
+	Fighter      UMETA(DisplayName = "Fighter"),       // CoM: melee combat specialist
+	Bowman       UMETA(DisplayName = "Bowman"),         // CoM: ranged combat
+	Cleric       UMETA(DisplayName = "Cleric"),          // CoM Priestess: Life magic + healing
+	Magician     UMETA(DisplayName = "Magician"),       // CoM: arcane spellcasting
+	Paladin      UMETA(DisplayName = "Paladin"),        // CoM Champion: holy warrior
+	Assassin     UMETA(DisplayName = "Assassin"),       // CoM: stealth + poison
+	Bard         UMETA(DisplayName = "Bard"),           // CoM: morale + buff specialist
+	Beastmaster  UMETA(DisplayName = "Beastmaster"),    // CoM: summon + beast control
+	Necromancer  UMETA(DisplayName = "Necromancer"),    // Death magic specialist
+	Druid        UMETA(DisplayName = "Druid"),          // Nature magic + terrain
+
+	// ── Psyker-aligned classes (willpower-based, no spellbook) ────────
+	Psyker       UMETA(DisplayName = "Psyker"),         // Willpower + telepathy + mind control
+	Telepath     UMETA(DisplayName = "Telepath"),        // Psyker specialization: intel + command reading
+	Dominator    UMETA(DisplayName = "Dominator"),       // Psyker specialization: mass mind control
+	Empath       UMETA(DisplayName = "Empath"),          // Psyker specialization: morale + diplomacy
+
+	// ── Warlock-aligned classes (pact-based, soul economy) ────────────
+	Warlock      UMETA(DisplayName = "Warlock"),         // Pact Debt + entity bargaining
+	WitchHunter  UMETA(DisplayName = "Witch Hunter"),    // Anti-magic specialist, pact-breaker
+	Demonologist UMETA(DisplayName = "Demonologist"),    // Warlock spec: Abyssal/Infernal pacts
+	Feysworn     UMETA(DisplayName = "Feysworn"),        // Warlock spec: Feywild/glamour pacts
+	SoulReaper   UMETA(DisplayName = "Soul Reaper"),     // Warlock spec: soul fragment harvester
+
+	// ── Hybrid / Demigod-tier classes ─────────────────────────────────
+	DragonKnight UMETA(DisplayName = "Dragon Knight"),   // Bonded to a dragon, tier 3-4 only
+	PlanarWalker UMETA(DisplayName = "Planar Walker"),   // Cross-plane specialist, tier 3-4
+	Warlord      UMETA(DisplayName = "Warlord"),         // CoM Warlord: army command buffs
+	Ascendant    UMETA(DisplayName = "Ascendant"),       // Demigod tier only: planar entity
+
+	MAX UMETA(Hidden)
+};
+
+/** Maps which hero classes are available at each tier. */
+USTRUCT(BlueprintType)
+struct COMCORE_API FCoMHeroClassTierEntry
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) ECoMHeroClass HeroClass = ECoMHeroClass::Fighter;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) ECoMHeroTier MinTier = ECoMHeroTier::Adventurer;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) ECoMHeroTier MaxTier = ECoMHeroTier::Demigod;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) ECoMWizardClass RequiredWizardClass = ECoMWizardClass::MAX; // MAX = any
+};
+
+/**
+ * Manages hero personalities, inter-hero relationships, loyalty mechanics,
+ * dragon instances, dragon domains, and dragon egg incubation/hatching.
+ */
+UCLASS()
+class COMCORE_API UCoMHeroSubsystem : public UGameInstanceSubsystem
+{
+	GENERATED_BODY()
+
+public:
+	//~ USubsystem interface
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	virtual void Deinitialize() override;
+
+
+	// -----------------------------------------------------------------
+	// Hero Tiers (CoM-based four-tier system)
+	// -----------------------------------------------------------------
+
+	/** Get the static tier configuration for a hero tier. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
+	static FCoMHeroTierConfig GetTierConfig(ECoMHeroTier Tier);
+
+	/** Get the tier of a specific hero. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
+	ECoMHeroTier GetHeroTier(int32 HeroUnitID) const;
+
+	/** Set the tier for a hero (called during spawn/recruitment). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
+	void SetHeroTier(int32 HeroUnitID, ECoMHeroTier Tier);
+
+	/** Check if a wizard qualifies to recruit a hero of the given tier. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
+	bool CanRecruitTier(int32 WizardIndex, ECoMHeroTier Tier, int32 WizardFame) const;
+
+
+	/** Get the class of a hero. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
+	ECoMHeroClass GetHeroClass(int32 HeroUnitID) const;
+
+	/** Set the class for a hero. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
+	void SetHeroClass(int32 HeroUnitID, ECoMHeroClass HeroClass);
+
+	/** Get all hero classes available at a given tier, optionally filtered by wizard class. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
+	static TArray<ECoMHeroClass> GetAvailableClasses(ECoMHeroTier Tier, ECoMWizardClass WizardClass);
+
+	/** Count how many heroes of a given tier a wizard currently has. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
+	int32 CountHeroesOfTier(int32 WizardIndex, ECoMHeroTier Tier) const;
+
+	// -----------------------------------------------------------------
+	// Hero Personality & Loyalty
+	// -----------------------------------------------------------------
+
+	/** Assign random personality traits to a hero unit. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
+	void InitializeHeroPersonality(int32 HeroUnitID, UPARAM(ref) FRandomStream& Rng);
+
+	/** Return the personality data for a hero, or a default if not found. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
+	FCoMHeroPersonality GetPersonality(int32 HeroUnitID) const;
+
+	/** Current loyalty value for a hero (default 100 if not initialized). */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
+	FFixed64 GetLoyalty(int32 HeroUnitID) const;
+
+	/** Add (or subtract) loyalty. Clamped to [0, 200]. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
+	void ModifyLoyalty(int32 HeroUnitID, FFixed64 Delta);
+
+	/**
+	 * Roll against the hero's loyalty to determine desertion.
+	 * Below 30: 5% chance. Below 10: 25% chance.
+	 * Returns true if the hero deserts.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
+	bool CheckDesertion(int32 HeroUnitID);
+
+	// -----------------------------------------------------------------
+	// Hero Relationships
+	// -----------------------------------------------------------------
+
+	/** Modify (or create) a relationship between two heroes. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
+	void UpdateRelationship(int32 HeroA, int32 HeroB, ECoMHeroRelationType Type, FFixed64 StrengthDelta);
+
+	/** All relationships involving the given hero. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
+	TArray<FCoMHeroRelationship> GetRelationshipsForHero(int32 HeroUnitID) const;
+
+	// -----------------------------------------------------------------
+	// Hero Turn Processing
+	// -----------------------------------------------------------------
+
+	/** Per-turn: age relationships, decay loyalty, check desertion. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
+	void ProcessHeroTurn();
+
+	// -----------------------------------------------------------------
+	// Dragons
+	// -----------------------------------------------------------------
+
+	/** Spawn a dragon instance and return its DragonID (-1 on failure). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
+	int32 SpawnDragon(int32 TypeID, ECoMPlane Plane, FIntPoint LairPosition, UPARAM(ref) FRandomStream& Rng);
+
+	/** Establish a territorial domain around an existing dragon. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
+	void CreateDragonDomain(int32 DragonID, int32 InfluenceRadius);
+
+	/** Return dragon instance by ID, or nullptr. */
+	const FCoMDragonInstance* GetDragon(int32 DragonID) const;
+
+	/** Return domain by ID, or nullptr. */
+	const FCoMDragonDomain* GetDomain(int32 DomainID) const;
+
+	/** All domains on the specified plane. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Dragons")
+	TArray<const FCoMDragonDomain*> GetDomainsOnPlane(ECoMPlane Plane) const;
+
+	// -----------------------------------------------------------------
+	// Dragon Eggs
+	// -----------------------------------------------------------------
+
+	/** Create a dragon egg laid by the given parent. Returns EggID. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
+	int32 LayDragonEgg(int32 ParentDragonID, int32 PossessorWizard);
+
+	/** Attempt to hatch an egg. Returns the new DragonID, or -1 if not ready. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
+	int32 HatchEgg(int32 EggID);
+
+	// -----------------------------------------------------------------
+	// Dragon Turn Processing
+	// -----------------------------------------------------------------
+
+	/** Per-turn: age dragons, expand domains, tick egg incubation. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
+	void ProcessDragonTurn();
+
+	// -----------------------------------------------------------------
+	// Delegates
+	// -----------------------------------------------------------------
+
+	UPROPERTY(BlueprintAssignable, Category = "CoM|Heroes")
+	FOnHeroDeserted OnHeroDeserted;
+
+	UPROPERTY(BlueprintAssignable, Category = "CoM|Dragons")
+	FOnDragonDomainExpanded OnDragonDomainExpanded;
+
+	UPROPERTY(BlueprintAssignable, Category = "CoM|Dragons")
+	FOnDragonEggHatched OnDragonEggHatched;
+
+private:
+	// -----------------------------------------------------------------
+	// Internal helpers
+	// -----------------------------------------------------------------
+
+	/** Compute per-turn loyalty decay for a hero based on personality. */
+	FFixed64 ComputeLoyaltyDecay(const FCoMHeroPersonality& Personality) const;
+
+	/** Generate claimed tile set for a domain from lair position + radius. */
+	static TArray<FIntPoint> ComputeClaimedTiles(FIntPoint Center, int32 Radius);
+
+	/** Allocate the next sequential ID for a given counter. */
+	int32 AllocateDragonID();
+	int32 AllocateDomainID();
+	int32 AllocateEggID();
+
+	// -----------------------------------------------------------------
+	// State
+	// -----------------------------------------------------------------
+
+	UPROPERTY()
+	TMap<int32, FCoMHeroPersonality> Personalities;
+
+	/** Hero tier assignments. */
+	TMap<int32, ECoMHeroTier> HeroTiers;
+
+	UPROPERTY()
+	TArray<FCoMHeroRelationship> Relationships;
+
+	UPROPERTY()
+	TMap<int32, FCoMDragonInstance> Dragons;
+
+	UPROPERTY()
+	TMap<int32, FCoMDragonDomain> Domains;
+
+	UPROPERTY()
+	TArray<FCoMDragonEgg> Eggs;
+
+	int32 NextDragonID  = 1;
+	int32 NextDomainID  = 1;
+	int32 NextEggID     = 1;
+};

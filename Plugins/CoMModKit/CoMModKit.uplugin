@@ -1,0 +1,22 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1",
+	"FriendlyName": "Caster of Magic — ModKit",
+	"Description": "Modding support plugin for Caster of Magic. Exposes data asset schema, custom tag registration, and mod-safe event bus hooks.",
+	"Category": "Game",
+	"CreatedBy": "Mythforge Studios",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"Modules": [
+		{
+			"Name": "CoMModKit",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

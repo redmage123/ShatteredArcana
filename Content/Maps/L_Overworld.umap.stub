@@ -1,0 +1,10 @@
+# L_Overworld.umap — STUB (COM-029)
+# This file is a placeholder. The actual .umap binary must be created in UE5 Editor.
+#
+# Setup checklist (once UE5 is installed):
+#   1. Open UE5 Editor → New Level → Empty Level → Save as Content/Maps/L_Overworld
+#   2. World Settings → Game Mode Override → ACoMOverworldGameMode
+#   3. World Settings → Default Pawn Class → ACoMCameraPawn
+#   4. Add a Directional Light + Sky Atmosphere (placeholder lighting)
+#   5. Add a Player Start at (0, 0, 100)
+#   6. The UCoMWorldMapSubsystem (COM-026) will procedurally populate tiles at runtime
