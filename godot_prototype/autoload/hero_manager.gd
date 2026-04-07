@@ -67,10 +67,10 @@ func _ready() -> void:
 
 func create_hero(hero_class: String, owner: int) -> int:
 	var template: Dictionary = HERO_CLASSES.get(hero_class, HERO_CLASSES["warrior"])
-	var hid := _next_hero_id
+	var hid = _next_hero_id
 	_next_hero_id += 1
 
-	var rng := RandomNumberGenerator.new()
+	var rng = RandomNumberGenerator.new()
 	rng.randomize()
 
 	var hero: Dictionary = {
@@ -116,7 +116,7 @@ func remove_hero(hero_id: int) -> void:
 # ---------------------------------------------------------------------------
 
 func get_hero_combat_bonus(hero_id: int) -> float:
-	var hero := get_hero(hero_id)
+	var hero = get_hero(hero_id)
 	if hero.is_empty():
 		return 1.0
 
@@ -139,7 +139,7 @@ func get_hero_combat_bonus(hero_id: int) -> float:
 func add_hero_xp(hero_id: int, amount: int) -> void:
 	if not hero_data.has(hero_id):
 		return
-	var hero := hero_data[hero_id] as Dictionary
+	var hero = hero_data[hero_id] as Dictionary
 	hero["xp"] += amount
 
 	while hero["xp"] >= Constants.XP_PER_LEVEL and hero["level"] < Constants.MAX_LEVEL:

@@ -2,7 +2,7 @@ extends Node
 
 ## AI Controller v2 — personality-driven strategy with economic/military phases
 
-var rng := RandomNumberGenerator.new()
+var rng = RandomNumberGenerator.new()
 
 func _ready():
 	rng.randomize()
@@ -276,7 +276,7 @@ func _ai_diplomacy(wizard_id: int, personality: Dictionary, my_strength: float) 
 # ── EVALUATION ───────────────────────────────────────────────────────────────
 
 func _evaluate_strength(wizard_id: int) -> float:
-	var total := 0.0
+	var total = 0.0
 	var armies = UnitManager.get_armies_for_wizard(wizard_id)
 	for army in armies:
 		total += CombatResolver.calculate_army_power(army.get("army_id", -1))
@@ -287,7 +287,7 @@ func _evaluate_strength(wizard_id: int) -> float:
 	return total
 
 func _assess_threat(wizard_id: int) -> float:
-	var max_threat := 0.0
+	var max_threat = 0.0
 	for other_wiz in range(Constants.MAX_WIZARDS):
 		if other_wiz == wizard_id:
 			continue

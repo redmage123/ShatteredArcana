@@ -7,7 +7,7 @@ const TILE_SIZE := 128
 
 var current_plane: int = 0
 var selected_army_id: int = -1
-var _hovered_tile := Vector2i(-1, -1)
+var _hovered_tile = Vector2i(-1, -1)
 
 @onready var camera: Camera2D = $WorldCamera
 @onready var tile_renderer: Node2D = $TileRenderer
@@ -64,9 +64,9 @@ func _start_new_game() -> void:
 		"mana": 50,
 		"fame": 0,
 	})
-	var ai_names := ["Rjak", "Sss'ra", "Lo Pan"]
-	var ai_races := ["dark_elves", "draconians", "nomads"]
-	var ai_colors := [Color.DARK_RED, Color.DARK_GREEN, Color.DARK_VIOLET]
+	var ai_names = ["Rjak", "Sss'ra", "Lo Pan"]
+	var ai_races = ["dark_elves", "draconians", "nomads"]
+	var ai_colors = [Color.DARK_RED, Color.DARK_GREEN, Color.DARK_VIOLET]
 	for i in range(3):
 		wizards.append({
 			"id": i + 1,
@@ -78,38 +78,38 @@ func _start_new_game() -> void:
 			"mana": 50,
 			"fame": 0,
 		})
-	GameState.start_game(wizards)
+	GameState.start_game()
 
 
 # -- UI panel creation --------------------------------------------------------
 
 func _create_ui_panels() -> void:
 	# City screen
-	var city_scene := load("res://scenes/city/city_screen.tscn")
+	var city_scene = load("res://scenes/city/city_screen.tscn")
 	if city_scene:
 		_city_screen = city_scene.instantiate()
 		$HUD.add_child(_city_screen)
 
 	# Spell book
-	var spell_scene := load("res://scenes/magic/spell_book.tscn")
+	var spell_scene = load("res://scenes/magic/spell_book.tscn")
 	if spell_scene:
 		_spell_book = spell_scene.instantiate()
 		$HUD.add_child(_spell_book)
 
 	# Diplomacy screen
-	var diplo_scene := load("res://scenes/diplomacy/diplomacy_screen.tscn")
+	var diplo_scene = load("res://scenes/diplomacy/diplomacy_screen.tscn")
 	if diplo_scene:
 		_diplomacy_screen = diplo_scene.instantiate()
 		$HUD.add_child(_diplomacy_screen)
 
 	# Combat popup
-	var combat_scene := load("res://scenes/combat/combat_popup.tscn")
+	var combat_scene = load("res://scenes/combat/combat_popup.tscn")
 	if combat_scene:
 		_combat_popup = combat_scene.instantiate()
 		$HUD.add_child(_combat_popup)
 
 	# Minimap (bottom-right corner)
-	var minimap_script := load("res://scenes/hud/minimap.gd")
+	var minimap_script = load("res://scenes/hud/minimap.gd")
 	if minimap_script:
 		_minimap = TextureRect.new()
 		_minimap.set_script(minimap_script)
@@ -133,17 +133,17 @@ func _create_ui_panels() -> void:
 	_plane_bar.offset_bottom = 78
 	$HUD.add_child(_plane_bar)
 
-	var plane_label := Label.new()
+	var plane_label = Label.new()
 	plane_label.text = "Plane: "
 	plane_label.add_theme_font_size_override("font_size", 13)
 	_plane_bar.add_child(plane_label)
 
 	for i in range(Constants.NUM_PLANES):
-		var btn := Button.new()
+		var btn = Button.new()
 		btn.text = PLANE_NAMES[i] if i < PLANE_NAMES.size() else "Plane %d" % i
 		btn.custom_minimum_size = Vector2(90, 28)
 		btn.add_theme_font_size_override("font_size", 11)
-		var plane_idx := i
+		var plane_idx = i
 		btn.pressed.connect(func(): _on_plane_selected(plane_idx))
 		_plane_bar.add_child(btn)
 
@@ -175,7 +175,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
-			var tile_pos := _mouse_to_tile()
+			var tile_pos = _mouse_to_tile()
 			on_tile_clicked(tile_pos)
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			selected_army_id = -1
@@ -215,9 +215,9 @@ func _close_all_panels() -> void:
 
 
 func _mouse_to_tile() -> Vector2i:
-	var world_pos := get_global_mouse_position()
-	var tx := int(floor(world_pos.x / TILE_SIZE))
-	var ty := int(floor(world_pos.y / TILE_SIZE))
+	var world_pos = get_global_mouse_position()
+	var tx = int(floor(world_pos.x / TILE_SIZE))
+	var ty = int(floor(world_pos.y / TILE_SIZE))
 	return Vector2i(tx, ty)
 
 
@@ -233,16 +233,16 @@ func on_tile_clicked(tile_pos: Vector2i) -> void:
 		return
 
 	# Check if there is an army at this tile belonging to the player
-	var army_id := _army_at(tile_pos)
+	var army_id = _army_at(tile_pos)
 	if army_id >= 0:
 		var army: Dictionary = GameState.get_army(army_id)
-		if army.get("owner_id", -1) == GameState.current_wizard_id():
+		if army.get("owner_id", -1) == GameState.current_wizard:
 			selected_army_id = army_id
 			_update_army_panel(army_id)
 			return
 
 	# Check for city at tile -- open city screen
-	var city := WorldMap.get_city_at(current_plane, tile_pos)
+	var city = WorldMap.get_city_at(current_plane, tile_pos)
 	if city.size() > 0:
 		var cid: int = city.get("city_id", -1)
 		if cid >= 0 and _city_screen:
@@ -257,14 +257,14 @@ func _try_move_army(target: Vector2i) -> void:
 		selected_army_id = -1
 		return
 
-	var from := Vector2i(army["x"], army["y"])
+	var from = Vector2i(army["x"], army["y"])
 	var path: Array = Pathfinder.find_path(current_plane, from, target)
 	if path.is_empty():
 		show_notification("No valid path.")
 		return
 
 	var remaining_mp: int = army.get("movement_left", 0)
-	var final_pos := from
+	var final_pos = from
 	for i in range(1, path.size()):
 		var step: Vector2i = path[i]
 		var cost: int = WorldMap.get_move_cost(current_plane, step)
@@ -277,9 +277,9 @@ func _try_move_army(target: Vector2i) -> void:
 		show_notification("Not enough movement.")
 		return
 
-	var enemy_army := _enemy_army_at(final_pos)
+	var enemy_army = _enemy_army_at(final_pos)
 	if enemy_army >= 0:
-		var result := CombatEngine.resolve(selected_army_id, enemy_army)
+		var result = CombatResolver.resolve(selected_army_id, enemy_army)
 		_show_combat_popup(result)
 	else:
 		GameState.move_army(selected_army_id, final_pos)
@@ -301,7 +301,7 @@ func _army_at(tile_pos: Vector2i) -> int:
 
 
 func _enemy_army_at(tile_pos: Vector2i) -> int:
-	var pid := GameState.current_wizard_id()
+	var pid = GameState.current_wizard
 	for army_id in GameState.get_all_army_ids():
 		var a: Dictionary = GameState.get_army(army_id)
 		if a.get("plane", -1) == current_plane and Vector2i(a["x"], a["y"]) == tile_pos:
@@ -345,17 +345,17 @@ func refresh_army_sprites() -> void:
 	for child in army_sprites_node.get_children():
 		child.queue_free()
 
-	var pid := GameState.current_wizard_id()
+	var pid = GameState.current_wizard
 	for army_id in GameState.get_all_army_ids():
 		var army: Dictionary = GameState.get_army(army_id)
 		if army.get("plane", -1) != current_plane:
 			continue
-		var apos := Vector2i(army["x"], army["y"])
+		var apos = Vector2i(army["x"], army["y"])
 		if not FogOfWar.is_visible(pid, current_plane, apos):
 			continue
 
-		var sprite := Sprite2D.new()
-		var img := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+		var sprite = Sprite2D.new()
+		var img = Image.create(64, 64, false, Image.FORMAT_RGBA8)
 		var owner_color: Color = GameState.get_wizard_color(army.get("owner_id", 0))
 		_draw_circle_on_image(img, 32, 32, 24, owner_color)
 		sprite.texture = ImageTexture.create_from_image(img)
@@ -367,8 +367,8 @@ func refresh_army_sprites() -> void:
 func _draw_circle_on_image(img: Image, cx: int, cy: int, radius: int, color: Color) -> void:
 	for y in range(img.get_height()):
 		for x in range(img.get_width()):
-			var dx := x - cx
-			var dy := y - cy
+			var dx = x - cx
+			var dy = y - cy
 			if dx * dx + dy * dy <= radius * radius:
 				img.set_pixel(x, y, color)
 
@@ -379,15 +379,15 @@ func refresh_city_markers() -> void:
 
 	var cities: Array = WorldMap.get_cities(current_plane)
 	for city in cities:
-		var pos := Vector2i(city["x"], city["y"])
-		var label := Label.new()
+		var pos = Vector2i(city["x"], city["y"])
+		var label = Label.new()
 		label.text = city.get("name", "City")
 		label.position = Vector2(pos.x * TILE_SIZE, pos.y * TILE_SIZE - 20)
 		label.add_theme_color_override("font_color", Color.WHITE)
 		label.z_index = 15
 		city_markers_node.add_child(label)
 
-		var marker := ColorRect.new()
+		var marker = ColorRect.new()
 		marker.color = GameState.get_wizard_color(city.get("owner_id", -1))
 		marker.size = Vector2(32, 32)
 		marker.position = Vector2(pos.x * TILE_SIZE + 48, pos.y * TILE_SIZE + 48)
@@ -408,7 +408,7 @@ func on_end_turn_pressed() -> void:
 	refresh_city_markers()
 	_update_hud()
 	_update_minimap()
-	show_notification("Turn %d" % GameState.current_turn())
+	show_notification("Turn %d" % GameState.current_turn)
 
 
 # -- HUD ----------------------------------------------------------------------
@@ -418,7 +418,7 @@ func _update_hud() -> void:
 	$HUD/ResourceBar/GoldLabel.text = "Gold: %d" % wiz.get("gold", 0)
 	$HUD/ResourceBar/ManaLabel.text = "Mana: %d" % wiz.get("mana", 0)
 	$HUD/ResourceBar/FameLabel.text = "Fame: %d" % wiz.get("fame", 0)
-	$HUD/ResourceBar/TurnLabel.text = "Turn: %d" % GameState.current_turn()
+	$HUD/ResourceBar/TurnLabel.text = "Turn: %d" % GameState.current_turn
 
 
 func _update_army_panel(army_id: int) -> void:
@@ -435,7 +435,7 @@ func _update_army_panel(army_id: int) -> void:
 
 	var units: Array = army.get("units", [])
 	for unit in units:
-		var lbl := Label.new()
+		var lbl = Label.new()
 		lbl.text = "%s  HP:%d/%d  ATK:%d" % [
 			unit.get("name", "?"),
 			unit.get("hp", 0),
@@ -450,7 +450,7 @@ func _update_army_panel(army_id: int) -> void:
 func _update_minimap() -> void:
 	if _minimap and _minimap.has_method("set_plane"):
 		_minimap.set_plane(current_plane)
-		_minimap.set_player_id(GameState.current_wizard_id() if GameState.has_method("current_wizard_id") else 0)
+		_minimap.set_player_id(GameState.current_wizard if GameState.has_method("current_wizard") else 0)
 		_minimap.refresh()
 
 
@@ -511,7 +511,7 @@ func _on_production_complete(city_id: int, item: String) -> void:
 
 
 func _on_spell_researched(wizard_id: int, spell_id: String) -> void:
-	if wizard_id == GameState.current_wizard_id() if GameState.has_method("current_wizard_id") else 0:
+	if wizard_id == GameState.current_wizard if GameState.has_method("current_wizard") else 0:
 		show_notification("Spell researched: %s" % spell_id)
 
 
@@ -545,7 +545,7 @@ func _on_plane_changed_signal(plane_idx: int) -> void:
 # -- Notifications ------------------------------------------------------------
 
 func show_combat_result(result: Dictionary) -> void:
-	var msg := "Combat: "
+	var msg = "Combat: "
 	if result.get("attacker_won", false):
 		msg += "Attacker wins!"
 	else:
@@ -555,7 +555,7 @@ func show_combat_result(result: Dictionary) -> void:
 
 
 func show_notification(text: String) -> void:
-	var lbl := Label.new()
+	var lbl = Label.new()
 	lbl.text = text
 	lbl.add_theme_color_override("font_color", Color.YELLOW)
 	notification_log.add_child(lbl)

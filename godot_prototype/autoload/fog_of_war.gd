@@ -52,7 +52,7 @@ func reveal_area(wizard_id: int, plane: int, center: Vector2i, radius: int) -> v
 			var y: int = center.y + dy
 			if y < 0 or y >= Constants.MAP_HEIGHT:
 				continue
-			var tile := WorldMap.get_tile(plane, x, y)
+			var tile = WorldMap.get_tile(plane, x, y)
 			if tile:
 				tile.fog_visible |= bit
 				tile.fog_explored |= bit
@@ -63,14 +63,14 @@ func reveal_area(wizard_id: int, plane: int, center: Vector2i, radius: int) -> v
 # ---------------------------------------------------------------------------
 
 func is_visible(wizard_id: int, plane: int, pos: Vector2i) -> bool:
-	var tile := WorldMap.get_tile(plane, pos.x, pos.y)
+	var tile = WorldMap.get_tile(plane, pos.x, pos.y)
 	if tile == null:
 		return false
 	return (tile.fog_visible & (1 << wizard_id)) != 0
 
 
 func is_explored(wizard_id: int, plane: int, pos: Vector2i) -> bool:
-	var tile := WorldMap.get_tile(plane, pos.x, pos.y)
+	var tile = WorldMap.get_tile(plane, pos.x, pos.y)
 	if tile == null:
 		return false
 	return (tile.fog_explored & (1 << wizard_id)) != 0
@@ -93,7 +93,7 @@ func set_all_visible(wizard_id: int) -> void:
 func _get_army_sight_range(army: Dictionary) -> int:
 	var best: int = Constants.DEFAULT_SIGHT_RANGE
 	for uid in army.get("unit_ids", []):
-		var unit := UnitManager.get_unit(uid)
+		var unit = UnitManager.get_unit(uid)
 		if unit.is_empty():
 			continue
 		if "scout" in unit.get("abilities", []):

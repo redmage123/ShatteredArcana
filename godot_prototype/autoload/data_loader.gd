@@ -26,14 +26,14 @@ func _load_json(path: String, fallback: Variant) -> Variant:
 	if not FileAccess.file_exists(path):
 		push_warning("DataLoader: missing data file %s — using fallback" % path)
 		return fallback
-	var file := FileAccess.open(path, FileAccess.READ)
+	var file = FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		push_warning("DataLoader: cannot open %s" % path)
 		return fallback
-	var text := file.get_as_text()
+	var text = file.get_as_text()
 	file.close()
-	var json := JSON.new()
-	var err := json.parse(text)
+	var json = JSON.new()
+	var err = json.parse(text)
 	if err != OK:
 		push_error("DataLoader: JSON parse error in %s — %s" % [path, json.get_error_message()])
 		return fallback
@@ -75,7 +75,7 @@ func get_building_spec(id: String) -> Dictionary:
 
 
 func get_terrain(id: int) -> Dictionary:
-	var key := str(id)
+	var key = str(id)
 	if terrain_types.has(key):
 		return terrain_types[key]
 	return {}

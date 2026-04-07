@@ -72,7 +72,7 @@ func update_display() -> void:
 	_header_owner.text = "Owner: %s" % wiz.get("name", "Neutral")
 
 	# Income
-	var income := CityManager.get_city_income(_city_id)
+	var income = CityManager.get_city_income(_city_id)
 	_food_label.text = "Food: +%d" % income.get("food", 0)
 	_prod_label.text = "Prod: +%d" % income.get("production", 0)
 	_gold_label.text = "Gold: +%d" % income.get("gold", 0)
@@ -90,15 +90,15 @@ func _refresh_built_buildings() -> void:
 
 	var buildings: Array = _city.get("buildings", [])
 	if buildings.is_empty():
-		var lbl := Label.new()
+		var lbl = Label.new()
 		lbl.text = "  No buildings yet"
 		lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 		_built_list.add_child(lbl)
 		return
 
 	for bid in buildings:
-		var spec := DataLoader.get_building_spec(bid)
-		var btn := Button.new()
+		var spec = DataLoader.get_building_spec(bid)
+		var btn = Button.new()
 		var icon_str: String = BUILDING_ICONS.get(bid, "--")
 		btn.text = "[%s] %s" % [icon_str, spec.get("name", bid)]
 		btn.tooltip_text = _building_effect_text(spec)
@@ -124,16 +124,16 @@ func _refresh_available_buildings() -> void:
 		if bid in queue_ids:
 			continue
 
-		var spec := DataLoader.get_building_spec(bid)
+		var spec = DataLoader.get_building_spec(bid)
 		var prereqs: Array = spec.get("requires", [])
-		var prereqs_met := true
+		var prereqs_met = true
 		var missing_prereqs: Array = []
 		for req in prereqs:
 			if req not in built:
 				prereqs_met = false
 				missing_prereqs.append(req)
 
-		var btn := Button.new()
+		var btn = Button.new()
 		var icon_str: String = BUILDING_ICONS.get(bid, "--")
 		btn.text = "[%s] %s (%d)" % [icon_str, spec.get("name", bid), spec.get("cost", 0)]
 		btn.disabled = not prereqs_met or _city.get("build_queue", []).size() >= Constants.MAX_BUILD_QUEUE
@@ -141,14 +141,14 @@ func _refresh_available_buildings() -> void:
 		if not prereqs_met:
 			var missing_names: Array = []
 			for req_id in missing_prereqs:
-				var req_spec := DataLoader.get_building_spec(req_id)
+				var req_spec = DataLoader.get_building_spec(req_id)
 				missing_names.append(req_spec.get("name", req_id))
 			btn.tooltip_text = "Requires: %s" % ", ".join(missing_names)
 			btn.modulate = Color(0.5, 0.5, 0.5)
 		else:
 			btn.tooltip_text = _building_effect_text(spec)
 
-		var b_id := bid  # capture for lambda
+		var b_id = bid  # capture for lambda
 		btn.pressed.connect(func(): on_build_clicked(b_id))
 		_available_list.add_child(btn)
 
@@ -159,29 +159,29 @@ func _refresh_build_queue() -> void:
 
 	var queue: Array = _city.get("build_queue", [])
 	if queue.is_empty():
-		var lbl := Label.new()
+		var lbl = Label.new()
 		lbl.text = "  Queue empty"
 		lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 		_queue_container.add_child(lbl)
 		return
 
 	for i in range(queue.size()):
-		var item := queue[i] as Dictionary
-		var vbox := VBoxContainer.new()
+		var item = queue[i] as Dictionary
+		var vbox = VBoxContainer.new()
 
-		var name_lbl := Label.new()
+		var name_lbl = Label.new()
 		var spec_id: String = item.get("spec_id", "")
 		if item.get("build_type", "") == "building":
-			var spec := DataLoader.get_building_spec(spec_id)
+			var spec = DataLoader.get_building_spec(spec_id)
 			name_lbl.text = spec.get("name", spec_id)
 		else:
-			var spec := DataLoader.get_unit_spec(spec_id)
+			var spec = DataLoader.get_unit_spec(spec_id)
 			name_lbl.text = spec.get("name", spec_id)
 		name_lbl.add_theme_font_size_override("font_size", 12)
 		vbox.add_child(name_lbl)
 
 		# Progress bar
-		var progress := ProgressBar.new()
+		var progress = ProgressBar.new()
 		progress.custom_minimum_size = Vector2(100, 16)
 		var cost: int = item.get("cost", 1)
 		var prog: int = item.get("progress", 0)
@@ -192,20 +192,20 @@ func _refresh_build_queue() -> void:
 
 		# Turns remaining (only for first item)
 		if i == 0:
-			var income := CityManager.get_city_income(_city_id)
+			var income = CityManager.get_city_income(_city_id)
 			var prod_power: int = maxi(1, income.get("production", 1) - _city.get("unrest", 0))
-			var remaining := ceili(float(cost - prog) / float(prod_power))
-			var turns_lbl := Label.new()
+			var remaining = ceili(float(cost - prog) / float(prod_power))
+			var turns_lbl = Label.new()
 			turns_lbl.text = "%d turns" % remaining
 			turns_lbl.add_theme_font_size_override("font_size", 11)
 			turns_lbl.add_theme_color_override("font_color", Color(1.0, 0.9, 0.4))
 			vbox.add_child(turns_lbl)
 
 		# Click to remove
-		var remove_btn := Button.new()
+		var remove_btn = Button.new()
 		remove_btn.text = "X"
 		remove_btn.custom_minimum_size = Vector2(24, 24)
-		var idx := i  # capture
+		var idx = i  # capture
 		remove_btn.pressed.connect(func(): on_queue_item_clicked(idx))
 		vbox.add_child(remove_btn)
 
@@ -218,15 +218,15 @@ func _refresh_unit_buttons() -> void:
 
 	# Determine city race from owner wizard
 	var owner_id: int = _city.get("owner", -1)
-	var wiz := GameState.get_wizard(owner_id)
+	var wiz = GameState.get_wizard(owner_id)
 	var race_id: String = wiz.get("race", "high_men")
 
 	# Find race data from DataLoader
 	var race_data: Dictionary = _find_race_data(race_id)
 
-	var unit_types := ["infantry", "ranged", "cavalry"]
-	var spec_keys := ["infantry_spec", "ranged_spec", "cavalry_spec"]
-	var requires_building := ["barracks", "archery_range", "stable"]
+	var unit_types = ["infantry", "ranged", "cavalry"]
+	var spec_keys = ["infantry_spec", "ranged_spec", "cavalry_spec"]
+	var requires_building = ["barracks", "archery_range", "stable"]
 
 	for i in range(unit_types.size()):
 		var spec: Dictionary = race_data.get(spec_keys[i], {})
@@ -236,7 +236,7 @@ func _refresh_unit_buttons() -> void:
 		var has_building: bool = requires_building[i] in _city.get("buildings", [])
 		var queue_full: bool = _city.get("build_queue", []).size() >= Constants.MAX_BUILD_QUEUE
 
-		var btn := Button.new()
+		var btn = Button.new()
 		btn.text = "%s\n%d prod" % [spec.get("name", unit_types[i]), spec.get("production_cost", 40)]
 		btn.custom_minimum_size = Vector2(120, 50)
 		btn.disabled = not has_building or queue_full
@@ -245,7 +245,7 @@ func _refresh_unit_buttons() -> void:
 			btn.tooltip_text = "Requires: %s" % requires_building[i]
 			btn.modulate = Color(0.5, 0.5, 0.5)
 
-		var u_type := unit_types[i]
+		var u_type = unit_types[i]
 		btn.pressed.connect(func(): on_unit_clicked(u_type))
 		_unit_row.add_child(btn)
 
@@ -261,9 +261,9 @@ func on_build_clicked(building_id: String) -> void:
 
 func on_unit_clicked(unit_type: String) -> void:
 	var owner_id: int = _city.get("owner", -1)
-	var wiz := GameState.get_wizard(owner_id)
+	var wiz = GameState.get_wizard(owner_id)
 	var race_id: String = wiz.get("race", "high_men")
-	var spec_id := "%s_%s" % [race_id, unit_type]
+	var spec_id = "%s_%s" % [race_id, unit_type]
 	CityManager.add_to_build_queue(_city_id, "unit", spec_id)
 	update_display()
 
@@ -289,13 +289,13 @@ func on_queue_item_clicked(index: int) -> void:
 # ---------------------------------------------------------------------------
 
 func _find_race_data(race_id: String) -> Dictionary:
-	var races_path := "res://data/races.json"
+	var races_path = "res://data/races.json"
 	if not FileAccess.file_exists(races_path):
 		return {}
-	var file := FileAccess.open(races_path, FileAccess.READ)
+	var file = FileAccess.open(races_path, FileAccess.READ)
 	if file == null:
 		return {}
-	var json := JSON.new()
+	var json = JSON.new()
 	if json.parse(file.get_as_text()) != OK:
 		return {}
 	var data = json.data
@@ -346,7 +346,7 @@ func _build_ui() -> void:
 	offset_right = 360
 	offset_bottom = 260
 
-	var style := StyleBoxFlat.new()
+	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.12, 0.12, 0.18, 0.95)
 	style.border_color = Color(0.4, 0.35, 0.6)
 	style.set_border_width_all(2)
@@ -354,12 +354,12 @@ func _build_ui() -> void:
 	style.set_content_margin_all(12)
 	add_theme_stylebox_override("panel", style)
 
-	var main_vbox := VBoxContainer.new()
+	var main_vbox = VBoxContainer.new()
 	main_vbox.layout_mode = 2
 	add_child(main_vbox)
 
 	# --- Header row ---
-	var header := HBoxContainer.new()
+	var header = HBoxContainer.new()
 	header.layout_mode = 2
 	main_vbox.add_child(header)
 
@@ -375,7 +375,7 @@ func _build_ui() -> void:
 	_header_pop.add_theme_font_size_override("font_size", 16)
 	header.add_child(_header_pop)
 
-	var spacer1 := Control.new()
+	var spacer1 = Control.new()
 	spacer1.custom_minimum_size = Vector2(20, 0)
 	header.add_child(spacer1)
 
@@ -384,7 +384,7 @@ func _build_ui() -> void:
 	_header_owner.add_theme_font_size_override("font_size", 16)
 	header.add_child(_header_owner)
 
-	var close_btn := Button.new()
+	var close_btn = Button.new()
 	close_btn.text = "X"
 	close_btn.custom_minimum_size = Vector2(32, 32)
 	close_btn.pressed.connect(close_city)
@@ -393,7 +393,7 @@ func _build_ui() -> void:
 	main_vbox.add_child(HSeparator.new())
 
 	# --- Resources row ---
-	var res_row := HBoxContainer.new()
+	var res_row = HBoxContainer.new()
 	res_row.layout_mode = 2
 	main_vbox.add_child(res_row)
 
@@ -402,7 +402,7 @@ func _build_ui() -> void:
 	_food_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.3))
 	res_row.add_child(_food_label)
 
-	var spacer_r1 := Control.new()
+	var spacer_r1 = Control.new()
 	spacer_r1.custom_minimum_size = Vector2(30, 0)
 	res_row.add_child(spacer_r1)
 
@@ -411,7 +411,7 @@ func _build_ui() -> void:
 	_prod_label.add_theme_color_override("font_color", Color(0.8, 0.6, 0.3))
 	res_row.add_child(_prod_label)
 
-	var spacer_r2 := Control.new()
+	var spacer_r2 = Control.new()
 	spacer_r2.custom_minimum_size = Vector2(30, 0)
 	res_row.add_child(spacer_r2)
 
@@ -420,7 +420,7 @@ func _build_ui() -> void:
 	_gold_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
 	res_row.add_child(_gold_label)
 
-	var spacer_r3 := Control.new()
+	var spacer_r3 = Control.new()
 	spacer_r3.custom_minimum_size = Vector2(30, 0)
 	res_row.add_child(spacer_r3)
 
@@ -432,23 +432,23 @@ func _build_ui() -> void:
 	main_vbox.add_child(HSeparator.new())
 
 	# --- Middle section: built | available ---
-	var mid_split := HBoxContainer.new()
+	var mid_split = HBoxContainer.new()
 	mid_split.layout_mode = 2
 	mid_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	main_vbox.add_child(mid_split)
 
 	# Built buildings panel
-	var built_panel := VBoxContainer.new()
+	var built_panel = VBoxContainer.new()
 	built_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mid_split.add_child(built_panel)
 
-	var built_title := Label.new()
+	var built_title = Label.new()
 	built_title.text = "Built Buildings"
 	built_title.add_theme_font_size_override("font_size", 16)
 	built_title.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
 	built_panel.add_child(built_title)
 
-	var built_scroll := ScrollContainer.new()
+	var built_scroll = ScrollContainer.new()
 	built_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	built_scroll.custom_minimum_size = Vector2(0, 150)
 	built_panel.add_child(built_scroll)
@@ -460,17 +460,17 @@ func _build_ui() -> void:
 	mid_split.add_child(VSeparator.new())
 
 	# Available buildings panel
-	var avail_panel := VBoxContainer.new()
+	var avail_panel = VBoxContainer.new()
 	avail_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	mid_split.add_child(avail_panel)
 
-	var avail_title := Label.new()
+	var avail_title = Label.new()
 	avail_title.text = "Available to Build"
 	avail_title.add_theme_font_size_override("font_size", 16)
 	avail_title.add_theme_color_override("font_color", Color(0.9, 0.8, 0.5))
 	avail_panel.add_child(avail_title)
 
-	var avail_scroll := ScrollContainer.new()
+	var avail_scroll = ScrollContainer.new()
 	avail_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	avail_scroll.custom_minimum_size = Vector2(0, 150)
 	avail_panel.add_child(avail_scroll)
@@ -482,13 +482,13 @@ func _build_ui() -> void:
 	main_vbox.add_child(HSeparator.new())
 
 	# --- Build queue ---
-	var queue_title := Label.new()
+	var queue_title = Label.new()
 	queue_title.text = "Build Queue"
 	queue_title.add_theme_font_size_override("font_size", 16)
 	queue_title.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
 	main_vbox.add_child(queue_title)
 
-	var queue_scroll := ScrollContainer.new()
+	var queue_scroll = ScrollContainer.new()
 	queue_scroll.custom_minimum_size = Vector2(0, 80)
 	queue_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	main_vbox.add_child(queue_scroll)
@@ -500,7 +500,7 @@ func _build_ui() -> void:
 	main_vbox.add_child(HSeparator.new())
 
 	# --- Unit production ---
-	var unit_title := Label.new()
+	var unit_title = Label.new()
 	unit_title.text = "Recruit Units"
 	unit_title.add_theme_font_size_override("font_size", 16)
 	unit_title.add_theme_color_override("font_color", Color(0.9, 0.5, 0.5))

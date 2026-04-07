@@ -5,7 +5,7 @@ extends Node
 # ---------------------------------------------------------------------------
 # Tile data class
 # ---------------------------------------------------------------------------
-class TileData:
+class SATileData:
 	var terrain: int = Constants.TERRAIN_OCEAN
 	var owner: int = -1
 	var city_id: int = -1
@@ -15,8 +15,8 @@ class TileData:
 	var fog_explored: int = 0       # bitmask — bit N = wizard N has explored
 	var fog_visible: int = 0        # bitmask — bit N = wizard N can see right now
 
-	func duplicate_tile() -> TileData:
-		var t := TileData.new()
+	func duplicate_tile() -> SATileData:
+		var t = SATileData.new()
 		t.terrain = terrain
 		t.owner = owner
 		t.city_id = city_id
@@ -29,9 +29,9 @@ class TileData:
 
 
 # ---------------------------------------------------------------------------
-# Storage: planes[plane_index] = Array of rows, each row = Array of TileData
+# Storage: planes[plane_index] = Array of rows, each row = Array of SATileData
 # ---------------------------------------------------------------------------
-var planes: Array = []  # planes[p][y][x] -> TileData
+var planes: Array = []  # planes[p][y][x] -> SATileData
 
 # City name pools per plane
 var _city_names: Dictionary = {
@@ -75,7 +75,7 @@ func generate_world(rng: RandomNumberGenerator) -> void:
 		for y in range(Constants.MAP_HEIGHT):
 			var row: Array = []
 			for x in range(Constants.MAP_WIDTH):
-				var tile := TileData.new()
+				var tile = SATileData.new()
 				tile.terrain = _pick_terrain(rng, p, x, y)
 				row.append(tile)
 			plane_grid.append(row)
@@ -91,7 +91,7 @@ func generate_world(rng: RandomNumberGenerator) -> void:
 
 func _pick_terrain(rng: RandomNumberGenerator, plane: int, x: int, y: int) -> int:
 	# Simple noise-ish: use rng + edge ocean bias
-	var edge_dist := mini(mini(y, Constants.MAP_HEIGHT - 1 - y), 4)
+	var edge_dist = mini(mini(y, Constants.MAP_HEIGHT - 1 - y), 4)
 	if edge_dist == 0:
 		return Constants.TERRAIN_OCEAN
 
@@ -126,7 +126,7 @@ func _place_cities(rng: RandomNumberGenerator, plane: int) -> void:
 		attempts += 1
 		var x: int = rng.randi_range(2, Constants.MAP_WIDTH - 3)
 		var y: int = rng.randi_range(2, Constants.MAP_HEIGHT - 3)
-		var tile: TileData = planes[plane][y][x]
+		var tile: SATileData = planes[plane][y][x]
 
 		# Only place on habitable terrain
 		if tile.terrain in [Constants.TERRAIN_GRASSLAND, Constants.TERRAIN_FOREST, Constants.TERRAIN_HILLS]:
@@ -157,7 +157,7 @@ func _place_mana_nodes(rng: RandomNumberGenerator, plane: int) -> void:
 		attempts += 1
 		var x: int = rng.randi_range(1, Constants.MAP_WIDTH - 2)
 		var y: int = rng.randi_range(1, Constants.MAP_HEIGHT - 2)
-		var tile: TileData = planes[plane][y][x]
+		var tile: SATileData = planes[plane][y][x]
 		if tile.terrain != Constants.TERRAIN_OCEAN and tile.resource == "":
 			tile.resource = "mana_node"
 			placed += 1
@@ -171,7 +171,7 @@ func _place_resources(rng: RandomNumberGenerator, plane: int) -> void:
 			attempts += 1
 			var x: int = rng.randi_range(1, Constants.MAP_WIDTH - 2)
 			var y: int = rng.randi_range(1, Constants.MAP_HEIGHT - 2)
-			var tile: TileData = planes[plane][y][x]
+			var tile: SATileData = planes[plane][y][x]
 			if tile.terrain in [Constants.TERRAIN_HILLS, Constants.TERRAIN_MOUNTAIN] and tile.resource == "":
 				tile.resource = resource_types[_i % resource_types.size()]
 				break
@@ -185,7 +185,7 @@ func _place_portals(rng: RandomNumberGenerator, plane: int) -> void:
 		attempts += 1
 		var x: int = rng.randi_range(3, Constants.MAP_WIDTH - 4)
 		var y: int = rng.randi_range(3, Constants.MAP_HEIGHT - 4)
-		var tile: TileData = planes[plane][y][x]
+		var tile: SATileData = planes[plane][y][x]
 		if tile.terrain != Constants.TERRAIN_OCEAN and tile.resource == "" and tile.city_id == -1:
 			tile.portal_id = plane + 1  # leads to next plane
 			break
@@ -195,7 +195,7 @@ func _place_portals(rng: RandomNumberGenerator, plane: int) -> void:
 # Tile access
 # ---------------------------------------------------------------------------
 
-func get_tile(plane: int, x: int, y: int) -> TileData:
+func get_tile(plane: int, x: int, y: int) -> SATileData:
 	if plane < 0 or plane >= planes.size():
 		return null
 	var wx: int = wrap_x(x)
@@ -205,7 +205,7 @@ func get_tile(plane: int, x: int, y: int) -> TileData:
 
 
 func set_tile_owner(plane: int, x: int, y: int, wizard_id: int) -> void:
-	var tile := get_tile(plane, x, y)
+	var tile = get_tile(plane, x, y)
 	if tile:
 		tile.owner = wizard_id
 
@@ -215,7 +215,7 @@ func wrap_x(x: int) -> int:
 
 
 func is_passable(plane: int, x: int, y: int, movement_type: String = "walk") -> bool:
-	var tile := get_tile(plane, x, y)
+	var tile = get_tile(plane, x, y)
 	if tile == null:
 		return false
 	match movement_type:
@@ -225,3 +225,9 @@ func is_passable(plane: int, x: int, y: int, movement_type: String = "walk") -> 
 			return tile.terrain == Constants.TERRAIN_OCEAN
 		_:  # walk
 			return tile.terrain != Constants.TERRAIN_OCEAN
+
+func get_width() -> int:
+    return Constants.MAP_WIDTH
+
+func get_height() -> int:
+    return Constants.MAP_HEIGHT

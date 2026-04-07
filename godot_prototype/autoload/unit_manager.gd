@@ -16,8 +16,8 @@ func _ready() -> void:
 # ---------------------------------------------------------------------------
 
 func spawn_unit(spec_id: String, plane: int, pos: Vector2i, owner: int) -> int:
-	var spec := DataLoader.get_unit_spec(spec_id)
-	var uid := _next_unit_id
+	var spec = DataLoader.get_unit_spec(spec_id)
+	var uid = _next_unit_id
 	_next_unit_id += 1
 
 	var unit: Dictionary = {
@@ -66,7 +66,7 @@ func get_unit(unit_id: int) -> Dictionary:
 # ---------------------------------------------------------------------------
 
 func create_army(owner: int, plane: int, pos: Vector2i) -> int:
-	var aid := _next_army_id
+	var aid = _next_army_id
 	_next_army_id += 1
 	var army: Dictionary = {
 		"army_id": aid,
@@ -83,7 +83,7 @@ func create_army(owner: int, plane: int, pos: Vector2i) -> int:
 func add_unit_to_army(unit_id: int, army_id: int) -> bool:
 	if not all_units.has(unit_id) or not all_armies.has(army_id):
 		return false
-	var army := all_armies[army_id] as Dictionary
+	var army = all_armies[army_id] as Dictionary
 	if army["unit_ids"].size() >= Constants.MAX_UNITS_PER_ARMY:
 		return false
 	# Remove from previous army first
@@ -101,7 +101,7 @@ func add_unit_to_army(unit_id: int, army_id: int) -> bool:
 func remove_unit_from_army(unit_id: int, army_id: int) -> bool:
 	if not all_armies.has(army_id):
 		return false
-	var army := all_armies[army_id] as Dictionary
+	var army = all_armies[army_id] as Dictionary
 	if unit_id in army["unit_ids"]:
 		army["unit_ids"].erase(unit_id)
 		_cleanup_empty_army(army_id)
@@ -112,8 +112,8 @@ func remove_unit_from_army(unit_id: int, army_id: int) -> bool:
 func merge_armies(source_id: int, dest_id: int) -> bool:
 	if not all_armies.has(source_id) or not all_armies.has(dest_id):
 		return false
-	var src := all_armies[source_id] as Dictionary
-	var dst := all_armies[dest_id] as Dictionary
+	var src = all_armies[source_id] as Dictionary
+	var dst = all_armies[dest_id] as Dictionary
 	if dst["unit_ids"].size() + src["unit_ids"].size() > Constants.MAX_UNITS_PER_ARMY:
 		return false
 	for uid in src["unit_ids"]:
@@ -127,8 +127,8 @@ func merge_armies(source_id: int, dest_id: int) -> bool:
 func split_army(army_id: int, unit_ids: Array) -> int:
 	if not all_armies.has(army_id):
 		return -1
-	var old_army := all_armies[army_id] as Dictionary
-	var new_id := create_army(old_army["owner"], old_army["plane"], old_army["pos"])
+	var old_army = all_armies[army_id] as Dictionary
+	var new_id = create_army(old_army["owner"], old_army["plane"], old_army["pos"])
 	for uid in unit_ids:
 		if uid in old_army["unit_ids"]:
 			old_army["unit_ids"].erase(uid)
@@ -140,20 +140,20 @@ func split_army(army_id: int, unit_ids: Array) -> int:
 func move_army(army_id: int, destination: Vector2i) -> void:
 	if not all_armies.has(army_id):
 		return
-	var army := all_armies[army_id] as Dictionary
-	var from := army["pos"] as Vector2i
+	var army = all_armies[army_id] as Dictionary
+	var from = army["pos"] as Vector2i
 
 	# Calculate path cost
-	var path := Pathfinder.find_path(army["plane"], from, destination, _get_army_move_type(army_id))
+	var path = Pathfinder.find_path(army["plane"], from, destination, _get_army_move_type(army_id))
 	if path.is_empty():
 		return
 
 	# Consume movement along the path
 	var total_cost: float = 0.0
-	var min_remaining := _get_army_min_movement(army_id)
+	var min_remaining = _get_army_min_movement(army_id)
 
 	for i in range(1, path.size()):
-		var step_cost := Pathfinder.get_move_cost(army["plane"], path[i], _get_army_move_type(army_id))
+		var step_cost = Pathfinder.get_move_cost(army["plane"], path[i], _get_army_move_type(army_id))
 		if total_cost + step_cost > min_remaining:
 			# Move as far as we can
 			destination = path[i - 1]
@@ -206,7 +206,7 @@ func refresh_movement() -> void:
 func apply_xp(unit_id: int, xp_amount: int) -> void:
 	if not all_units.has(unit_id):
 		return
-	var unit := all_units[unit_id] as Dictionary
+	var unit = all_units[unit_id] as Dictionary
 	unit["xp"] += xp_amount
 	while unit["xp"] >= Constants.XP_PER_LEVEL and unit["level"] < Constants.MAX_LEVEL:
 		unit["xp"] -= Constants.XP_PER_LEVEL
@@ -224,7 +224,7 @@ func apply_xp(unit_id: int, xp_amount: int) -> void:
 
 func _cleanup_empty_army(army_id: int) -> void:
 	if all_armies.has(army_id):
-		var army := all_armies[army_id] as Dictionary
+		var army = all_armies[army_id] as Dictionary
 		if army["unit_ids"].is_empty():
 			all_armies.erase(army_id)
 
@@ -232,9 +232,9 @@ func _cleanup_empty_army(army_id: int) -> void:
 func _get_army_move_type(army_id: int) -> String:
 	if not all_armies.has(army_id):
 		return "walk"
-	var army := all_armies[army_id] as Dictionary
+	var army = all_armies[army_id] as Dictionary
 	# Army moves at the speed of its slowest member, use walk unless all fly
-	var all_fly := true
+	var all_fly = true
 	for uid in army["unit_ids"]:
 		if all_units.has(uid):
 			if all_units[uid].get("movement_type", "walk") != "fly":
@@ -246,7 +246,7 @@ func _get_army_move_type(army_id: int) -> String:
 func _get_army_min_movement(army_id: int) -> float:
 	if not all_armies.has(army_id):
 		return 0.0
-	var army := all_armies[army_id] as Dictionary
+	var army = all_armies[army_id] as Dictionary
 	var min_mv: float = 999.0
 	for uid in army["unit_ids"]:
 		if all_units.has(uid):

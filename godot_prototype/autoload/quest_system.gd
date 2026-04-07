@@ -67,11 +67,11 @@ func _ready() -> void:
 # ---------------------------------------------------------------------------
 
 func generate_quest(wizard_id: int, turn: int) -> int:
-	var rng := RandomNumberGenerator.new()
+	var rng = RandomNumberGenerator.new()
 	rng.seed = wizard_id * 1000 + turn
 
 	var template: Dictionary = QUEST_TYPES[rng.randi_range(0, QUEST_TYPES.size() - 1)]
-	var qid := _next_quest_id
+	var qid = _next_quest_id
 	_next_quest_id += 1
 
 	var quest: Dictionary = {
@@ -100,7 +100,7 @@ func generate_quest(wizard_id: int, turn: int) -> int:
 func accept_quest(quest_id: int, wizard_id: int) -> void:
 	if not all_quests.has(quest_id):
 		return
-	var quest := all_quests[quest_id] as Dictionary
+	var quest = all_quests[quest_id] as Dictionary
 	if quest["wizard_id"] != wizard_id:
 		return
 	if quest["status"] != "available":
@@ -148,16 +148,16 @@ func check_quest_progress(wizard_id: int) -> void:
 				quest["current_count"] = total_units
 
 			"conquer_city":
-				var cities := CityManager.get_cities_for_wizard(wizard_id)
+				var cities = CityManager.get_cities_for_wizard(wizard_id)
 				quest["current_count"] = cities.size()
 
 			"research_spell":
-				var state := MagicSystem.get_magic_state(wizard_id)
+				var state = MagicSystem.get_magic_state(wizard_id)
 				if not state.is_empty():
 					quest["current_count"] = state["known_spells"].size()
 
 			"claim_nodes":
-				var state := MagicSystem.get_magic_state(wizard_id)
+				var state = MagicSystem.get_magic_state(wizard_id)
 				if not state.is_empty():
 					quest["current_count"] = state["controlled_nodes"].size()
 
@@ -211,13 +211,13 @@ func process_turn(turn: int) -> void:
 			if wiz["is_eliminated"]:
 				continue
 			# Only offer if wizard has fewer than 3 active quests
-			var active := get_active_quests(wiz["id"])
+			var active = get_active_quests(wiz["id"])
 			if active.size() < 3:
 				generate_quest(wiz["id"], turn)
 
 				# AI auto-accepts quests
 				if not wiz["is_human"]:
-					var quests := get_quests_for_wizard(wiz["id"])
+					var quests = get_quests_for_wizard(wiz["id"])
 					for q in quests:
 						if q["status"] == "available":
 							accept_quest(q["quest_id"], wiz["id"])

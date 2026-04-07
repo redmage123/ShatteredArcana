@@ -37,7 +37,7 @@ func _initial_spell_books(primary_realm: String) -> Dictionary:
 	}
 	# Primary realm gets 3 books, secondary gets 1
 	books[primary_realm] = 3
-	var realms := books.keys()
+	var realms = books.keys()
 	for r in realms:
 		if r != primary_realm:
 			books[r] = 1
@@ -54,12 +54,12 @@ func get_magic_state(wizard_id: int) -> Dictionary:
 
 
 func can_cast_spell(wizard_id: int, spell_id: String) -> bool:
-	var state := get_magic_state(wizard_id)
+	var state = get_magic_state(wizard_id)
 	if state.is_empty():
 		return false
 	if spell_id not in state["known_spells"]:
 		return false
-	var spell := DataLoader.get_spell(spell_id)
+	var spell = DataLoader.get_spell(spell_id)
 	if spell.is_empty():
 		return false
 	var mana_cost: int = spell.get("mana_cost", 10)
@@ -67,7 +67,7 @@ func can_cast_spell(wizard_id: int, spell_id: String) -> bool:
 
 
 func get_available_spells(wizard_id: int) -> Array:
-	var state := get_magic_state(wizard_id)
+	var state = get_magic_state(wizard_id)
 	if state.is_empty():
 		return []
 	var result: Array = []
@@ -78,7 +78,7 @@ func get_available_spells(wizard_id: int) -> Array:
 
 
 func get_researchable_spells(wizard_id: int) -> Array:
-	var state := get_magic_state(wizard_id)
+	var state = get_magic_state(wizard_id)
 	if state.is_empty():
 		return []
 	var result: Array = []
@@ -98,10 +98,10 @@ func get_researchable_spells(wizard_id: int) -> Array:
 # ---------------------------------------------------------------------------
 
 func claim_mana_node(wizard_id: int, plane: int, pos: Vector2i) -> bool:
-	var tile := WorldMap.get_tile(plane, pos.x, pos.y)
+	var tile = WorldMap.get_tile(plane, pos.x, pos.y)
 	if tile == null or tile.resource != "mana_node":
 		return false
-	var state := get_magic_state(wizard_id)
+	var state = get_magic_state(wizard_id)
 	if state.is_empty():
 		return false
 
@@ -124,9 +124,9 @@ func cast_spell(wizard_id: int, spell_id: String, target: Variant) -> bool:
 	if not can_cast_spell(wizard_id, spell_id):
 		return false
 
-	var spell := DataLoader.get_spell(spell_id)
+	var spell = DataLoader.get_spell(spell_id)
 	var mana_cost: int = spell.get("mana_cost", 10)
-	var state := get_magic_state(wizard_id)
+	var state = get_magic_state(wizard_id)
 
 	state["current_mana"] -= mana_cost
 
@@ -154,7 +154,7 @@ func cast_spell(wizard_id: int, spell_id: String, target: Variant) -> bool:
 # ---------------------------------------------------------------------------
 
 func start_research(wizard_id: int, spell_id: String) -> void:
-	var state := get_magic_state(wizard_id)
+	var state = get_magic_state(wizard_id)
 	if state.is_empty():
 		return
 	state["research_spell"] = spell_id
@@ -163,7 +163,7 @@ func start_research(wizard_id: int, spell_id: String) -> void:
 
 func process_turn() -> void:
 	for wizard_id in wizard_magic:
-		var state := wizard_magic[wizard_id] as Dictionary
+		var state = wizard_magic[wizard_id] as Dictionary
 		if GameState.get_wizard(wizard_id).get("is_eliminated", true):
 			continue
 
@@ -175,7 +175,7 @@ func process_turn() -> void:
 			var research_rate: int = maxi(1, state["casting_skill"] / 2)
 			state["research_progress"] += research_rate
 
-			var spell := DataLoader.get_spell(state["research_spell"])
+			var spell = DataLoader.get_spell(state["research_spell"])
 			var research_cost: int = spell.get("research_cost", 50)
 			if state["research_progress"] >= research_cost:
 				state["known_spells"].append(state["research_spell"])
@@ -191,7 +191,7 @@ func process_turn() -> void:
 func _apply_damage_spell(_wizard_id: int, spell: Dictionary, target: Variant) -> void:
 	# target should be a unit_id
 	if target is int:
-		var unit := UnitManager.get_unit(target as int)
+		var unit = UnitManager.get_unit(target as int)
 		if not unit.is_empty():
 			var dmg: int = spell.get("damage", 5)
 			unit["current_hp"] -= dmg
@@ -201,21 +201,21 @@ func _apply_damage_spell(_wizard_id: int, spell: Dictionary, target: Variant) ->
 
 func _apply_summon_spell(wizard_id: int, spell: Dictionary, target: Variant) -> void:
 	# target should be a Vector2i position; summon on current plane
-	var pos := target as Vector2i if target is Vector2i else Vector2i.ZERO
+	var pos = target as Vector2i if target is Vector2i else Vector2i.ZERO
 	var summon_id: String = spell.get("summon_unit", "")
 	if summon_id != "":
 		# Use plane 0 as default; caller should set proper plane
-		var uid := UnitManager.spawn_unit(summon_id, 0, pos, wizard_id)
+		var uid = UnitManager.spawn_unit(summon_id, 0, pos, wizard_id)
 		# Add to or create army
-		var armies := UnitManager.get_armies_at(0, pos)
-		var added := false
+		var armies = UnitManager.get_armies_at(0, pos)
+		var added = false
 		for army in armies:
 			if army["owner"] == wizard_id and army["unit_ids"].size() < Constants.MAX_UNITS_PER_ARMY:
 				UnitManager.add_unit_to_army(uid, army["army_id"])
 				added = true
 				break
 		if not added:
-			var aid := UnitManager.create_army(wizard_id, 0, pos)
+			var aid = UnitManager.create_army(wizard_id, 0, pos)
 			UnitManager.add_unit_to_army(uid, aid)
 
 
@@ -231,7 +231,7 @@ func _apply_global_spell(_wizard_id: int, _spell: Dictionary) -> void:
 
 func _apply_heal_spell(_wizard_id: int, spell: Dictionary, target: Variant) -> void:
 	if target is int:
-		var unit := UnitManager.get_unit(target as int)
+		var unit = UnitManager.get_unit(target as int)
 		if not unit.is_empty():
 			var heal_amount: int = spell.get("heal", 5)
 			unit["current_hp"] = mini(unit["max_hp"], unit["current_hp"] + heal_amount)

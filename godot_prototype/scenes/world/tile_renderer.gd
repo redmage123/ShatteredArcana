@@ -8,7 +8,7 @@ const MAX_SPRITES := 300
 var _plane: int = 0
 var _tile_sprites: Dictionary = {}   # Vector2i -> Sprite2D
 var _sprite_pool: Array[Sprite2D] = []
-var _prev_rect := Rect2i()
+var _prev_rect = Rect2i()
 
 # Terrain colour fallbacks (used when PNG textures are not yet present)
 var _terrain_colors: Dictionary = {
@@ -50,7 +50,7 @@ func _ready() -> void:
 func _load_terrain_textures() -> void:
 	for plane_name in _plane_names:
 		for terrain_name in _terrain_names:
-			var path := "res://assets/terrain/%s/%s.png" % [plane_name, terrain_name]
+			var path = "res://assets/terrain/%s/%s.png" % [plane_name, terrain_name]
 			if ResourceLoader.exists(path):
 				var tex: Texture2D = load(path)
 				_terrain_textures["%s_%s" % [plane_name, terrain_name]] = tex
@@ -72,8 +72,8 @@ func _process(_delta: float) -> void:
 	_prev_rect = rect
 
 func _update_visible_tiles(rect: Rect2i) -> void:
-	var map_w: int = WorldMap.get_width()
-	var map_h: int = WorldMap.get_height()
+	var map_w: int = Constants.MAP_WIDTH
+	var map_h: int = Constants.MAP_HEIGHT
 	
 	# Determine which tiles should be visible
 	var needed: Dictionary = {}
@@ -81,7 +81,7 @@ func _update_visible_tiles(rect: Rect2i) -> void:
 		if ty < 0 or ty >= map_h:
 			continue
 		for tx in range(rect.position.x, rect.position.x + rect.size.x):
-			var wrapped_x := tx % map_w
+			var wrapped_x = tx % map_w
 			if wrapped_x < 0:
 				wrapped_x += map_w
 			# Use raw tx for drawing position (keeps scrolling smooth)
@@ -102,7 +102,7 @@ func _update_visible_tiles(rect: Rect2i) -> void:
 			continue
 		var wrapped_x: int = needed[key]
 		var terrain: int = WorldMap.get_terrain(_plane, Vector2i(wrapped_x, key.y))
-		var sprite := _get_sprite()
+		var sprite = _get_sprite()
 		sprite.texture = _get_terrain_texture(terrain)
 		sprite.position = Vector2(key.x * TILE_SIZE + TILE_SIZE / 2, key.y * TILE_SIZE + TILE_SIZE / 2)
 		sprite.visible = true
@@ -113,7 +113,7 @@ func _get_terrain_texture(terrain: int) -> Texture2D:
 	if _plane >= 0 and _plane < _plane_names.size():
 		var plane_name: String = _plane_names[_plane]
 		if terrain >= 0 and terrain < _terrain_names.size():
-			var key := "%s_%s" % [plane_name, _terrain_names[terrain]]
+			var key = "%s_%s" % [plane_name, _terrain_names[terrain]]
 			if _terrain_textures.has(key):
 				return _terrain_textures[key]
 	
@@ -127,17 +127,17 @@ func _make_color_texture(terrain: int) -> Texture2D:
 		return _color_texture_cache[terrain]
 	
 	var color: Color = _terrain_colors.get(terrain, Color.MAGENTA)
-	var img := Image.create(TILE_SIZE, TILE_SIZE, false, Image.FORMAT_RGBA8)
+	var img = Image.create(TILE_SIZE, TILE_SIZE, false, Image.FORMAT_RGBA8)
 	img.fill(color)
 	# Draw a subtle border to distinguish tiles
-	var border_color := color.darkened(0.25)
+	var border_color = color.darkened(0.25)
 	for i in range(TILE_SIZE):
 		img.set_pixel(i, 0, border_color)
 		img.set_pixel(i, TILE_SIZE - 1, border_color)
 		img.set_pixel(0, i, border_color)
 		img.set_pixel(TILE_SIZE - 1, i, border_color)
 	
-	var tex := ImageTexture.create_from_image(img)
+	var tex = ImageTexture.create_from_image(img)
 	_color_texture_cache[terrain] = tex
 	return tex
 
@@ -146,7 +146,7 @@ func _make_color_texture(terrain: int) -> Texture2D:
 func _get_sprite() -> Sprite2D:
 	if _sprite_pool.size() > 0:
 		return _sprite_pool.pop_back()
-	var s := Sprite2D.new()
+	var s = Sprite2D.new()
 	s.z_index = 0
 	add_child(s)
 	return s

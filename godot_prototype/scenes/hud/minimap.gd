@@ -84,7 +84,7 @@ func _render_minimap() -> void:
 			if not FogOfWar.is_visible(_player_id, _current_plane, Vector2i(tx, ty)):
 				continue
 
-			var tile := WorldMap.get_tile(_current_plane, tx, ty)
+			var tile = WorldMap.get_tile(_current_plane, tx, ty)
 			if tile == null:
 				continue
 
@@ -92,10 +92,10 @@ func _render_minimap() -> void:
 			var color: Color = TERRAIN_COLORS.get(terrain, Color.MAGENTA)
 
 			# Draw the pixel(s) for this tile
-			var px_start := int(float(tx) * sx)
-			var py_start := int(float(ty) * sy)
-			var px_end := int(float(tx + 1) * sx)
-			var py_end := int(float(ty + 1) * sy)
+			var px_start = int(float(tx) * sx)
+			var py_start = int(float(ty) * sy)
+			var px_end = int(float(tx + 1) * sx)
+			var py_end = int(float(ty + 1) * sy)
 
 			for py in range(py_start, mini(py_end, MINIMAP_HEIGHT)):
 				for px in range(px_start, mini(px_end, MINIMAP_WIDTH)):
@@ -109,8 +109,8 @@ func _render_minimap() -> void:
 		if not FogOfWar.is_visible(_player_id, _current_plane, cpos):
 			continue
 
-		var cx := int(float(cpos.x) * sx)
-		var cy := int(float(cpos.y) * sy)
+		var cx = int(float(cpos.x) * sx)
+		var cy = int(float(cpos.y) * sy)
 		var owner_id: int = city.get("owner", -1)
 		var dot_color: Color = CITY_COLOR
 		if owner_id >= 0:
@@ -118,8 +118,8 @@ func _render_minimap() -> void:
 
 		for dy in range(3):
 			for dx in range(3):
-				var px := cx + dx - 1
-				var py := cy + dy - 1
+				var px = cx + dx - 1
+				var py = cy + dy - 1
 				if px >= 0 and px < MINIMAP_WIDTH and py >= 0 and py < MINIMAP_HEIGHT:
 					_image.set_pixel(px, py, dot_color)
 
@@ -131,8 +131,8 @@ func _render_minimap() -> void:
 		if not FogOfWar.is_visible(_player_id, _current_plane, apos):
 			continue
 
-		var ax := int(float(apos.x) * sx)
-		var ay := int(float(apos.y) * sy)
+		var ax = int(float(apos.x) * sx)
+		var ay = int(float(apos.y) * sy)
 		var owner_id: int = army.get("owner", -1)
 		var army_color: Color = Color.RED
 		if owner_id >= 0:
@@ -140,8 +140,8 @@ func _render_minimap() -> void:
 
 		for dy in range(2):
 			for dx in range(2):
-				var px := ax + dx
-				var py := ay + dy
+				var px = ax + dx
+				var py = ay + dy
 				if px >= 0 and px < MINIMAP_WIDTH and py >= 0 and py < MINIMAP_HEIGHT:
 					_image.set_pixel(px, py, army_color)
 
@@ -158,18 +158,18 @@ func _render_minimap() -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var local_pos := event.position
+		var local_pos = event.position
 		# Convert minimap pixel to world tile
 		var map_w: int = Constants.MAP_WIDTH
 		var map_h: int = Constants.MAP_HEIGHT
-		var tile_x := int(float(local_pos.x) / float(MINIMAP_WIDTH) * float(map_w))
-		var tile_y := int(float(local_pos.y) / float(MINIMAP_HEIGHT) * float(map_h))
+		var tile_x = int(float(local_pos.x) / float(MINIMAP_WIDTH) * float(map_w))
+		var tile_y = int(float(local_pos.y) / float(MINIMAP_HEIGHT) * float(map_h))
 		tile_x = clampi(tile_x, 0, map_w - 1)
 		tile_y = clampi(tile_y, 0, map_h - 1)
 
 		# Convert tile to world position (using world TILE_SIZE from world.gd)
-		var world_tile_size := 128  # matches world.gd TILE_SIZE
-		var world_pos := Vector2(
+		var world_tile_size = 128  # matches world.gd TILE_SIZE
+		var world_pos = Vector2(
 			float(tile_x * world_tile_size + world_tile_size / 2),
 			float(tile_y * world_tile_size + world_tile_size / 2)
 		)

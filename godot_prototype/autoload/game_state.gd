@@ -53,7 +53,7 @@ func initialize_game(num_humans: int, num_ai: int) -> void:
 	winner_id = -1
 
 	for i in range(num_wizards):
-		var wiz := _WIZARD_TEMPLATE.duplicate(true)
+		var wiz = _WIZARD_TEMPLATE.duplicate(true)
 		wiz["id"] = i
 		wiz["is_human"] = i < num_humans
 		if wiz["is_human"]:
@@ -74,7 +74,7 @@ func end_player_turn() -> void:
 		return
 
 	# Advance to next non-eliminated wizard
-	var start := current_wizard
+	var start = current_wizard
 	current_wizard = _next_active_wizard(current_wizard)
 
 	# If we wrapped around back to or past the first player, full turn ends
@@ -163,7 +163,7 @@ func add_fame(wizard_id: int, amount: int) -> void:
 # ---------------------------------------------------------------------------
 
 func _next_active_wizard(from: int) -> int:
-	var idx := from
+	var idx = from
 	for _i in range(num_wizards):
 		idx = (idx + 1) % num_wizards
 		if not wizards[idx].get("is_eliminated", false):
@@ -175,8 +175,8 @@ func _check_eliminations() -> void:
 	for wiz in wizards:
 		if wiz["is_eliminated"]:
 			continue
-		var has_cities := CityManager.get_cities_for_wizard(wiz["id"]).size() > 0
-		var has_armies := UnitManager.get_armies_for_wizard(wiz["id"]).size() > 0
+		var has_cities = CityManager.get_cities_for_wizard(wiz["id"]).size() > 0
+		var has_armies = UnitManager.get_armies_for_wizard(wiz["id"]).size() > 0
 		if not has_cities and not has_armies:
 			eliminate_wizard(wiz["id"])
 

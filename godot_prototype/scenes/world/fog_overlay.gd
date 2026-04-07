@@ -3,8 +3,8 @@ extends Node2D
 
 const TILE_SIZE := 128
 
-var _fog_hidden_color := Color(0, 0, 0, 0.85)
-var _fog_explored_color := Color(0, 0, 0, 0.5)
+var _fog_hidden_color = Color(0, 0, 0, 0.85)
+var _fog_explored_color = Color(0, 0, 0, 0.5)
 
 func refresh() -> void:
 	queue_redraw()
@@ -18,22 +18,22 @@ func _draw() -> void:
 		return
 	
 	var rect: Rect2i = cam.get_visible_tile_rect()
-	var wiz_id: int = GameState.current_wizard_id()
+	var wiz_id: int = GameState.current_wizard
 	var plane: int = get_parent().current_plane
-	var map_w: int = WorldMap.get_width()
-	var map_h: int = WorldMap.get_height()
+	var map_w: int = Constants.MAP_WIDTH
+	var map_h: int = Constants.MAP_HEIGHT
 	
 	for ty in range(rect.position.y, rect.position.y + rect.size.y):
 		if ty < 0 or ty >= map_h:
 			continue
 		for tx in range(rect.position.x, rect.position.x + rect.size.x):
 			# Wrap X for cylindrical world
-			var wrapped_x := tx % map_w
+			var wrapped_x = tx % map_w
 			if wrapped_x < 0:
 				wrapped_x += map_w
 			
-			var tile_pos := Vector2i(wrapped_x, ty)
-			var draw_pos := Vector2(tx * TILE_SIZE, ty * TILE_SIZE)
+			var tile_pos = Vector2i(wrapped_x, ty)
+			var draw_pos = Vector2(tx * TILE_SIZE, ty * TILE_SIZE)
 			
 			if FogOfWar.is_visible(wiz_id, plane, tile_pos):
 				continue  # fully visible — no overlay

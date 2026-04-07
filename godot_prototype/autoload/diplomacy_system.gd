@@ -17,7 +17,7 @@ func initialize_relations(num_wizards: int) -> void:
 	relations.clear()
 	for a in range(num_wizards):
 		for b in range(a + 1, num_wizards):
-			var key := _pair_key(a, b)
+			var key = _pair_key(a, b)
 			relations[key] = {
 				"wizard_a": mini(a, b),
 				"wizard_b": maxi(a, b),
@@ -35,17 +35,17 @@ func initialize_relations(num_wizards: int) -> void:
 func get_relation(a: int, b: int) -> Dictionary:
 	if a == b:
 		return {"reputation": Constants.RELATION_MAX, "at_war": false, "allied": true, "peace_turns": 0}
-	var key := _pair_key(a, b)
+	var key = _pair_key(a, b)
 	return relations.get(key, {})
 
 
 func are_at_war(a: int, b: int) -> bool:
-	var rel := get_relation(a, b)
+	var rel = get_relation(a, b)
 	return rel.get("at_war", false)
 
 
 func are_allied(a: int, b: int) -> bool:
-	var rel := get_relation(a, b)
+	var rel = get_relation(a, b)
 	return rel.get("allied", false)
 
 
@@ -56,10 +56,10 @@ func are_allied(a: int, b: int) -> bool:
 func declare_war(attacker: int, defender: int) -> void:
 	if attacker == defender:
 		return
-	var key := _pair_key(attacker, defender)
+	var key = _pair_key(attacker, defender)
 	if not relations.has(key):
 		return
-	var rel := relations[key] as Dictionary
+	var rel = relations[key] as Dictionary
 	rel["at_war"] = true
 	rel["allied"] = false
 	rel["reputation"] = maxi(Constants.RELATION_MIN, rel["reputation"] - 30)
@@ -69,18 +69,18 @@ func declare_war(attacker: int, defender: int) -> void:
 func propose_peace(proposer: int, target: int) -> bool:
 	if proposer == target:
 		return false
-	var key := _pair_key(proposer, target)
+	var key = _pair_key(proposer, target)
 	if not relations.has(key):
 		return false
-	var rel := relations[key] as Dictionary
+	var rel = relations[key] as Dictionary
 	if not rel["at_war"]:
 		return true  # already at peace
 
 	# AI acceptance: accept if reputation > -30 or random chance
-	var accept := rel["reputation"] > -30
+	var accept = rel["reputation"] > -30
 	if not accept:
 		# Small random chance even with bad relations
-		var rng := RandomNumberGenerator.new()
+		var rng = RandomNumberGenerator.new()
 		rng.randomize()
 		accept = rng.randf() < 0.15
 
@@ -96,10 +96,10 @@ func propose_peace(proposer: int, target: int) -> bool:
 func propose_alliance(proposer: int, target: int) -> bool:
 	if proposer == target:
 		return false
-	var key := _pair_key(proposer, target)
+	var key = _pair_key(proposer, target)
 	if not relations.has(key):
 		return false
-	var rel := relations[key] as Dictionary
+	var rel = relations[key] as Dictionary
 	if rel["at_war"]:
 		return false  # must be at peace first
 	if rel["reputation"] < Constants.RELATION_ALLIANCE_THRESHOLD:
@@ -109,10 +109,10 @@ func propose_alliance(proposer: int, target: int) -> bool:
 
 
 func break_alliance(a: int, b: int) -> void:
-	var key := _pair_key(a, b)
+	var key = _pair_key(a, b)
 	if not relations.has(key):
 		return
-	var rel := relations[key] as Dictionary
+	var rel = relations[key] as Dictionary
 	rel["allied"] = false
 	rel["reputation"] -= 20
 
@@ -124,10 +124,10 @@ func break_alliance(a: int, b: int) -> void:
 func modify_reputation(a: int, b: int, delta: int, reason: String) -> void:
 	if a == b:
 		return
-	var key := _pair_key(a, b)
+	var key = _pair_key(a, b)
 	if not relations.has(key):
 		return
-	var rel := relations[key] as Dictionary
+	var rel = relations[key] as Dictionary
 	rel["reputation"] = clampi(rel["reputation"] + delta, Constants.RELATION_MIN, Constants.RELATION_MAX)
 
 	# Auto-declare war if reputation drops below threshold

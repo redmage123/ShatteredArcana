@@ -14,7 +14,7 @@ func update_resources() -> void:
 	_set_label("GoldLabel", "Gold: %d" % wiz.get("gold", 0))
 	_set_label("ManaLabel", "Mana: %d" % wiz.get("mana", 0))
 	_set_label("FameLabel", "Fame: %d" % wiz.get("fame", 0))
-	_set_label("TurnLabel", "Turn: %d" % GameState.current_turn())
+	_set_label("TurnLabel", "Turn: %d" % GameState.current_turn)
 
 func _set_label(child_name: String, text: String) -> void:
 	var lbl: Label = resource_bar.get_node_or_null(child_name)
@@ -51,7 +51,7 @@ func update_army_panel(army_id: int) -> void:
 	# Populate
 	var units: Array = army.get("units", [])
 	for unit in units:
-		var lbl := Label.new()
+		var lbl = Label.new()
 		lbl.text = "%s  HP:%d/%d  ATK:%d  DEF:%d" % [
 			unit.get("name", "?"),
 			unit.get("hp", 0),
@@ -71,7 +71,7 @@ func clear_army_panel() -> void:
 func add_notification(text: String) -> void:
 	if notification_log == null:
 		return
-	var lbl := Label.new()
+	var lbl = Label.new()
 	lbl.text = text
 	lbl.add_theme_color_override("font_color", Color.YELLOW)
 	lbl.add_theme_font_size_override("font_size", 14)
@@ -88,8 +88,8 @@ func update_minimap() -> void:
 	pass
 
 func draw_minimap_to_texture(plane: int, width: int, height: int) -> ImageTexture:
-	var scale := 2  # each tile = 2px
-	var img := Image.create(width * scale, height * scale, false, Image.FORMAT_RGBA8)
+	var scale = 2  # each tile = 2px
+	var img = Image.create(width * scale, height * scale, false, Image.FORMAT_RGBA8)
 	
 	var terrain_colors: Dictionary = {
 		0:  Color(0.10, 0.23, 0.36),

@@ -64,7 +64,7 @@ func _refresh_wizard_list() -> void:
 		if wiz.get("is_eliminated", false):
 			continue
 
-		var rel := DiplomacySystem.get_relation(_player_id, wid)
+		var rel = DiplomacySystem.get_relation(_player_id, wid)
 		var status_icon: String
 		if rel.get("at_war", false):
 			status_icon = "[WAR]"
@@ -75,7 +75,7 @@ func _refresh_wizard_list() -> void:
 		else:
 			status_icon = "[PEACE]"
 
-		var btn := Button.new()
+		var btn = Button.new()
 		btn.text = "%s %s" % [status_icon, wiz.get("name", "Wizard %d" % wid)]
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.custom_minimum_size = Vector2(200, 36)
@@ -93,7 +93,7 @@ func _refresh_wizard_list() -> void:
 		else:
 			btn.flat = true
 
-		var captured_id := wid
+		var captured_id = wid
 		btn.pressed.connect(func(): on_wizard_selected(captured_id))
 		_wizard_list.add_child(btn)
 
@@ -106,7 +106,7 @@ func on_wizard_selected(wizard_id: int) -> void:
 	_selected_wizard_id = wizard_id
 	_refresh_wizard_list()
 
-	var wiz := GameState.get_wizard(wizard_id)
+	var wiz = GameState.get_wizard(wizard_id)
 	if wiz.is_empty():
 		_detail_panel.visible = false
 		return
@@ -115,7 +115,7 @@ func on_wizard_selected(wizard_id: int) -> void:
 	_detail_name.text = wiz.get("name", "Unknown")
 	_detail_realm.text = "Realm: %s" % wiz.get("realm", "?")
 
-	var rel := DiplomacySystem.get_relation(_player_id, wizard_id)
+	var rel = DiplomacySystem.get_relation(_player_id, wizard_id)
 	var rep: int = rel.get("reputation", 0)
 
 	# Reputation bar: -100 to +100 mapped to 0-200
@@ -123,7 +123,7 @@ func on_wizard_selected(wizard_id: int) -> void:
 	_reputation_bar.value = rep + 100
 
 	# Color the bar
-	var bar_style := StyleBoxFlat.new()
+	var bar_style = StyleBoxFlat.new()
 	if rep < -30:
 		bar_style.bg_color = Color(0.8, 0.2, 0.2)
 	elif rep < 20:
@@ -168,14 +168,14 @@ func on_declare_war(wizard_id: int) -> void:
 
 
 func on_propose_peace(wizard_id: int) -> void:
-	var accepted := DiplomacySystem.propose_peace(_player_id, wizard_id)
+	var accepted = DiplomacySystem.propose_peace(_player_id, wizard_id)
 	_add_event("Peace proposal %s" % ("accepted!" if accepted else "rejected."))
 	on_wizard_selected(wizard_id)
 	_refresh_wizard_list()
 
 
 func on_propose_alliance(wizard_id: int) -> void:
-	var accepted := DiplomacySystem.propose_alliance(_player_id, wizard_id)
+	var accepted = DiplomacySystem.propose_alliance(_player_id, wizard_id)
 	_add_event("Alliance proposal %s" % ("accepted!" if accepted else "rejected."))
 	on_wizard_selected(wizard_id)
 	_refresh_wizard_list()
@@ -195,7 +195,7 @@ func on_send_gift() -> void:
 
 
 func _add_event(text: String) -> void:
-	var lbl := Label.new()
+	var lbl = Label.new()
 	lbl.text = "- %s" % text
 	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.7))
@@ -209,9 +209,9 @@ func _add_event(text: String) -> void:
 # ---------------------------------------------------------------------------
 
 func _refresh_your_status() -> void:
-	var wiz := GameState.get_wizard(_player_id)
-	var cities := CityManager.get_cities_for_wizard(_player_id)
-	var armies := UnitManager.get_armies_for_wizard(_player_id)
+	var wiz = GameState.get_wizard(_player_id)
+	var cities = CityManager.get_cities_for_wizard(_player_id)
+	var armies = UnitManager.get_armies_for_wizard(_player_id)
 
 	# Military strength estimate
 	var strength: float = 0.0
@@ -248,7 +248,7 @@ func _build_ui() -> void:
 	offset_right = 350
 	offset_bottom = 225
 
-	var style := StyleBoxFlat.new()
+	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.10, 0.10, 0.15, 0.95)
 	style.border_color = Color(0.5, 0.45, 0.3)
 	style.set_border_width_all(2)
@@ -256,23 +256,23 @@ func _build_ui() -> void:
 	style.set_content_margin_all(10)
 	add_theme_stylebox_override("panel", style)
 
-	var main_vbox := VBoxContainer.new()
+	var main_vbox = VBoxContainer.new()
 	main_vbox.layout_mode = 2
 	add_child(main_vbox)
 
 	# Title + close
-	var title_row := HBoxContainer.new()
+	var title_row = HBoxContainer.new()
 	title_row.layout_mode = 2
 	main_vbox.add_child(title_row)
 
-	var title := Label.new()
+	var title = Label.new()
 	title.text = "Diplomacy"
 	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", Color(1.0, 0.9, 0.6))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(title)
 
-	var close_btn := Button.new()
+	var close_btn = Button.new()
 	close_btn.text = "X"
 	close_btn.custom_minimum_size = Vector2(32, 32)
 	close_btn.pressed.connect(close_diplomacy)
@@ -281,13 +281,13 @@ func _build_ui() -> void:
 	main_vbox.add_child(HSeparator.new())
 
 	# Content: wizard list (left) | detail (right)
-	var content := HBoxContainer.new()
+	var content = HBoxContainer.new()
 	content.layout_mode = 2
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	main_vbox.add_child(content)
 
 	# Wizard list
-	var list_scroll := ScrollContainer.new()
+	var list_scroll = ScrollContainer.new()
 	list_scroll.custom_minimum_size = Vector2(220, 0)
 	content.add_child(list_scroll)
 
@@ -298,7 +298,7 @@ func _build_ui() -> void:
 	content.add_child(VSeparator.new())
 
 	# Detail panel
-	var detail_scroll := ScrollContainer.new()
+	var detail_scroll = ScrollContainer.new()
 	detail_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.add_child(detail_scroll)
 
@@ -334,7 +334,7 @@ func _build_ui() -> void:
 	_detail_panel.add_child(HSeparator.new())
 
 	# Action buttons
-	var action_row := HBoxContainer.new()
+	var action_row = HBoxContainer.new()
 	_detail_panel.add_child(action_row)
 
 	_war_btn = Button.new()
@@ -364,7 +364,7 @@ func _build_ui() -> void:
 	_detail_panel.add_child(HSeparator.new())
 
 	# Events log
-	var events_title := Label.new()
+	var events_title = Label.new()
 	events_title.text = "Recent Events"
 	events_title.add_theme_font_size_override("font_size", 14)
 	events_title.add_theme_color_override("font_color", Color(0.7, 0.7, 0.5))
@@ -376,11 +376,11 @@ func _build_ui() -> void:
 	main_vbox.add_child(HSeparator.new())
 
 	# Your status bar
-	var status_row := HBoxContainer.new()
+	var status_row = HBoxContainer.new()
 	status_row.layout_mode = 2
 	main_vbox.add_child(status_row)
 
-	var status_title := Label.new()
+	var status_title = Label.new()
 	status_title.text = "Your Status: "
 	status_title.add_theme_font_size_override("font_size", 13)
 	status_title.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
@@ -391,7 +391,7 @@ func _build_ui() -> void:
 	_your_strength.add_theme_font_size_override("font_size", 13)
 	status_row.add_child(_your_strength)
 
-	var sp1 := Control.new()
+	var sp1 = Control.new()
 	sp1.custom_minimum_size = Vector2(15, 0)
 	status_row.add_child(sp1)
 
@@ -400,7 +400,7 @@ func _build_ui() -> void:
 	_your_cities.add_theme_font_size_override("font_size", 13)
 	status_row.add_child(_your_cities)
 
-	var sp2 := Control.new()
+	var sp2 = Control.new()
 	sp2.custom_minimum_size = Vector2(15, 0)
 	status_row.add_child(sp2)
 
@@ -409,7 +409,7 @@ func _build_ui() -> void:
 	_your_mana.add_theme_font_size_override("font_size", 13)
 	status_row.add_child(_your_mana)
 
-	var sp3 := Control.new()
+	var sp3 = Control.new()
 	sp3.custom_minimum_size = Vector2(15, 0)
 	status_row.add_child(sp3)
 

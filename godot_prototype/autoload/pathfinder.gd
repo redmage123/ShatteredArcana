@@ -17,8 +17,8 @@ func find_path(plane: int, from: Vector2i, to: Vector2i, movement_type: String =
 	var came_from: Dictionary = {}  # pos_key -> parent pos_key
 	var g_scores: Dictionary = {}  # pos_key -> float
 
-	var start_key := _pos_key(from)
-	var goal_key := _pos_key(to)
+	var start_key = _pos_key(from)
+	var goal_key = _pos_key(to)
 
 	g_scores[start_key] = 0.0
 	open.append({
@@ -49,13 +49,13 @@ func find_path(plane: int, from: Vector2i, to: Vector2i, movement_type: String =
 
 		# Expand neighbors (4-directional)
 		for neighbor_pos in _get_neighbors(current["pos"]):
-			var nkey := _pos_key(neighbor_pos)
+			var nkey = _pos_key(neighbor_pos)
 			if closed.has(nkey):
 				continue
 			if not WorldMap.is_passable(plane, neighbor_pos.x, neighbor_pos.y, movement_type):
 				continue
 
-			var move_cost := get_move_cost(plane, neighbor_pos, movement_type)
+			var move_cost = get_move_cost(plane, neighbor_pos, movement_type)
 			var tentative_g: float = current["g"] + move_cost
 
 			if not g_scores.has(nkey) or tentative_g < g_scores[nkey]:
@@ -64,7 +64,7 @@ func find_path(plane: int, from: Vector2i, to: Vector2i, movement_type: String =
 				var f: float = tentative_g + _heuristic(neighbor_pos, to)
 
 				# Check if already in open with higher f
-				var found_in_open := false
+				var found_in_open = false
 				for i in range(open.size()):
 					if open[i]["key"] == nkey:
 						if open[i]["f"] > f:
@@ -88,7 +88,7 @@ func get_move_cost(plane: int, pos: Vector2i, movement_type: String) -> float:
 	if movement_type == "fly":
 		return 1.0  # flyers pay 1 for everything
 
-	var tile := WorldMap.get_tile(plane, pos.x, pos.y)
+	var tile = WorldMap.get_tile(plane, pos.x, pos.y)
 	if tile == null:
 		return 99.0
 
@@ -139,7 +139,7 @@ func _get_neighbors(pos: Vector2i) -> Array[Vector2i]:
 func _reconstruct_path(came_from: Dictionary, start_key: String, goal_key: String,
 		start_pos: Vector2i, goal_pos: Vector2i) -> Array[Vector2i]:
 	var path: Array[Vector2i] = []
-	var current_key := goal_key
+	var current_key = goal_key
 
 	# Build reverse path from keys
 	var key_path: Array[String] = [goal_key]
@@ -165,5 +165,5 @@ func _pos_key(pos: Vector2i) -> String:
 
 
 func _key_to_pos(key: String) -> Vector2i:
-	var parts := key.split(",")
+	var parts = key.split(",")
 	return Vector2i(int(parts[0]), int(parts[1]))

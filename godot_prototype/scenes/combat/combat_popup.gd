@@ -52,7 +52,7 @@ func _populate(result: Dictionary) -> void:
 		child.queue_free()
 
 	# Attacker column
-	var atk_title := Label.new()
+	var atk_title = Label.new()
 	atk_title.text = "Attacker"
 	atk_title.add_theme_font_size_override("font_size", 16)
 	atk_title.add_theme_color_override("font_color", Color(0.5, 0.7, 1.0))
@@ -63,7 +63,7 @@ func _populate(result: Dictionary) -> void:
 	_populate_army_column(_attacker_col, atk_army_id, atk_losses)
 
 	# Defender column
-	var def_title := Label.new()
+	var def_title = Label.new()
 	def_title.text = "Defender"
 	def_title.add_theme_font_size_override("font_size", 16)
 	def_title.add_theme_color_override("font_color", Color(1.0, 0.5, 0.5))
@@ -96,14 +96,14 @@ func _populate_army_column(col: VBoxContainer, army_id: int, losses: Array) -> v
 	# Show units that were involved -- since combat may have already cleaned up,
 	# we show what we can from losses and surviving units
 	if losses.is_empty():
-		var lbl := Label.new()
+		var lbl = Label.new()
 		lbl.text = "  No casualties"
 		lbl.add_theme_color_override("font_color", Color(0.5, 0.8, 0.5))
 		lbl.add_theme_font_size_override("font_size", 13)
 		col.add_child(lbl)
 	else:
 		for uid in losses:
-			var lbl := Label.new()
+			var lbl = Label.new()
 			lbl.text = "  [X] Unit #%d - Killed" % uid
 			lbl.add_theme_color_override("font_color", Color(0.8, 0.3, 0.3))
 			lbl.add_theme_font_size_override("font_size", 13)
@@ -111,30 +111,30 @@ func _populate_army_column(col: VBoxContainer, army_id: int, losses: Array) -> v
 			col.add_child(lbl)
 
 	# Show survivors from the army if it still exists
-	var army := UnitManager.get_army(army_id)
+	var army = UnitManager.get_army(army_id)
 	if not army.is_empty():
 		for uid in army.get("unit_ids", []):
-			var unit := UnitManager.get_unit(uid)
+			var unit = UnitManager.get_unit(uid)
 			if unit.is_empty():
 				continue
-			var hp_pct := float(unit.get("current_hp", 0)) / float(maxi(1, unit.get("max_hp", 1))) * 100.0
+			var hp_pct = float(unit.get("current_hp", 0)) / float(maxi(1, unit.get("max_hp", 1))) * 100.0
 
-			var hbox := HBoxContainer.new()
+			var hbox = HBoxContainer.new()
 			col.add_child(hbox)
 
-			var name_lbl := Label.new()
+			var name_lbl = Label.new()
 			name_lbl.text = "  %s" % unit.get("spec_id", "unit")
 			name_lbl.add_theme_font_size_override("font_size", 13)
 			hbox.add_child(name_lbl)
 
-			var hp_bar := ProgressBar.new()
+			var hp_bar = ProgressBar.new()
 			hp_bar.custom_minimum_size = Vector2(60, 14)
 			hp_bar.max_value = unit.get("max_hp", 1)
 			hp_bar.value = unit.get("current_hp", 0)
 			hp_bar.show_percentage = false
 			hbox.add_child(hp_bar)
 
-			var hp_lbl := Label.new()
+			var hp_lbl = Label.new()
 			hp_lbl.text = "%.0f%%" % hp_pct
 			hp_lbl.add_theme_font_size_override("font_size", 11)
 			hbox.add_child(hp_lbl)
@@ -164,7 +164,7 @@ func _animate_entrance() -> void:
 func _animate_casualties(col: VBoxContainer) -> void:
 	for child in col.get_children():
 		if child.name.begins_with("loss_"):
-			var t := create_tween()
+			var t = create_tween()
 			t.tween_property(child, "modulate:a", 0.4, 0.8)
 
 
@@ -184,7 +184,7 @@ func _build_ui() -> void:
 	offset_right = 250
 	offset_bottom = 190
 
-	var style := StyleBoxFlat.new()
+	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.10, 0.08, 0.12, 0.96)
 	style.border_color = Color(0.6, 0.3, 0.3)
 	style.set_border_width_all(2)
@@ -192,7 +192,7 @@ func _build_ui() -> void:
 	style.set_content_margin_all(12)
 	add_theme_stylebox_override("panel", style)
 
-	var main_vbox := VBoxContainer.new()
+	var main_vbox = VBoxContainer.new()
 	main_vbox.layout_mode = 2
 	add_child(main_vbox)
 
@@ -207,12 +207,12 @@ func _build_ui() -> void:
 	main_vbox.add_child(HSeparator.new())
 
 	# Two columns
-	var columns := HBoxContainer.new()
+	var columns = HBoxContainer.new()
 	columns.layout_mode = 2
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	main_vbox.add_child(columns)
 
-	var atk_scroll := ScrollContainer.new()
+	var atk_scroll = ScrollContainer.new()
 	atk_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.add_child(atk_scroll)
 
@@ -222,7 +222,7 @@ func _build_ui() -> void:
 
 	columns.add_child(VSeparator.new())
 
-	var def_scroll := ScrollContainer.new()
+	var def_scroll = ScrollContainer.new()
 	def_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.add_child(def_scroll)
 

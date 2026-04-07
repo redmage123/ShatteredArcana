@@ -15,17 +15,17 @@ func _ready() -> void:
 # ---------------------------------------------------------------------------
 
 func auto_resolve(attacker_army_id: int, defender_army_id: int) -> Dictionary:
-	var atk_army := UnitManager.get_army(attacker_army_id)
-	var def_army := UnitManager.get_army(defender_army_id)
+	var atk_army = UnitManager.get_army(attacker_army_id)
+	var def_army = UnitManager.get_army(defender_army_id)
 
 	if atk_army.is_empty() or def_army.is_empty():
 		return {"winner": -1, "attacker_losses": [], "defender_losses": [], "rounds": 0, "xp_gained": 0}
 
 	# Clone unit data for combat simulation
-	var atk_units := _get_combat_units(atk_army["unit_ids"])
-	var def_units := _get_combat_units(def_army["unit_ids"])
+	var atk_units = _get_combat_units(atk_army["unit_ids"])
+	var def_units = _get_combat_units(def_army["unit_ids"])
 
-	var terrain_mod := get_terrain_modifier(def_army.get("plane", 0), def_army.get("pos", Vector2i.ZERO))
+	var terrain_mod = get_terrain_modifier(def_army.get("plane", 0), def_army.get("pos", Vector2i.ZERO))
 	var rounds: int = 0
 
 	while rounds < Constants.MAX_COMBAT_ROUNDS:
@@ -60,7 +60,7 @@ func auto_resolve(attacker_army_id: int, defender_army_id: int) -> Dictionary:
 
 	# Identify losses
 	for uid in atk_army["unit_ids"]:
-		var survived := false
+		var survived = false
 		for cu in atk_units:
 			if cu["unit_id"] == uid:
 				survived = true
@@ -69,7 +69,7 @@ func auto_resolve(attacker_army_id: int, defender_army_id: int) -> Dictionary:
 			atk_losses.append(uid)
 
 	for uid in def_army["unit_ids"]:
-		var survived := false
+		var survived = false
 		for cu in def_units:
 			if cu["unit_id"] == uid:
 				survived = true
@@ -80,7 +80,7 @@ func auto_resolve(attacker_army_id: int, defender_army_id: int) -> Dictionary:
 	# Calculate XP from defeated enemies
 	var xp_gained: int = (atk_losses.size() + def_losses.size()) * 25
 
-	var result := {
+	var result = {
 		"winner": winner,
 		"attacker_losses": atk_losses,
 		"defender_losses": def_losses,
@@ -101,27 +101,27 @@ func detect_encounters() -> Array:
 	var checked: Dictionary = {}  # avoid duplicates
 
 	for army in UnitManager.all_armies.values():
-		var key := "%d_%d_%d" % [army["plane"], army["pos"].x, army["pos"].y]
+		var key = "%d_%d_%d" % [army["plane"], army["pos"].x, army["pos"].y]
 		if checked.has(key):
 			continue
 		checked[key] = true
 
-		var armies_here := UnitManager.get_armies_at(army["plane"], army["pos"])
+		var armies_here = UnitManager.get_armies_at(army["plane"], army["pos"])
 		if armies_here.size() < 2:
 			continue
 
 		# Find hostile pairs
 		for i in range(armies_here.size()):
 			for j in range(i + 1, armies_here.size()):
-				var a := armies_here[i] as Dictionary
-				var b := armies_here[j] as Dictionary
+				var a = armies_here[i] as Dictionary
+				var b = armies_here[j] as Dictionary
 				if a["owner"] != b["owner"] and DiplomacySystem.are_at_war(a["owner"], b["owner"]):
 					encounters.append([a["army_id"], b["army_id"]])
 	return encounters
 
 
 func resolve_all_encounters() -> void:
-	var encounters := detect_encounters()
+	var encounters = detect_encounters()
 	for pair in encounters:
 		# Armies may have been destroyed in earlier combat this turn
 		if UnitManager.all_armies.has(pair[0]) and UnitManager.all_armies.has(pair[1]):
@@ -129,12 +129,12 @@ func resolve_all_encounters() -> void:
 
 
 func calculate_army_power(army_id: int) -> float:
-	var army := UnitManager.get_army(army_id)
+	var army = UnitManager.get_army(army_id)
 	if army.is_empty():
 		return 0.0
 	var power: float = 0.0
 	for uid in army["unit_ids"]:
-		var unit := UnitManager.get_unit(uid)
+		var unit = UnitManager.get_unit(uid)
 		if unit.is_empty():
 			continue
 		power += float(unit["melee_attack"] + unit["ranged_attack"]) * float(unit["current_hp"]) / float(maxi(unit["max_hp"], 1))
@@ -143,7 +143,7 @@ func calculate_army_power(army_id: int) -> float:
 
 
 func get_terrain_modifier(plane: int, pos: Vector2i) -> float:
-	var tile := WorldMap.get_tile(plane, pos.x, pos.y)
+	var tile = WorldMap.get_tile(plane, pos.x, pos.y)
 	if tile == null:
 		return 1.0
 	match tile.terrain:
@@ -166,7 +166,7 @@ func get_terrain_modifier(plane: int, pos: Vector2i) -> float:
 func _get_combat_units(unit_ids: Array) -> Array:
 	var result: Array = []
 	for uid in unit_ids:
-		var unit := UnitManager.get_unit(uid)
+		var unit = UnitManager.get_unit(uid)
 		if not unit.is_empty():
 			result.append(unit.duplicate(true))
 	return result
@@ -177,7 +177,7 @@ func _combat_phase(attackers: Array, defenders: Array, modifier: float) -> void:
 		if defenders.is_empty():
 			break
 		# Pick random target
-		var target := defenders[rng.randi_range(0, defenders.size() - 1)]
+		var target = defenders[rng.randi_range(0, defenders.size() - 1)]
 
 		# Per-figure attack: each figure rolls to hit
 		var figures: int = atk.get("figures", 1)
@@ -213,7 +213,7 @@ func _combat_phase(attackers: Array, defenders: Array, modifier: float) -> void:
 
 
 func _remove_dead(units: Array) -> void:
-	var i := units.size() - 1
+	var i = units.size() - 1
 	while i >= 0:
 		if units[i]["current_hp"] <= 0:
 			units.remove_at(i)
@@ -243,16 +243,16 @@ func _apply_combat_results(atk_id: int, def_id: int, result: Dictionary,
 
 	# Award XP to winning side survivors
 	var xp_per_unit: int = maxi(1, result["xp_gained"] / maxi(1, (surviving_atk.size() + surviving_def.size())))
-	var winners := surviving_atk if result["winner"] == UnitManager.get_army(atk_id).get("owner", -1) else surviving_def
+	var winners = surviving_atk if result["winner"] == UnitManager.get_army(atk_id).get("owner", -1) else surviving_def
 	for cu in winners:
 		UnitManager.apply_xp(cu["unit_id"], xp_per_unit)
 
 	# Destroy empty armies
 	if UnitManager.all_armies.has(atk_id):
-		var army := UnitManager.get_army(atk_id)
+		var army = UnitManager.get_army(atk_id)
 		if army.get("unit_ids", []).is_empty():
 			UnitManager.all_armies.erase(atk_id)
 	if UnitManager.all_armies.has(def_id):
-		var army := UnitManager.get_army(def_id)
+		var army = UnitManager.get_army(def_id)
 		if army.get("unit_ids", []).is_empty():
 			UnitManager.all_armies.erase(def_id)

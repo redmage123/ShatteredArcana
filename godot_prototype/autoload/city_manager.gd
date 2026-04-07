@@ -15,7 +15,7 @@ func _ready() -> void:
 # ---------------------------------------------------------------------------
 
 func create_city(city_name: String, plane: int, pos: Vector2i, owner: int) -> int:
-	var cid := _next_city_id
+	var cid = _next_city_id
 	_next_city_id += 1
 	var city: Dictionary = {
 		"city_id": cid,
@@ -34,7 +34,7 @@ func create_city(city_name: String, plane: int, pos: Vector2i, owner: int) -> in
 	# Mark tile ownership
 	if owner >= 0:
 		WorldMap.set_tile_owner(plane, pos.x, pos.y, owner)
-		var tile := WorldMap.get_tile(plane, pos.x, pos.y)
+		var tile = WorldMap.get_tile(plane, pos.x, pos.y)
 		if tile:
 			tile.city_id = cid
 
@@ -57,7 +57,7 @@ func get_cities_for_wizard(wizard_id: int) -> Array:
 func capture_city(city_id: int, new_owner: int) -> void:
 	if not all_cities.has(city_id):
 		return
-	var city := all_cities[city_id] as Dictionary
+	var city = all_cities[city_id] as Dictionary
 	city["owner"] = new_owner
 	city["unrest"] = mini(city["population"], 5)  # captured cities have unrest
 	city["build_queue"].clear()
@@ -71,7 +71,7 @@ func capture_city(city_id: int, new_owner: int) -> void:
 func add_to_build_queue(city_id: int, build_type: String, spec_id: String) -> void:
 	if not all_cities.has(city_id):
 		return
-	var city := all_cities[city_id] as Dictionary
+	var city = all_cities[city_id] as Dictionary
 	if city["build_queue"].size() >= Constants.MAX_BUILD_QUEUE:
 		return
 	var cost: int = _get_build_cost(build_type, spec_id)
@@ -97,7 +97,7 @@ func process_production() -> void:
 		if city["owner"] < 0:
 			continue  # neutral city, no production
 
-		var income := get_city_income(city["city_id"])
+		var income = get_city_income(city["city_id"])
 
 		# Add gold and mana to wizard
 		GameState.add_gold(city["owner"], income["gold"])
@@ -118,7 +118,7 @@ func process_production() -> void:
 		if city["build_queue"].is_empty():
 			continue
 
-		var item := city["build_queue"][0] as Dictionary
+		var item = city["build_queue"][0] as Dictionary
 		var production_power: int = income["production"]
 		# Unrest reduces production
 		production_power = maxi(1, production_power - city["unrest"])
@@ -132,7 +132,7 @@ func process_production() -> void:
 func get_city_income(city_id: int) -> Dictionary:
 	if not all_cities.has(city_id):
 		return {"gold": 0, "mana": 0, "food": 0, "production": 0}
-	var city := all_cities[city_id] as Dictionary
+	var city = all_cities[city_id] as Dictionary
 	var pop: int = city["population"]
 
 	var gold: int = pop * Constants.BASE_GOLD_PER_POP
@@ -157,7 +157,7 @@ func get_city_income(city_id: int) -> Dictionary:
 		mana += 1
 
 	# Check for nearby mana node
-	var tile := WorldMap.get_tile(city["plane"], city["pos"].x, city["pos"].y)
+	var tile = WorldMap.get_tile(city["plane"], city["pos"].x, city["pos"].y)
 	if tile and tile.resource == "mana_node":
 		mana += Constants.MANA_PER_NODE
 
@@ -166,7 +166,7 @@ func get_city_income(city_id: int) -> Dictionary:
 		for dx in range(-1, 2):
 			if dx == 0 and dy == 0:
 				continue
-			var nearby := WorldMap.get_tile(city["plane"], city["pos"].x + dx, city["pos"].y + dy)
+			var nearby = WorldMap.get_tile(city["plane"], city["pos"].x + dx, city["pos"].y + dy)
 			if nearby and nearby.resource == "gold_mine":
 				gold += 3
 			elif nearby and nearby.resource == "iron_mine":
@@ -181,27 +181,27 @@ func get_city_income(city_id: int) -> Dictionary:
 
 func _get_build_cost(build_type: String, spec_id: String) -> int:
 	if build_type == "unit":
-		var spec := DataLoader.get_unit_spec(spec_id)
+		var spec = DataLoader.get_unit_spec(spec_id)
 		return spec.get("cost", 40)
 	elif build_type == "building":
-		var spec := DataLoader.get_building_spec(spec_id)
+		var spec = DataLoader.get_building_spec(spec_id)
 		return spec.get("cost", 60)
 	return 50
 
 
 func _complete_build(city: Dictionary, item: Dictionary) -> void:
 	if item["build_type"] == "unit":
-		var uid := UnitManager.spawn_unit(item["spec_id"], city["plane"], city["pos"], city["owner"])
+		var uid = UnitManager.spawn_unit(item["spec_id"], city["plane"], city["pos"], city["owner"])
 		# Auto-create army for the unit or add to existing
-		var armies_here := UnitManager.get_armies_at(city["plane"], city["pos"])
-		var added := false
+		var armies_here = UnitManager.get_armies_at(city["plane"], city["pos"])
+		var added = false
 		for army in armies_here:
 			if army["owner"] == city["owner"] and army["unit_ids"].size() < Constants.MAX_UNITS_PER_ARMY:
 				UnitManager.add_unit_to_army(uid, army["army_id"])
 				added = true
 				break
 		if not added:
-			var aid := UnitManager.create_army(city["owner"], city["plane"], city["pos"])
+			var aid = UnitManager.create_army(city["owner"], city["plane"], city["pos"])
 			UnitManager.add_unit_to_army(uid, aid)
 		EventBus.city_production_complete.emit(city["city_id"], item["spec_id"])
 

@@ -110,12 +110,12 @@ func _refresh_spell_grid() -> void:
 	for child in _spell_grid.get_children():
 		child.queue_free()
 
-	var state := MagicSystem.get_magic_state(_wizard_id)
+	var state = MagicSystem.get_magic_state(_wizard_id)
 	var known_spells: Array = state.get("known_spells", [])
-	var researchable := MagicSystem.get_researchable_spells(_wizard_id)
+	var researchable = MagicSystem.get_researchable_spells(_wizard_id)
 
 	# Get all spells for this realm, sorted by tier
-	var realm_spells := DataLoader.get_spells_by_realm(_active_realm)
+	var realm_spells = DataLoader.get_spells_by_realm(_active_realm)
 	realm_spells.sort_custom(func(a, b): return a.get("tier", 1) < b.get("tier", 1))
 
 	var current_tier: int = 0
@@ -126,7 +126,7 @@ func _refresh_spell_grid() -> void:
 		# Add tier header if new tier
 		if tier != current_tier:
 			current_tier = tier
-			var tier_label := Label.new()
+			var tier_label = Label.new()
 			tier_label.text = "-- Tier %d --" % tier
 			tier_label.add_theme_font_size_override("font_size", 13)
 			tier_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.5))
@@ -134,13 +134,13 @@ func _refresh_spell_grid() -> void:
 			# span full grid width: add placeholder cells
 			_spell_grid.add_child(tier_label)
 			for _p in range(_spell_grid.columns - 1):
-				var spacer := Control.new()
+				var spacer = Control.new()
 				_spell_grid.add_child(spacer)
 
 		var is_known: bool = sid in known_spells
 		var is_researchable: bool = sid in researchable
 
-		var spell_btn := Button.new()
+		var spell_btn = Button.new()
 		spell_btn.custom_minimum_size = Vector2(110, 60)
 		spell_btn.text = spell.get("name", sid)
 		spell_btn.add_theme_font_size_override("font_size", 12)
@@ -153,7 +153,7 @@ func _refresh_spell_grid() -> void:
 			spell_btn.modulate = Color(0.7, 0.8, 1.0)
 			spell_btn.tooltip_text = "Researchable"
 			# Glow border for researchable
-			var glow_style := StyleBoxFlat.new()
+			var glow_style = StyleBoxFlat.new()
 			glow_style.bg_color = Color(0.15, 0.15, 0.25)
 			glow_style.border_color = Color(0.4, 0.6, 1.0, 0.8)
 			glow_style.set_border_width_all(2)
@@ -164,7 +164,7 @@ func _refresh_spell_grid() -> void:
 			spell_btn.tooltip_text = "Not available"
 			spell_btn.disabled = true
 
-		var captured_id := sid
+		var captured_id = sid
 		spell_btn.pressed.connect(func(): on_spell_selected(captured_id))
 		_spell_grid.add_child(spell_btn)
 
@@ -175,12 +175,12 @@ func _refresh_spell_grid() -> void:
 
 func on_spell_selected(spell_id: String) -> void:
 	_selected_spell_id = spell_id
-	var spell := DataLoader.get_spell(spell_id)
+	var spell = DataLoader.get_spell(spell_id)
 	if spell.is_empty():
 		_clear_detail()
 		return
 
-	var state := MagicSystem.get_magic_state(_wizard_id)
+	var state = MagicSystem.get_magic_state(_wizard_id)
 	var is_known: bool = spell_id in state.get("known_spells", [])
 	var is_researchable: bool = spell_id in MagicSystem.get_researchable_spells(_wizard_id)
 
@@ -240,7 +240,7 @@ func on_cast_clicked() -> void:
 	if _selected_spell_id == "":
 		return
 	# For MVP, cast with null target; game can prompt for target later
-	var success := MagicSystem.cast_spell(_wizard_id, _selected_spell_id, null)
+	var success = MagicSystem.cast_spell(_wizard_id, _selected_spell_id, null)
 	if success:
 		_refresh_mana_display()
 		on_spell_selected(_selected_spell_id)
@@ -248,7 +248,7 @@ func on_cast_clicked() -> void:
 
 func on_allocation_changed(value: float) -> void:
 	# Update the label to show the split
-	var research_pct := int(value)
+	var research_pct = int(value)
 	_allocation_label.text = "Research: %d%% / Savings: %d%%" % [research_pct, 100 - research_pct]
 	# Allocation logic would be applied to MagicSystem if extended
 
@@ -258,7 +258,7 @@ func on_allocation_changed(value: float) -> void:
 # ---------------------------------------------------------------------------
 
 func _refresh_research_bar() -> void:
-	var state := MagicSystem.get_magic_state(_wizard_id)
+	var state = MagicSystem.get_magic_state(_wizard_id)
 	var research_spell: String = state.get("research_spell", "")
 	if research_spell == "":
 		_research_bar.visible = false
@@ -266,20 +266,20 @@ func _refresh_research_bar() -> void:
 		return
 
 	_research_bar.visible = true
-	var spell := DataLoader.get_spell(research_spell)
+	var spell = DataLoader.get_spell(research_spell)
 	var cost: int = spell.get("research", 50)
 	var progress: int = state.get("research_progress", 0)
 	_research_bar.max_value = cost
 	_research_bar.value = progress
 
-	var pct := 0
+	var pct = 0
 	if cost > 0:
 		pct = int(float(progress) / float(cost) * 100.0)
 	_research_label.text = "Researching: %s (%d%%)" % [spell.get("name", research_spell), pct]
 
 
 func _refresh_mana_display() -> void:
-	var state := MagicSystem.get_magic_state(_wizard_id)
+	var state = MagicSystem.get_magic_state(_wizard_id)
 	var current: int = state.get("current_mana", 0)
 	var max_mana: int = state.get("max_mana", 100)
 	var per_turn: int = state.get("mana_per_turn", 0)
@@ -303,7 +303,7 @@ func _build_ui() -> void:
 	offset_right = 450
 	offset_bottom = 300
 
-	var style := StyleBoxFlat.new()
+	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.08, 0.06, 0.14, 0.96)
 	style.border_color = Color(0.5, 0.4, 0.8)
 	style.set_border_width_all(2)
@@ -311,23 +311,23 @@ func _build_ui() -> void:
 	style.set_content_margin_all(10)
 	add_theme_stylebox_override("panel", style)
 
-	var main_vbox := VBoxContainer.new()
+	var main_vbox = VBoxContainer.new()
 	main_vbox.layout_mode = 2
 	add_child(main_vbox)
 
 	# --- Title + close ---
-	var title_row := HBoxContainer.new()
+	var title_row = HBoxContainer.new()
 	title_row.layout_mode = 2
 	main_vbox.add_child(title_row)
 
-	var title := Label.new()
+	var title = Label.new()
 	title.text = "Spell Book"
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", Color(0.8, 0.7, 1.0))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(title)
 
-	var close_btn := Button.new()
+	var close_btn = Button.new()
 	close_btn.text = "X"
 	close_btn.custom_minimum_size = Vector2(32, 32)
 	close_btn.pressed.connect(close_spell_book)
@@ -340,7 +340,7 @@ func _build_ui() -> void:
 
 	for realm_key in REALM_ORDER:
 		var cfg: Dictionary = REALM_CONFIG.get(realm_key, {})
-		var tab_btn := Button.new()
+		var tab_btn = Button.new()
 		tab_btn.text = cfg.get("name", realm_key)
 		tab_btn.custom_minimum_size = Vector2(75, 30)
 		tab_btn.add_theme_font_size_override("font_size", 12)
@@ -351,20 +351,20 @@ func _build_ui() -> void:
 		tab_btn.add_theme_color_override("font_color", btn_color)
 		tab_btn.add_theme_color_override("font_hover_color", btn_color.lightened(0.3))
 
-		var captured_realm := realm_key
+		var captured_realm = realm_key
 		tab_btn.pressed.connect(func(): on_realm_tab_clicked(captured_realm))
 		_tab_container.add_child(tab_btn)
 
 	main_vbox.add_child(HSeparator.new())
 
 	# --- Content: spell grid (left) + detail panel (right) ---
-	var content := HBoxContainer.new()
+	var content = HBoxContainer.new()
 	content.layout_mode = 2
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	main_vbox.add_child(content)
 
 	# Spell grid in a scroll container
-	var grid_scroll := ScrollContainer.new()
+	var grid_scroll = ScrollContainer.new()
 	grid_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid_scroll.size_flags_stretch_ratio = 1.5
 	content.add_child(grid_scroll)
@@ -377,7 +377,7 @@ func _build_ui() -> void:
 	content.add_child(VSeparator.new())
 
 	# Detail panel
-	var detail_scroll := ScrollContainer.new()
+	var detail_scroll = ScrollContainer.new()
 	detail_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_scroll.size_flags_stretch_ratio = 1.0
 	content.add_child(detail_scroll)
@@ -454,12 +454,12 @@ func _build_ui() -> void:
 	main_vbox.add_child(HSeparator.new())
 
 	# --- Bottom bar: research progress + mana ---
-	var bottom := HBoxContainer.new()
+	var bottom = HBoxContainer.new()
 	bottom.layout_mode = 2
 	main_vbox.add_child(bottom)
 
 	# Research progress
-	var research_vbox := VBoxContainer.new()
+	var research_vbox = VBoxContainer.new()
 	research_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bottom.add_child(research_vbox)
 
@@ -477,7 +477,7 @@ func _build_ui() -> void:
 	bottom.add_child(VSeparator.new())
 
 	# Mana display
-	var mana_vbox := VBoxContainer.new()
+	var mana_vbox = VBoxContainer.new()
 	mana_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bottom.add_child(mana_vbox)
 
@@ -493,10 +493,10 @@ func _build_ui() -> void:
 	mana_vbox.add_child(_mana_rate_label)
 
 	# Allocation slider
-	var slider_row := HBoxContainer.new()
+	var slider_row = HBoxContainer.new()
 	mana_vbox.add_child(slider_row)
 
-	var slider_label := Label.new()
+	var slider_label = Label.new()
 	slider_label.text = "Alloc:"
 	slider_label.add_theme_font_size_override("font_size", 12)
 	slider_row.add_child(slider_label)
