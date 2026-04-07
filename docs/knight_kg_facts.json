@@ -1,0 +1,74 @@
+[
+  {
+    "subject": "Knight Animation Attempt 1",
+    "predicate": "failed_because",
+    "object": "Hunyuan3D GLB is single fused sculpture mesh, no separate parts, no UVs, no materials",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Knight Animation Attempt 2",
+    "predicate": "partially_succeeded",
+    "object": "UniRig auto-rigging produced 35-bone skeleton with weights, but fused mesh still distorts",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Knight Animation Attempt 4",
+    "predicate": "failed_because",
+    "object": "Raw bmesh vertex coordinates produce disconnected blobs, not viable for humanoid modeling",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Knight Animation Attempt 6",
+    "predicate": "working_with",
+    "object": "Skin modifier body + Rigify 29-bone metarig + BONE-parented accessories (sword/shield/helmet)",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Blender BONE Parenting",
+    "predicate": "critical_gotcha",
+    "object": "Object origin placed at bone TAIL not HEAD. Always offset by bone.head_local - bone.tail_local",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Blender ARMATURE_AUTO",
+    "predicate": "only_use_for",
+    "object": "Deformable body meshes. NEVER for rigid accessories (sword/shield/helmet) \u2014 they warp and fly off",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Blender matrix_parent_inverse",
+    "predicate": "auto_computed_by",
+    "object": "bpy.ops.object.parent_set operator BUT NOT by direct property assignment (obj.parent_type='BONE')",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Knight Blend Files",
+    "predicate": "located_at",
+    "object": "/tmp/knight_*.blend on dev server 176.9.99.103, best version is knight_final_v2.blend",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Cinematic Pingpong Fix",
+    "predicate": "solved_by",
+    "object": "SVD-XT two-batch forward-only generation (no split/reverse/concat), minterpolate to 24fps",
+    "org": "mythforge"
+  },
+  {
+    "subject": "DenizenReveal Component",
+    "predicate": "cache_busted_with",
+    "object": "?v=N query parameter on video src URLs, increment N on each deploy",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Professional 3D Character Pipeline",
+    "predicate": "requires",
+    "object": "Separate mesh parts (body/sword/shield), proper UV unwraps, pre-made skeleton, weight painting, PBR materials",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Why AI Cannot Match Professional 3D Artist",
+    "predicate": "because",
+    "object": "No real-time visual feedback, must iterate via blind code->render->inspect cycle, and tends to make 20 changes at once instead of one-at-a-time debugging",
+    "org": "mythforge"
+  }
+]

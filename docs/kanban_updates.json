@@ -1,0 +1,87 @@
+[
+  {
+    "title": "Phase 7: Diplomacy Subsystem",
+    "status": "Done",
+    "description": "CoMDiplomacySubsystem \u2014 1010 lines, treaties, reputation, war, AI diplomacy, vassals"
+  },
+  {
+    "title": "Phase 7: Espionage Subsystem",
+    "status": "Done",
+    "description": "CoMEspionageSubsystem \u2014 710 lines, spy agents, 8 mission types, counter-intel"
+  },
+  {
+    "title": "Phase 7: Magic Subsystem",
+    "status": "Done",
+    "description": "CoMMagicSubsystem \u2014 955 lines, mana, 600 spells, rituals, runes, enchantments"
+  },
+  {
+    "title": "Phase 7: Bug Fixes (13)",
+    "status": "Done",
+    "description": "Fixed 2 crash, 2 compile, 9 logic bugs across all Phase 6+7 subsystems"
+  },
+  {
+    "title": "Phase 7: Test Suite (65 tests)",
+    "status": "Done",
+    "description": "Unit, regression, integration, E2E tests for all subsystems"
+  },
+  {
+    "title": "Phase 7: SOLID Refactoring",
+    "status": "Done",
+    "description": "Hero/Dragon split, CoMMapUtils, CoMConstants, FRandomStream migration"
+  },
+  {
+    "title": "Phase 7: Cross-Subsystem Bridge",
+    "status": "Done",
+    "description": "CoMSubsystemBridge \u2014 Diplomacy<->Espionage<->Magic event wiring"
+  },
+  {
+    "title": "Art: Terrain Tilesets (160)",
+    "status": "Done",
+    "description": "20 terrain types x 8 planes, 128x128 tileable SDXL"
+  },
+  {
+    "title": "Art: Map/Building/Spell Icons (123)",
+    "status": "Done",
+    "description": "25 map features + 34 buildings + 64 spell icons"
+  },
+  {
+    "title": "Art: Hero Portraits (26)",
+    "status": "Done",
+    "description": "26 hero class portraits, 256x256 painterly"
+  },
+  {
+    "title": "Art: Unit Sprites (126)",
+    "status": "In Progress",
+    "description": "42 races x 3 types, v2 with single-figure fix, generating"
+  },
+  {
+    "title": "Art: 600 Spell Icons",
+    "status": "In Progress",
+    "description": "600 spells x 10 realms, auto-queued after unit sprites"
+  },
+  {
+    "title": "Art: Spell Catalogue (600)",
+    "status": "Done",
+    "description": "600 spells defined with CoM/Warlord/D&D/Pathfinder inspiration"
+  },
+  {
+    "title": "Phase 8: Events System",
+    "status": "Todo",
+    "description": "World events, random encounters, story triggers"
+  },
+  {
+    "title": "Phase 8: Save/Load",
+    "status": "Todo",
+    "description": "Game state serialization, save slots"
+  },
+  {
+    "title": "Phase 8: Victory Conditions",
+    "status": "Todo",
+    "description": "Domination, magic, economic, diplomatic victory types"
+  },
+  {
+    "title": "Phase 8: Combat Resolution",
+    "status": "Todo",
+    "description": "Tactical combat system connecting all subsystems"
+  }
+]

@@ -1,0 +1,16 @@
+[
+  {
+    "title": "Shattered Arcana \u2014 Phase 7 Sprint Report (2026-04-07)",
+    "content": "Phase 7 Sprint completed 2026-04-07.\n\nSUBSYSTEMS BUILT:\n- CoMDiplomacySubsystem: Relations, treaties, reputation (-1000 to +1000), war declarations with casus belli, mutual defense cascades, AI personality-driven diplomacy (aggressiveness, trustworthiness, cunning, forgiveness), war weariness, vassal system, gift system with diminishing returns.\n- CoMEspionageSubsystem: Spy agents with skill/XP/leveling, 8 mission types (spy, sabotage, steal tech, assassinate, infiltrate, counterspy, propaganda, incite rebellion), counterintelligence, captured agent handling, double agents.\n- CoMMagicSubsystem: Mana economy with nodes, spell casting (instant + multi-turn), spell research with allocation, rituals (multi-turn powerful effects), rune inscription, global enchantments with maintenance, dispelling, counter-magic.\n- CoMSubsystemBridge: Cross-subsystem event wiring (spy caught \u2192 reputation penalty, tech stolen \u2192 spell learned, propaganda \u2192 reputation shift).\n- CoMDragonSubsystem: Split from HeroSubsystem (SOLID). Dragon spawning, domains, eggs, hatching.\n\nBUG FIXES (13):\n- 2 crash bugs: use-after-free in Espionage, TMap iterator invalidation in Diplomacy\n- 2 compilation blockers: broken includes, RemoveRune no-op\n- 9 logic bugs: AcceptTreaty, ResearchSpend, mana underflow, SpawnUnit, CountHeroesOfTier, dragon domain, CounterSpy, gift tracking, FRandomStream\n\nREFACTORING:\n- Hero/Dragon subsystem split (Single Responsibility)\n- CoMMapUtils.h (shared WrapX, DRY)\n- CoMConstants.h (49 named constants)\n- FRandomStream migration (deterministic RNG)\n\nTEST SUITE: 65 tests across 10 files (4,000+ lines)\n\nART ASSETS GENERATED:\n- 160 terrain tilesets (20 types x 8 planes)\n- 123 icons (map features, buildings, spells)\n- 126 unit sprites (42 races x 3 types)\n- 26 hero portraits\n- 600 spell catalogue designed (CoM/Warlord/D&D/Pathfinder inspired)\n- 600 spell icons generating\n\nTotal project: 115+ source files, 28,000+ lines, ~971 art assets",
+    "org": "mythforge",
+    "tags": [
+      "phase7",
+      "sprint",
+      "diplomacy",
+      "espionage",
+      "magic",
+      "art",
+      "testing"
+    ]
+  }
+]

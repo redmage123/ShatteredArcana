@@ -1,0 +1,128 @@
+[
+  {
+    "subject": "Phase 7 Sprint",
+    "predicate": "completed_on",
+    "object": "2026-04-07",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Phase 7 Sprint",
+    "predicate": "delivered",
+    "object": "3 subsystems (Diplomacy/Espionage/Magic), 13 bug fixes, 65 tests, SOLID refactoring",
+    "org": "mythforge"
+  },
+  {
+    "subject": "CoMDiplomacySubsystem",
+    "predicate": "features",
+    "object": "Relations, treaties, reputation, war/peace, gifts, vassals, AI personality diplomacy, casus belli, war weariness, mutual defense cascade",
+    "org": "mythforge"
+  },
+  {
+    "subject": "CoMEspionageSubsystem",
+    "predicate": "features",
+    "object": "Spy agents, 8 mission types, counter-intel, captured agents, double agents, level-up, deterministic RNG",
+    "org": "mythforge"
+  },
+  {
+    "subject": "CoMMagicSubsystem",
+    "predicate": "features",
+    "object": "Mana economy, 600 spells, spell casting, research, rituals, runes, enchantments, counter-magic, 10 realms",
+    "org": "mythforge"
+  },
+  {
+    "subject": "CoMSubsystemBridge",
+    "predicate": "connects",
+    "object": "Diplomacy<->Espionage<->Magic via cross-subsystem event handlers",
+    "org": "mythforge"
+  },
+  {
+    "subject": "CoMDragonSubsystem",
+    "predicate": "split_from",
+    "object": "CoMHeroSubsystem (SOLID Single Responsibility refactor)",
+    "org": "mythforge"
+  },
+  {
+    "subject": "CoMConstants.h",
+    "predicate": "contains",
+    "object": "49 named constants replacing magic numbers across all subsystems",
+    "org": "mythforge"
+  },
+  {
+    "subject": "CoMMapUtils.h",
+    "predicate": "provides",
+    "object": "Shared WrapX, ClampY, TilesInRadius, SafeKeys utilities (DRY consolidation)",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Test Suite Phase 7",
+    "predicate": "covers",
+    "object": "65 tests: 16 diplomacy, 12 espionage, 14 magic, 6 naval, 6 siege, 5 unit, 7 hero, 5 dragon, 6 integration/E2E",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Art Pipeline Phase 1",
+    "predicate": "completed",
+    "object": "160 terrain tilesets (20 types x 8 planes), 128x128px tileable, SDXL generated",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Art Pipeline Phase 2-4",
+    "predicate": "completed",
+    "object": "25 map feature icons + 34 building icons + 64 spell icons (initial batch)",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Art Pipeline Phase 5",
+    "predicate": "status",
+    "object": "126 unit sprites generating (v2 with fixed single-figure prompts)",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Art Pipeline Phase 6",
+    "predicate": "completed",
+    "object": "26 hero portraits, 256x256px, painterly style",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Spell Catalogue",
+    "predicate": "contains",
+    "object": "600 spells across 10 realms x 4 tiers, inspired by CoM/Warlord/D&D/Pathfinder",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Spell Icon Generation",
+    "predicate": "status",
+    "object": "600 spell icons queued, auto-starts after unit sprites complete (~80 min GPU time)",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Total Art Assets",
+    "predicate": "count",
+    "object": "~971 when complete: 160 terrain + 123 icons + 126 sprites + 26 portraits + 600 spell icons",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Crash Bug Fixes",
+    "predicate": "fixed",
+    "object": "Use-after-free (Espionage), TMap iterator invalidation (Diplomacy 3 locations), broken includes (Naval/Siege), RemoveRune no-op (Magic)",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Logic Bug Fixes",
+    "predicate": "fixed",
+    "object": "AcceptTreaty dead code, negative ResearchSpend, mana underflow, SpawnUnit params, CountHeroesOfTier, dragon domain (0,0), CounterSpy decrement, FRandomStream migration",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Game Engine Total",
+    "predicate": "size",
+    "object": "115+ source files, 28,000+ lines, 14 directories, 13 test files with 4,000+ lines",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Dev Server Assets",
+    "predicate": "location",
+    "object": "~/ShatteredArcana/Art/GameAssets/{terrain,map_features,buildings,spells,units,heroes} on 176.9.99.103",
+    "org": "mythforge"
+  }
+]
