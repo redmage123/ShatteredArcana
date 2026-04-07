@@ -1,0 +1,57 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; but it can also be edited via text for source control.
+
+[application]
+
+config/name="Shattered Arcana"
+config/description="4X Turn-Based Fantasy Strategy"
+run/main_scene="res://scenes/world/world.tscn"
+config/features=PackedStringArray("4.3")
+
+[autoload]
+
+Constants="*res://autoload/constants.gd"
+EventBus="*res://autoload/event_bus.gd"
+DataLoader="*res://autoload/data_loader.gd"
+GameState="*res://autoload/game_state.gd"
+WorldMap="*res://autoload/world_map.gd"
+UnitManager="*res://autoload/unit_manager.gd"
+CombatResolver="*res://autoload/combat_resolver.gd"
+MagicSystem="*res://autoload/magic_system.gd"
+CityManager="*res://autoload/city_manager.gd"
+FogOfWar="*res://autoload/fog_of_war.gd"
+AIController="*res://autoload/ai_controller.gd"
+Pathfinder="*res://autoload/pathfinder.gd"
+DiplomacySystem="*res://autoload/diplomacy_system.gd"
+HeroManager="*res://autoload/hero_manager.gd"
+QuestSystem="*res://autoload/quest_system.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
+[input]
+
+move_up={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":87,"physical_keycode":0,"key_label":0,"unicode":119,"location":0,"echo":false,"script":null)]
+}
+move_down={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":83,"physical_keycode":0,"key_label":0,"unicode":115,"location":0,"echo":false,"script":null)]
+}
+move_left={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":65,"physical_keycode":0,"key_label":0,"unicode":97,"location":0,"echo":false,"script":null)]
+}
+move_right={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":68,"physical_keycode":0,"key_label":0,"unicode":100,"location":0,"echo":false,"script":null)]
+}
+end_turn={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":4194309,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)]
+}

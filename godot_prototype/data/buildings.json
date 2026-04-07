@@ -1,0 +1,295 @@
+[
+  {
+    "id": "granary",
+    "name": "Granary",
+    "cost": 60,
+    "maintenance": 1,
+    "requires": [],
+    "effects": {
+      "food_bonus": 2
+    }
+  },
+  {
+    "id": "barracks",
+    "name": "Barracks",
+    "cost": 80,
+    "maintenance": 2,
+    "requires": [],
+    "effects": {
+      "unlocks_units": [
+        "infantry"
+      ]
+    }
+  },
+  {
+    "id": "smithy",
+    "name": "Smithy",
+    "cost": 100,
+    "maintenance": 2,
+    "requires": [
+      "barracks"
+    ],
+    "effects": {
+      "unit_attack_bonus": 1
+    }
+  },
+  {
+    "id": "marketplace",
+    "name": "Marketplace",
+    "cost": 100,
+    "maintenance": 2,
+    "requires": [],
+    "effects": {
+      "gold_bonus": 3
+    }
+  },
+  {
+    "id": "library",
+    "name": "Library",
+    "cost": 120,
+    "maintenance": 2,
+    "requires": [],
+    "effects": {
+      "research_bonus": 2
+    }
+  },
+  {
+    "id": "shrine",
+    "name": "Shrine",
+    "cost": 80,
+    "maintenance": 1,
+    "requires": [],
+    "effects": {
+      "mana_bonus": 1
+    }
+  },
+  {
+    "id": "temple",
+    "name": "Temple",
+    "cost": 160,
+    "maintenance": 3,
+    "requires": [
+      "shrine"
+    ],
+    "effects": {
+      "mana_bonus": 3,
+      "resistance_bonus": 1
+    }
+  },
+  {
+    "id": "walls",
+    "name": "City Walls",
+    "cost": 150,
+    "maintenance": 2,
+    "requires": [],
+    "effects": {
+      "city_defense": 5
+    }
+  },
+  {
+    "id": "stable",
+    "name": "Stable",
+    "cost": 120,
+    "maintenance": 2,
+    "requires": [
+      "barracks"
+    ],
+    "effects": {
+      "unlocks_units": [
+        "cavalry"
+      ]
+    }
+  },
+  {
+    "id": "archery_range",
+    "name": "Archery Range",
+    "cost": 100,
+    "maintenance": 2,
+    "requires": [
+      "barracks"
+    ],
+    "effects": {
+      "unlocks_units": [
+        "ranged"
+      ]
+    }
+  },
+  {
+    "id": "sawmill",
+    "name": "Sawmill",
+    "cost": 80,
+    "maintenance": 1,
+    "requires": [],
+    "effects": {
+      "production_bonus": 2
+    }
+  },
+  {
+    "id": "miners_guild",
+    "name": "Miners Guild",
+    "cost": 120,
+    "maintenance": 2,
+    "requires": [
+      "sawmill"
+    ],
+    "effects": {
+      "production_bonus": 3,
+      "gold_bonus": 1
+    }
+  },
+  {
+    "id": "armory",
+    "name": "Armory",
+    "cost": 120,
+    "maintenance": 2,
+    "requires": [
+      "smithy"
+    ],
+    "effects": {
+      "unit_defense_bonus": 1
+    }
+  },
+  {
+    "id": "war_college",
+    "name": "War College",
+    "cost": 200,
+    "maintenance": 4,
+    "requires": [
+      "barracks",
+      "library"
+    ],
+    "effects": {
+      "unit_xp_bonus": 1
+    }
+  },
+  {
+    "id": "wizards_tower",
+    "name": "Wizard Tower",
+    "cost": 250,
+    "maintenance": 5,
+    "requires": [
+      "library",
+      "shrine"
+    ],
+    "effects": {
+      "mana_bonus": 5,
+      "research_bonus": 3
+    }
+  },
+  {
+    "id": "harbor",
+    "name": "Harbor",
+    "cost": 100,
+    "maintenance": 2,
+    "requires": [],
+    "effects": {
+      "gold_bonus": 2,
+      "food_bonus": 1
+    },
+    "requires_coast": true
+  },
+  {
+    "id": "bank",
+    "name": "Bank",
+    "cost": 180,
+    "maintenance": 3,
+    "requires": [
+      "marketplace"
+    ],
+    "effects": {
+      "gold_bonus": 5
+    }
+  },
+  {
+    "id": "cathedral",
+    "name": "Cathedral",
+    "cost": 300,
+    "maintenance": 4,
+    "requires": [
+      "temple"
+    ],
+    "effects": {
+      "mana_bonus": 5,
+      "fame_bonus": 1
+    }
+  },
+  {
+    "id": "fortress",
+    "name": "Fortress",
+    "cost": 300,
+    "maintenance": 4,
+    "requires": [
+      "walls",
+      "armory"
+    ],
+    "effects": {
+      "city_defense": 10
+    }
+  },
+  {
+    "id": "alchemist_lab",
+    "name": "Alchemist Lab",
+    "cost": 160,
+    "maintenance": 3,
+    "requires": [
+      "library"
+    ],
+    "effects": {
+      "mana_bonus": 2,
+      "gold_bonus": 2
+    }
+  },
+  {
+    "id": "animists_guild",
+    "name": "Animists Guild",
+    "cost": 200,
+    "maintenance": 3,
+    "requires": [
+      "temple"
+    ],
+    "effects": {
+      "food_bonus": 3,
+      "population_growth": 10
+    }
+  },
+  {
+    "id": "oracle",
+    "name": "Oracle",
+    "cost": 200,
+    "maintenance": 3,
+    "requires": [
+      "temple",
+      "library"
+    ],
+    "effects": {
+      "vision_range": 3,
+      "research_bonus": 2
+    }
+  },
+  {
+    "id": "arena",
+    "name": "Arena",
+    "cost": 150,
+    "maintenance": 3,
+    "requires": [
+      "barracks"
+    ],
+    "effects": {
+      "fame_bonus": 1,
+      "unit_xp_bonus": 1
+    }
+  },
+  {
+    "id": "summoning_circle",
+    "name": "Summoning Circle",
+    "cost": 280,
+    "maintenance": 5,
+    "requires": [
+      "wizards_tower"
+    ],
+    "effects": {
+      "unlocks_summons": true,
+      "mana_bonus": 3
+    }
+  }
+]

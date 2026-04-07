@@ -1,0 +1,22 @@
+[
+  {id: 0,  name: ocean,            move_cost: 99, defense_bonus: 0,  food: 0, production: 0, gold: 0, color: #1a3a5c, plane: all},
+  {id: 1,  name: coast,            move_cost: 2,  defense_bonus: 0,  food: 1, production: 0, gold: 1, color: #4a8ab0, plane: all},
+  {id: 2,  name: grassland,        move_cost: 1,  defense_bonus: 0,  food: 2, production: 1, gold: 0, color: #4a8a3a, plane: aurelith},
+  {id: 3,  name: forest,           move_cost: 2,  defense_bonus: 20, food: 1, production: 2, gold: 0, color: #2a5a2a, plane: aurelith},
+  {id: 4,  name: hills,            move_cost: 2,  defense_bonus: 15, food: 1, production: 1, gold: 1, color: #8a7a5a, plane: aurelith},
+  {id: 5,  name: mountain,         move_cost: 4,  defense_bonus: 30, food: 0, production: 2, gold: 2, color: #6a6a7a, plane: aurelith},
+  {id: 6,  name: desert,           move_cost: 2,  defense_bonus: 0,  food: 0, production: 1, gold: 2, color: #d9d2b3, plane: aurelith},
+  {id: 7,  name: savanna,          move_cost: 1,  defense_bonus: 0,  food: 1, production: 1, gold: 1, color: #c2b380, plane: aurelith},
+  {id: 8,  name: swamp,            move_cost: 3,  defense_bonus: 5,  food: 1, production: 0, gold: 0, color: #336638, plane: aurelith},
+  {id: 9,  name: tundra,           move_cost: 2,  defense_bonus: 0,  food: 0, production: 1, gold: 0, color: #e0ebf5, plane: aurelith},
+  {id: 10, name: volcanic,         move_cost: 3,  defense_bonus: 10, food: 0, production: 3, gold: 1, color: #734d33, plane: umbraxis},
+  {id: 11, name: corrupted,        move_cost: 2,  defense_bonus: 0,  food: 0, production: 1, gold: 0, color: #80618c, plane: umbraxis},
+  {id: 12, name: shadow_forest,    move_cost: 2,  defense_bonus: 25, food: 1, production: 2, gold: 0, color: #472e47, plane: umbraxis},
+  {id: 13, name: dark_hills,       move_cost: 2,  defense_bonus: 15, food: 0, production: 2, gold: 1, color: #4d4066, plane: umbraxis},
+  {id: 14, name: dark_mountain,    move_cost: 4,  defense_bonus: 30, food: 0, production: 3, gold: 2, color: #38384d, plane: umbraxis},
+  {id: 15, name: abyss,            move_cost: 99, defense_bonus: 0,  food: 0, production: 0, gold: 0, color: #261f40, plane: umbraxis},
+  {id: 16, name: crystal_waste,    move_cost: 2,  defense_bonus: 5,  food: 0, production: 1, gold: 3, color: #9980b3, plane: aethermere},
+  {id: 17, name: mana_spring,      move_cost: 1,  defense_bonus: 0,  food: 1, production: 0, gold: 0, color: #0dcca6, plane: aethermere},
+  {id: 18, name: enchanted_forest, move_cost: 2,  defense_bonus: 20, food: 2, production: 1, gold: 0, color: #8c73a6, plane: aethermere},
+  {id: 19, name: arcane_ruins,     move_cost: 3,  defense_bonus: 10, food: 0, production: 2, gold: 2, color: #b3a6cc, plane: aethermere}
+]
