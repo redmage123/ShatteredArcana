@@ -9,8 +9,6 @@
 #include "CoMHeroSubsystem.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHeroDeserted, int32, HeroUnitID, FFixed64, FinalLoyalty);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDragonDomainExpanded, int32, DomainID, int32, NewRadius);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDragonEggHatched, int32, EggID, int32, DragonID);
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -133,7 +131,7 @@ struct COMCORE_API FCoMHeroClassTierEntry
 
 /**
  * Manages hero personalities, inter-hero relationships, loyalty mechanics,
- * dragon instances, dragon domains, and dragon egg incubation/hatching.
+ * tiers, and classes. Dragon responsibility has moved to UCoMDragonSubsystem.
  */
 UCLASS()
 class COMCORE_API UCoMHeroSubsystem : public UGameInstanceSubsystem
@@ -232,59 +230,11 @@ public:
 	void ProcessHeroTurn();
 
 	// -----------------------------------------------------------------
-	// Dragons
-	// -----------------------------------------------------------------
-
-	/** Spawn a dragon instance and return its DragonID (-1 on failure). */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
-	int32 SpawnDragon(int32 TypeID, ECoMPlane Plane, FIntPoint LairPosition, UPARAM(ref) FRandomStream& Rng);
-
-	/** Establish a territorial domain around an existing dragon. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
-	void CreateDragonDomain(int32 DragonID, int32 InfluenceRadius);
-
-	/** Return dragon instance by ID, or nullptr. */
-	const FCoMDragonInstance* GetDragon(int32 DragonID) const;
-
-	/** Return domain by ID, or nullptr. */
-	const FCoMDragonDomain* GetDomain(int32 DomainID) const;
-
-	/** All domains on the specified plane. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Dragons")
-	TArray<const FCoMDragonDomain*> GetDomainsOnPlane(ECoMPlane Plane) const;
-
-	// -----------------------------------------------------------------
-	// Dragon Eggs
-	// -----------------------------------------------------------------
-
-	/** Create a dragon egg laid by the given parent. Returns EggID. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
-	int32 LayDragonEgg(int32 ParentDragonID, int32 PossessorWizard);
-
-	/** Attempt to hatch an egg. Returns the new DragonID, or -1 if not ready. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
-	int32 HatchEgg(int32 EggID);
-
-	// -----------------------------------------------------------------
-	// Dragon Turn Processing
-	// -----------------------------------------------------------------
-
-	/** Per-turn: age dragons, expand domains, tick egg incubation. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
-	void ProcessDragonTurn();
-
-	// -----------------------------------------------------------------
 	// Delegates
 	// -----------------------------------------------------------------
 
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Heroes")
 	FOnHeroDeserted OnHeroDeserted;
-
-	UPROPERTY(BlueprintAssignable, Category = "CoM|Dragons")
-	FOnDragonDomainExpanded OnDragonDomainExpanded;
-
-	UPROPERTY(BlueprintAssignable, Category = "CoM|Dragons")
-	FOnDragonEggHatched OnDragonEggHatched;
 
 private:
 	// -----------------------------------------------------------------
@@ -294,14 +244,6 @@ private:
 	/** Compute per-turn loyalty decay for a hero based on personality. */
 	FFixed64 ComputeLoyaltyDecay(const FCoMHeroPersonality& Personality) const;
 
-	/** Generate claimed tile set for a domain from lair position + radius. */
-	static TArray<FIntPoint> ComputeClaimedTiles(FIntPoint Center, int32 Radius);
-
-	/** Allocate the next sequential ID for a given counter. */
-	int32 AllocateDragonID();
-	int32 AllocateDomainID();
-	int32 AllocateEggID();
-
 	// -----------------------------------------------------------------
 	// State
 	// -----------------------------------------------------------------
@@ -310,21 +252,15 @@ private:
 	TMap<int32, FCoMHeroPersonality> Personalities;
 
 	/** Hero tier assignments. */
+	UPROPERTY()
 	TMap<int32, ECoMHeroTier> HeroTiers;
+
+	/** Hero class assignments. */
+	UPROPERTY()
+	TMap<int32, ECoMHeroClass> HeroClasses;
 
 	UPROPERTY()
 	TArray<FCoMHeroRelationship> Relationships;
 
-	UPROPERTY()
-	TMap<int32, FCoMDragonInstance> Dragons;
-
-	UPROPERTY()
-	TMap<int32, FCoMDragonDomain> Domains;
-
-	UPROPERTY()
-	TArray<FCoMDragonEgg> Eggs;
-
-	int32 NextDragonID  = 1;
-	int32 NextDomainID  = 1;
-	int32 NextEggID     = 1;
+	FRandomStream RngStream;
 };

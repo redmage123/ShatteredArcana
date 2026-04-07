@@ -6,6 +6,7 @@ void UCoMSiegeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Super::Initialize(Collection);
 	AllSieges.Empty();
 	NextSiegeID = 1;
+	RngStream.Initialize(FPlatformTime::Cycles());
 }
 
 void UCoMSiegeSubsystem::Deinitialize()
@@ -254,7 +255,7 @@ bool UCoMSiegeSubsystem::OfferSurrender(int32 SiegeID)
 	}
 
 	// Roll
-	const float Roll = FMath::FRand();
+	const float Roll = RngStream.FRand();
 	const bool bAccepted = Roll < AcceptChance;
 
 	UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d: surrender offered. Morale=%d, Food=%d, Chance=%.0f%%, %s"),

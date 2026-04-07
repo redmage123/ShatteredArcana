@@ -4,7 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
-#include "CoMTypes.h"
+#include "CoMCore/CoreTypes/CoMEnums.h"
+#include "CoMCore/CoreTypes/CoMStructs.h"
 #include "FixedPoint/Fixed64.h"
 #include "CoMNavalSubsystem.generated.h"
 

@@ -495,6 +495,7 @@ struct COMCORE_API FCoMDragonInstance
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<int32>         HoardItemIDs;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32                 TerritorialAggression = 50; // 0–100
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32                 BondedHeroUnitID      = -1; // Companion bond
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint             LairPosition          = FIntPoint(0, 0);
 };
 
 /** A dragon lord's claimed territory. */

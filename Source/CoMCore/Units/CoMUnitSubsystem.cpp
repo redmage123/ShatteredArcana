@@ -58,6 +58,9 @@ int32 UCoMUnitSubsystem::SpawnUnit(int32 SpecID, ECoMPlane Plane, ECoMMapLayer L
 	Unit.Level = 1;
 	Unit.Position = FIntPoint(WrapX(Position.X), FMath::Clamp(Position.Y, 0, MAP_HEIGHT - 1));
 
+	// Store ownership context (Plane and Layer are tracked by the army group)
+	Unit.OwnerWizardIndex = OwnerWizard;
+
 	return UnitID;
 }
 

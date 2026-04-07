@@ -4,7 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
-#include "CoMTypes.h"
+#include "CoMCore/CoreTypes/CoMEnums.h"
+#include "CoMCore/CoreTypes/CoMStructs.h"
 #include "FixedPoint/Fixed64.h"
 #include "CoMSiegeSubsystem.generated.h"
 
@@ -128,4 +129,6 @@ private:
 	TMap<int32, FCoMSiegeState> AllSieges;
 
 	int32 NextSiegeID = 1;
+
+	FRandomStream RngStream;
 };

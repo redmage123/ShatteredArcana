@@ -94,7 +94,10 @@ private:
 	UPROPERTY()
 	TObjectPtr<UCoMWeatherSubsystem> WeatherSubsystem;
 
+	UPROPERTY()
 	TMap<int32, FCoMUnitInstance> AllUnits;
+
+	UPROPERTY()
 	TMap<int32, FCoMArmyGroup> AllArmies;
 
 	int32 NextUnitID = 1;
