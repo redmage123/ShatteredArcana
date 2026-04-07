@@ -184,6 +184,167 @@ namespace CoM
 	constexpr int32 RELATION_SCORE_MIN  = -200;
 	constexpr int32 RELATION_SCORE_MAX  =  200;
 
+	/** Reputation score limits. */
+	static constexpr int32 REPUTATION_MAX = 1000;
+	static constexpr int32 REPUTATION_MIN = -1000;
+
+	/** Per-turn reputation decay toward zero. */
+	static constexpr int32 REPUTATION_DECAY_PER_TURN = 1;
+
+	/** Reputation bonus when a treaty is accepted. */
+	static constexpr int32 TREATY_ACCEPT_REP_BONUS = 50;
+
+	/** Reputation penalty when a treaty is rejected. */
+	static constexpr int32 TREATY_REJECT_REP_PENALTY = -10;
+
+	/** Reputation penalty for declaring war. */
+	static constexpr int32 WAR_DECLARATION_REP_PENALTY = -200;
+
+	/** Extra bilateral penalty for unprovoked war (no casus belli). */
+	static constexpr int32 UNPROVOKED_WAR_EXTRA_PENALTY = -100;
+
+	/** Global reputation penalty applied to all observers for unprovoked war. */
+	static constexpr int32 UNPROVOKED_WAR_GLOBAL_PENALTY = -50;
+
+	/** Global reputation penalty when a treaty is broken. */
+	static constexpr int32 TREATY_BROKEN_GLOBAL_PENALTY = -30;
+
+	/** Number of turns before an unanswered treaty proposal expires. */
+	static constexpr int32 PROPOSAL_EXPIRY_TURNS = 5;
+
+	/** Maximum grievance entries retained per diplomatic relation. */
+	static constexpr int32 GRIEVANCE_HISTORY_LIMIT = 20;
+
+	/** Passive reputation gain per turn from active trade agreements. */
+	static constexpr int32 TRADE_PASSIVE_REP_PER_TURN = 2;
+
+	/** Reputation bonus applied when a vassalage relationship is established. */
+	static constexpr int32 VASSALAGE_REP_BONUS = 200;
+
+	/** Reputation penalty when a vassal rebels. */
+	static constexpr int32 VASSALAGE_REBELLION_PENALTY = -100;
+
+	/** Multiplier for computing gift reputation value from resource value. */
+	static constexpr int32 GIFT_RESOURCE_MULTIPLIER = 10;
+
+	/** Diminishing-returns factor applied to successive gifts. */
+	static constexpr float GIFT_DIMINISHING_FACTOR = 0.2f;
+
+	/** Maximum reputation gain from a single gift. */
+	static constexpr int32 GIFT_MAX_REP_PER_GIFT = 100;
+
+	/** Reputation threshold below which casus belli is granted automatically. */
+	static constexpr int32 DEEP_ENMITY_THRESHOLD = -300;
+
+	/** Extra penalty per repeat offense (stacking). */
+	static constexpr int32 REPEAT_OFFENDER_PENALTY = 25;
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Espionage
+	// ─────────────────────────────────────────────────────────────────────────
+
+	/** Base detection chance (percent) for a spy mission. */
+	static constexpr int32 BASE_DETECTION_CHANCE = 30;
+
+	/** Detection bonus per counter-spy agent assigned. */
+	static constexpr int32 COUNTERSPY_DETECTION_BONUS = 8;
+
+	/** Minimum success chance for any spy mission (percent). */
+	static constexpr int32 MIN_SUCCESS_CHANCE = 5;
+
+	/** Maximum success chance for any spy mission (percent). */
+	static constexpr int32 MAX_SUCCESS_CHANCE = 95;
+
+	/** Experience points required per spy level. */
+	static constexpr int32 XP_PER_LEVEL = 50;
+
+	/** Maximum mission history entries before trimming. */
+	static constexpr int32 MISSION_HISTORY_LIMIT = 200;
+
+	/** Number of entries removed during a trim batch. */
+	static constexpr int32 MISSION_HISTORY_TRIM_BATCH = 50;
+
+	/** Skill penalty applied to a ransomed agent. */
+	static constexpr int32 RANSOM_SKILL_PENALTY = 10;
+
+	/** Base success chance for turning an enemy agent (percent). */
+	static constexpr int32 TURN_AGENT_SUCCESS_CHANCE = 30;
+
+	/** Default security level for a wizard with no counter-intel budget. */
+	static constexpr int32 BASE_SECURITY_LEVEL = 20;
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Magic
+	// ─────────────────────────────────────────────────────────────────────────
+
+	/** Base mana income per turn (before nodes/books). */
+	static constexpr int32 BASE_MANA_PER_TURN = 5;
+
+	/** Mana income bonus per controlled mana node. */
+	static constexpr int32 MANA_PER_NODE = 5;
+
+	/** Mana maintenance cost per active enchantment per turn. */
+	static constexpr int32 ENCHANTMENT_MAINTENANCE_COST = 5;
+
+	/** Mana cost to inscribe a rune on an item. */
+	static constexpr int32 RUNE_INSCRIPTION_COST = 20;
+
+	/** Percentage of mana refunded when cancelling a spell in progress. */
+	static constexpr int32 SPELL_CANCEL_REFUND_PCT = 50;
+
+	/** Placeholder research cost for spells without data-asset overrides. */
+	static constexpr int32 PLACEHOLDER_RESEARCH_COST = 100;
+
+	/** Placeholder ritual mana cost for rituals without data-asset overrides. */
+	static constexpr int32 PLACEHOLDER_RITUAL_COST = 500;
+
+	/** Casting skill contribution multiplier for spell power calculations. */
+	static constexpr float CASTING_SKILL_MULTIPLIER = 0.022f;
+
+	/** Bonus mana income per spell book owned. */
+	static constexpr int32 SPELL_BOOK_MANA_BONUS = 1;
+
+	/** Base spell power before skill/book modifiers. */
+	static constexpr int32 BASE_SPELL_POWER = 10;
+
+	/** Random range added to dispel power rolls. */
+	static constexpr int32 DISPEL_RAND_RANGE = 50;
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Siege
+	// ─────────────────────────────────────────────────────────────────────────
+
+	/** Default food reserves for a city when a siege begins. */
+	static constexpr int32 DEFAULT_FOOD_RESERVES = 50;
+
+	/** Default morale for a city garrison at siege start. */
+	static constexpr int32 DEFAULT_MORALE = 100;
+
+	/** Default wall hit points at siege start. */
+	static constexpr int32 DEFAULT_WALL_HP = 100;
+
+	/** Normal starvation rate (food consumed per turn). */
+	static constexpr int32 STARVATION_RATE_NORMAL = 1;
+
+	/** Starvation rate when supply lines are cut. */
+	static constexpr int32 STARVATION_RATE_CUT = 3;
+
+	/** Turns into siege before morale begins to decay. */
+	static constexpr int32 MORALE_DECAY_THRESHOLD_TURNS = 5;
+
+	/** Morale points lost per turn once decay threshold is reached. */
+	static constexpr int32 MORALE_DECAY_RATE = 2;
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Naval
+	// ─────────────────────────────────────────────────────────────────────────
+
+	/** Turns before a slain sea monster respawns. */
+	static constexpr int32 SEA_MONSTER_RESPAWN_DELAY = 20;
+
+	/** Combat power contributed per ship in a fleet. */
+	static constexpr int32 FLEET_COMBAT_POWER_PER_SHIP = 10;
+
 	// ─────────────────────────────────────────────────────────────────────────
 	// Tile size for map rendering (used by CoMRendering, not CoMCore)
 	// ─────────────────────────────────────────────────────────────────────────
