@@ -1,0 +1,132 @@
+[
+  {
+    "id": 0,
+    "name": "Aurelith",
+    "aligned_realm": "life",
+    "mana_mult": 1.0,
+    "city_count": 5,
+    "mana_nodes": 3,
+    "races": [
+      "high_men",
+      "high_elves",
+      "dwarves",
+      "halflings",
+      "gnomes",
+      "draconians"
+    ],
+    "description": "Golden realm of order and light"
+  },
+  {
+    "id": 1,
+    "name": "Noctharion",
+    "aligned_realm": "death",
+    "mana_mult": 1.0,
+    "city_count": 4,
+    "mana_nodes": 3,
+    "races": [
+      "dark_elves",
+      "demonkin",
+      "shadow_folk",
+      "vampires",
+      "liches"
+    ],
+    "description": "Dark arcane shadow realm"
+  },
+  {
+    "id": 2,
+    "name": "Verdantis",
+    "aligned_realm": "nature",
+    "mana_mult": 1.0,
+    "city_count": 5,
+    "mana_nodes": 4,
+    "races": [
+      "lizardmen",
+      "dryads",
+      "beastmen",
+      "centaurs",
+      "treants"
+    ],
+    "description": "Primal nature realm"
+  },
+  {
+    "id": 3,
+    "name": "Infernyx",
+    "aligned_realm": "chaos",
+    "mana_mult": 1.2,
+    "city_count": 3,
+    "mana_nodes": 3,
+    "races": [
+      "demons",
+      "efreeti",
+      "ashen",
+      "iron_devils",
+      "fire_elementals"
+    ],
+    "description": "Volcanic fire and iron realm"
+  },
+  {
+    "id": 4,
+    "name": "Aethermist",
+    "aligned_realm": "sorcery",
+    "mana_mult": 1.3,
+    "city_count": 4,
+    "mana_nodes": 5,
+    "races": [
+      "crystal_elves",
+      "celestials",
+      "echomancers",
+      "ether_weavers",
+      "star_born"
+    ],
+    "description": "Celestial spirit realm"
+  },
+  {
+    "id": 5,
+    "name": "Abyssal",
+    "aligned_realm": "binding",
+    "mana_mult": 0.8,
+    "city_count": 3,
+    "mana_nodes": 2,
+    "races": [
+      "abyssal_terrors",
+      "merfolk",
+      "chithari",
+      "kraken_spawn",
+      "deep_ones"
+    ],
+    "description": "Deep ocean demon realm"
+  },
+  {
+    "id": 6,
+    "name": "Ethereal",
+    "aligned_realm": "spirit",
+    "mana_mult": 1.1,
+    "city_count": 3,
+    "mana_nodes": 4,
+    "races": [
+      "dream_weavers",
+      "phase_stalkers",
+      "thought_forms",
+      "void_touched",
+      "astral_nomads"
+    ],
+    "description": "Ghostly alien spirit realm"
+  },
+  {
+    "id": 7,
+    "name": "Feywild",
+    "aligned_realm": "glamour",
+    "mana_mult": 1.2,
+    "city_count": 4,
+    "mana_nodes": 4,
+    "races": [
+      "fey_elves",
+      "pixies",
+      "erlking_guard",
+      "satyrs",
+      "spriggans",
+      "djinn"
+    ],
+    "description": "Ever-shifting fey realm"
+  }
+]

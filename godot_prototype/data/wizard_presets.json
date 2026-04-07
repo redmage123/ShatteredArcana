@@ -1,0 +1,146 @@
+[
+  {
+    "name": "Aurelius the Golden",
+    "realm": "life",
+    "start_plane": 0,
+    "personality": {
+      "aggressiveness": 25,
+      "cunning": 20,
+      "trade": 80,
+      "scholarly": 60
+    },
+    "portrait_color": "#FFD700"
+  },
+  {
+    "name": "Shadraxis the Dark",
+    "realm": "death",
+    "start_plane": 1,
+    "personality": {
+      "aggressiveness": 75,
+      "cunning": 65,
+      "trade": 15,
+      "scholarly": 40
+    },
+    "portrait_color": "#4B0082"
+  },
+  {
+    "name": "Verdania Thornweaver",
+    "realm": "nature",
+    "start_plane": 2,
+    "personality": {
+      "aggressiveness": 35,
+      "cunning": 30,
+      "trade": 50,
+      "scholarly": 55
+    },
+    "portrait_color": "#228B22"
+  },
+  {
+    "name": "Pyraxis Flamelord",
+    "realm": "chaos",
+    "start_plane": 3,
+    "personality": {
+      "aggressiveness": 85,
+      "cunning": 40,
+      "trade": 10,
+      "scholarly": 30
+    },
+    "portrait_color": "#FF4500"
+  },
+  {
+    "name": "Crystara the Seer",
+    "realm": "sorcery",
+    "start_plane": 4,
+    "personality": {
+      "aggressiveness": 20,
+      "cunning": 80,
+      "trade": 60,
+      "scholarly": 90
+    },
+    "portrait_color": "#00CED1"
+  },
+  {
+    "name": "Abyssia Deepcaller",
+    "realm": "binding",
+    "start_plane": 5,
+    "personality": {
+      "aggressiveness": 60,
+      "cunning": 70,
+      "trade": 25,
+      "scholarly": 45
+    },
+    "portrait_color": "#006666"
+  },
+  {
+    "name": "Wraith King Mordeth",
+    "realm": "spirit",
+    "start_plane": 6,
+    "personality": {
+      "aggressiveness": 55,
+      "cunning": 50,
+      "trade": 30,
+      "scholarly": 65
+    },
+    "portrait_color": "#B0C4DE"
+  },
+  {
+    "name": "Titania Glamourbind",
+    "realm": "glamour",
+    "start_plane": 7,
+    "personality": {
+      "aggressiveness": 30,
+      "cunning": 75,
+      "trade": 70,
+      "scholarly": 50
+    },
+    "portrait_color": "#FF69B4"
+  },
+  {
+    "name": "Obsidius Forgemaster",
+    "realm": "magma",
+    "start_plane": 3,
+    "personality": {
+      "aggressiveness": 50,
+      "cunning": 35,
+      "trade": 60,
+      "scholarly": 55
+    },
+    "portrait_color": "#B8860B"
+  },
+  {
+    "name": "Arcanus the Eternal",
+    "realm": "arcane",
+    "start_plane": 0,
+    "personality": {
+      "aggressiveness": 15,
+      "cunning": 45,
+      "trade": 40,
+      "scholarly": 95
+    },
+    "portrait_color": "#4169E1"
+  },
+  {
+    "name": "Bloodfang the Conqueror",
+    "realm": "chaos",
+    "start_plane": 3,
+    "personality": {
+      "aggressiveness": 95,
+      "cunning": 30,
+      "trade": 5,
+      "scholarly": 15
+    },
+    "portrait_color": "#8B0000"
+  },
+  {
+    "name": "Seraphina the Radiant",
+    "realm": "life",
+    "start_plane": 0,
+    "personality": {
+      "aggressiveness": 20,
+      "cunning": 15,
+      "trade": 85,
+      "scholarly": 70
+    },
+    "portrait_color": "#FFFACD"
+  }
+]

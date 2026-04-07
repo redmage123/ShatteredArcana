@@ -1,0 +1,412 @@
+[
+  {
+    "id": "fighter",
+    "name": "Fighter",
+    "melee_attack": 6,
+    "ranged_attack": 0,
+    "defense": 5,
+    "resistance": 3,
+    "hit_points": 12,
+    "movement": 2,
+    "abilities": [
+      "leadership",
+      "armor_piercing"
+    ],
+    "command_bonus": 0.1,
+    "hire_cost": 150,
+    "description": "Veteran warrior with strong melee combat"
+  },
+  {
+    "id": "bowman",
+    "name": "Bowman",
+    "melee_attack": 2,
+    "ranged_attack": 5,
+    "defense": 2,
+    "resistance": 3,
+    "hit_points": 8,
+    "movement": 2,
+    "abilities": [
+      "long_range",
+      "first_strike"
+    ],
+    "command_bonus": 0.05,
+    "hire_cost": 120,
+    "description": "Expert archer with deadly accuracy"
+  },
+  {
+    "id": "cleric",
+    "name": "Cleric",
+    "melee_attack": 3,
+    "ranged_attack": 0,
+    "defense": 3,
+    "resistance": 7,
+    "hit_points": 10,
+    "movement": 2,
+    "abilities": [
+      "healing",
+      "turn_undead"
+    ],
+    "command_bonus": 0.08,
+    "hire_cost": 180,
+    "description": "Holy warrior who heals allies"
+  },
+  {
+    "id": "magician",
+    "name": "Magician",
+    "melee_attack": 1,
+    "ranged_attack": 4,
+    "defense": 1,
+    "resistance": 8,
+    "hit_points": 6,
+    "movement": 2,
+    "abilities": [
+      "spell_casting",
+      "mana_focus"
+    ],
+    "command_bonus": 0.05,
+    "hire_cost": 200,
+    "description": "Powerful spellcaster with arcane knowledge"
+  },
+  {
+    "id": "paladin",
+    "name": "Paladin",
+    "melee_attack": 5,
+    "ranged_attack": 0,
+    "defense": 6,
+    "resistance": 6,
+    "hit_points": 14,
+    "movement": 2,
+    "abilities": [
+      "holy_armor",
+      "smite_evil",
+      "leadership"
+    ],
+    "command_bonus": 0.15,
+    "hire_cost": 250,
+    "description": "Holy knight combining martial and divine power"
+  },
+  {
+    "id": "assassin",
+    "name": "Assassin",
+    "melee_attack": 7,
+    "ranged_attack": 0,
+    "defense": 2,
+    "resistance": 4,
+    "hit_points": 7,
+    "movement": 3,
+    "abilities": [
+      "backstab",
+      "poison",
+      "stealth"
+    ],
+    "command_bonus": 0.03,
+    "hire_cost": 180,
+    "description": "Silent killer who strikes from shadow"
+  },
+  {
+    "id": "bard",
+    "name": "Bard",
+    "melee_attack": 2,
+    "ranged_attack": 0,
+    "defense": 2,
+    "resistance": 5,
+    "hit_points": 7,
+    "movement": 2,
+    "abilities": [
+      "inspire",
+      "lore",
+      "scouting"
+    ],
+    "command_bonus": 0.12,
+    "hire_cost": 100,
+    "description": "Charismatic leader who inspires troops"
+  },
+  {
+    "id": "beastmaster",
+    "name": "Beastmaster",
+    "melee_attack": 4,
+    "ranged_attack": 0,
+    "defense": 3,
+    "resistance": 4,
+    "hit_points": 9,
+    "movement": 3,
+    "abilities": [
+      "summon_beast",
+      "animal_bond",
+      "pathfinding"
+    ],
+    "command_bonus": 0.08,
+    "hire_cost": 160,
+    "description": "Wild warrior who commands beasts"
+  },
+  {
+    "id": "necromancer",
+    "name": "Necromancer",
+    "melee_attack": 1,
+    "ranged_attack": 3,
+    "defense": 1,
+    "resistance": 7,
+    "hit_points": 5,
+    "movement": 2,
+    "abilities": [
+      "raise_dead",
+      "life_drain",
+      "fear_aura"
+    ],
+    "command_bonus": 0.05,
+    "hire_cost": 220,
+    "description": "Master of death magic"
+  },
+  {
+    "id": "druid",
+    "name": "Druid",
+    "melee_attack": 3,
+    "ranged_attack": 2,
+    "defense": 3,
+    "resistance": 6,
+    "hit_points": 8,
+    "movement": 2,
+    "abilities": [
+      "nature_heal",
+      "entangle",
+      "weather_control"
+    ],
+    "command_bonus": 0.07,
+    "hire_cost": 170,
+    "description": "Nature priest with elemental power"
+  },
+  {
+    "id": "psyker",
+    "name": "Psyker",
+    "melee_attack": 2,
+    "ranged_attack": 5,
+    "defense": 1,
+    "resistance": 9,
+    "hit_points": 6,
+    "movement": 2,
+    "abilities": [
+      "mind_blast",
+      "telekinesis",
+      "psychic_shield"
+    ],
+    "command_bonus": 0.06,
+    "hire_cost": 240,
+    "description": "Psychic warrior with devastating mental attacks"
+  },
+  {
+    "id": "warlock",
+    "name": "Warlock",
+    "melee_attack": 2,
+    "ranged_attack": 4,
+    "defense": 2,
+    "resistance": 7,
+    "hit_points": 7,
+    "movement": 2,
+    "abilities": [
+      "dark_pact",
+      "hellfire",
+      "demon_summon"
+    ],
+    "command_bonus": 0.05,
+    "hire_cost": 230,
+    "description": "Practitioner of forbidden pact magic"
+  },
+  {
+    "id": "dragon_knight",
+    "name": "Dragon Knight",
+    "melee_attack": 6,
+    "ranged_attack": 3,
+    "defense": 5,
+    "resistance": 5,
+    "hit_points": 15,
+    "movement": 3,
+    "abilities": [
+      "dragon_bond",
+      "fire_breath",
+      "flying"
+    ],
+    "command_bonus": 0.15,
+    "hire_cost": 350,
+    "description": "Elite warrior bonded with dragonkind"
+  },
+  {
+    "id": "warlord",
+    "name": "Warlord",
+    "melee_attack": 5,
+    "ranged_attack": 0,
+    "defense": 5,
+    "resistance": 4,
+    "hit_points": 13,
+    "movement": 2,
+    "abilities": [
+      "tactics",
+      "rally",
+      "siege_mastery"
+    ],
+    "command_bonus": 0.2,
+    "hire_cost": 280,
+    "description": "Supreme military commander"
+  },
+  {
+    "id": "witch_hunter",
+    "name": "Witch Hunter",
+    "melee_attack": 5,
+    "ranged_attack": 2,
+    "defense": 4,
+    "resistance": 8,
+    "hit_points": 10,
+    "movement": 2,
+    "abilities": [
+      "magic_resistance",
+      "dispel",
+      "smite_caster"
+    ],
+    "command_bonus": 0.08,
+    "hire_cost": 200,
+    "description": "Anti-magic specialist who hunts spellcasters"
+  },
+  {
+    "id": "demonologist",
+    "name": "Demonologist",
+    "melee_attack": 1,
+    "ranged_attack": 5,
+    "defense": 1,
+    "resistance": 6,
+    "hit_points": 5,
+    "movement": 2,
+    "abilities": [
+      "demon_summon",
+      "hellfire",
+      "soul_bind"
+    ],
+    "command_bonus": 0.04,
+    "hire_cost": 260,
+    "description": "Summoner of demonic entities"
+  },
+  {
+    "id": "feysworn",
+    "name": "Feysworn",
+    "melee_attack": 3,
+    "ranged_attack": 3,
+    "defense": 2,
+    "resistance": 7,
+    "hit_points": 7,
+    "movement": 3,
+    "abilities": [
+      "glamour",
+      "charm",
+      "fey_step"
+    ],
+    "command_bonus": 0.07,
+    "hire_cost": 190,
+    "description": "Champion of the fey courts"
+  },
+  {
+    "id": "soul_reaper",
+    "name": "Soul Reaper",
+    "melee_attack": 7,
+    "ranged_attack": 0,
+    "defense": 3,
+    "resistance": 6,
+    "hit_points": 9,
+    "movement": 2,
+    "abilities": [
+      "soul_steal",
+      "death_touch",
+      "ethereal"
+    ],
+    "command_bonus": 0.05,
+    "hire_cost": 270,
+    "description": "Harvester of souls from the death realm"
+  },
+  {
+    "id": "planar_walker",
+    "name": "Planar Walker",
+    "melee_attack": 3,
+    "ranged_attack": 3,
+    "defense": 3,
+    "resistance": 7,
+    "hit_points": 8,
+    "movement": 4,
+    "abilities": [
+      "plane_shift",
+      "portal_sense",
+      "dimensional_strike"
+    ],
+    "command_bonus": 0.1,
+    "hire_cost": 300,
+    "description": "Traveler between planes of existence"
+  },
+  {
+    "id": "ascendant",
+    "name": "Ascendant",
+    "melee_attack": 5,
+    "ranged_attack": 5,
+    "defense": 5,
+    "resistance": 8,
+    "hit_points": 16,
+    "movement": 3,
+    "abilities": [
+      "divine_power",
+      "resurrection",
+      "aura_of_might"
+    ],
+    "command_bonus": 0.25,
+    "hire_cost": 500,
+    "description": "Near-divine being of immense power"
+  },
+  {
+    "id": "telepath",
+    "name": "Telepath",
+    "melee_attack": 1,
+    "ranged_attack": 4,
+    "defense": 1,
+    "resistance": 9,
+    "hit_points": 5,
+    "movement": 2,
+    "abilities": [
+      "mind_control",
+      "telepathy",
+      "confusion"
+    ],
+    "command_bonus": 0.06,
+    "hire_cost": 210,
+    "description": "Master of mental domination"
+  },
+  {
+    "id": "dominator",
+    "name": "Dominator",
+    "melee_attack": 3,
+    "ranged_attack": 3,
+    "defense": 3,
+    "resistance": 7,
+    "hit_points": 8,
+    "movement": 2,
+    "abilities": [
+      "enslave",
+      "psychic_scream",
+      "will_drain"
+    ],
+    "command_bonus": 0.08,
+    "hire_cost": 240,
+    "description": "Psyker who bends others to their will"
+  },
+  {
+    "id": "empath",
+    "name": "Empath",
+    "melee_attack": 2,
+    "ranged_attack": 0,
+    "defense": 2,
+    "resistance": 8,
+    "hit_points": 7,
+    "movement": 2,
+    "abilities": [
+      "empathic_heal",
+      "morale_boost",
+      "sense_intent"
+    ],
+    "command_bonus": 0.15,
+    "hire_cost": 160,
+    "description": "Healer who channels emotional energy"
+  }
+]
