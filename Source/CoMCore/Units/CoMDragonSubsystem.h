@@ -44,19 +44,15 @@ public:
 	const FCoMDragonDomain* GetDomain(int32 DomainID) const;
 
 	/** All domains on the specified plane. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Dragons")
-	TArray<const FCoMDragonDomain*> GetDomainsOnPlane(ECoMPlane Plane) const;
 
 	// -----------------------------------------------------------------
 	// Dragon Eggs
 	// -----------------------------------------------------------------
 
 	/** Create a dragon egg laid by the given parent. Returns EggID. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
 	int32 LayDragonEgg(int32 ParentDragonID, int32 PossessorWizard);
 
 	/** Attempt to hatch an egg. Returns the new DragonID, or -1 if not ready. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
 	int32 HatchEgg(int32 EggID);
 
 	// -----------------------------------------------------------------
@@ -64,7 +60,6 @@ public:
 	// -----------------------------------------------------------------
 
 	/** Per-turn: age dragons, expand domains, tick egg incubation. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Dragons")
 	void ProcessDragonTurn();
 
 	// -----------------------------------------------------------------

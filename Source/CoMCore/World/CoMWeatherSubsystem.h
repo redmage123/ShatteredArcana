@@ -7,40 +7,7 @@
 #include "CoMCore/CoreTypes/CoMConstants.h"
 #include "CoMWeatherSubsystem.generated.h"
 
-USTRUCT(BlueprintType)
-struct COMCORE_API FCoMWeatherEffects
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 MovementCostDelta = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	bool bFlyingGrounded = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 RangedAttackDelta = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 MeleeAttackDelta = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 SightRangeDelta = 0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FFixed64 AmbushChanceMult = FFixed64(1);
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FFixed64 AttritionDamagePerTurn = FFixed64(0);
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	uint32 SpecialFlags = 0;
-
-	static constexpr uint32 Flag_RiversFlood          = 1 << 0;
-	static constexpr uint32 Flag_RoadWash             = 1 << 1;
-	static constexpr uint32 Flag_LightningStrike      = 1 << 2;
-	static constexpr uint32 Flag_VolcanicTileDestruction = 1 << 3;
-};
+// (struct defined in CoMStructs.h)
 
 UCLASS()
 class COMCORE_API UCoMWeatherSubsystem : public UGameInstanceSubsystem

@@ -1,0 +1,90 @@
+{
+  "project": "Shattered Arcana - Knight Denizen Animation",
+  "date": "2026-04-07",
+  "status": "Pipeline formalized, needs re-execution with proper per-pose verification",
+  "infrastructure": {
+    "dev_server": "176.9.99.103",
+    "prod_server": "78.47.104.139",
+    "blender": "4.2.0 at /home/bbrelin/blender-4.2/blender (symlinked to /usr/local/bin/blender)",
+    "old_blender": "4.0.2 removed from apt",
+    "renderer": "Cycles GPU (RTX 4000 SFF Ada 20GB, CUDA+OptiX)",
+    "mediapipe": "0.10.33 installed (new Tasks API, needs pose_landmarker.task model at /tmp/)",
+    "mb_lab": "Installed at ~/.config/blender/4.2/scripts/addons/MB-Lab/",
+    "unirig": "/tmp/UniRig with Python 3.11 venv (not used in current pipeline)"
+  },
+  "pipeline": {
+    "description": "6-phase professional animation workflow",
+    "script": "/home/bbrelin/ShatteredArcana/tools/animation_pipeline.py",
+    "phases": {
+      "1_reference": "Extract poses from video via MediaPipe. DONE - 1005 poses from FzO1f1s4Bs8, 663 from ofHmS4WxSu8",
+      "2_setup": "Verify rig, bones, accessories. DONE - 17 bones, sword/shield/helmet parented correctly",
+      "3_blocking": "Set key poses ONE AT A TIME with visual verification. NOT DONE PROPERLY - was skipped, all poses set at once",
+      "4_splining": "Add breakdowns, anticipation, overlap. PARTIALLY DONE - breakdowns added but not verified individually",
+      "5_polish": "Breathing, weight shifts, settle. PARTIALLY DONE",
+      "6_render": "Full Cycles GPU render. DONE but animation quality needs improvement"
+    },
+    "key_lesson": "MUST verify each pose individually before proceeding. Used Playwright as viewport substitute but kept skipping the verification step."
+  },
+  "character": {
+    "base_mesh": "MB-Lab MBLab_human_male (17996 verts, 17074 faces, 68 vertex groups)",
+    "skeleton": "MBLab_skeleton_base_fk (71 bones)",
+    "accessories": {
+      "sword": "Custom bmesh, BONE-parented to hand_R",
+      "shield": "Kite shape with red dragon wave pattern, BONE-parented to lowerarm_L",
+      "helmet": "Great helm (cylinder+dome+visor slit), BONE-parented to head",
+      "boots": "Body mesh duplicate (below knee), solidified outward",
+      "chest_plate": "Body mesh duplicate (chest region), solidified outward",
+      "pauldrons": "UV spheres, BONE-parented to upperarm_R/L",
+      "gorget": "Cylinder at neck, BONE-parented to neck",
+      "toe_caps": "Beveled cubes, BONE-parented to foot_R/L"
+    },
+    "materials": {
+      "Steel": "(0.6, 0.62, 0.65) metallic=1.0 roughness=0.18",
+      "BrightSteel": "(0.75, 0.77, 0.82) metallic=1.0 roughness=0.12",
+      "DarkSteel": "(0.25, 0.27, 0.3) metallic=0.95 roughness=0.3",
+      "Gold": "(1.0, 0.766, 0.336) metallic=1.0 roughness=0.1",
+      "Blade": "(0.85, 0.87, 0.92) metallic=1.0 roughness=0.08",
+      "ShieldMat": "Wave rings pattern mixing steel and red dragon",
+      "VisorDark": "(0.02, 0.02, 0.03) metallic=0.9 roughness=0.5"
+    }
+  },
+  "blend_files": {
+    "/tmp/animation_checkpoints/setup.blend": "Verified character setup - starting point for animation",
+    "/tmp/animation_checkpoints/final_animation.blend": "Current full animation (not properly verified per-pose)",
+    "/tmp/animation_checkpoints/idle_v3.blend": "Best idle pose test (arms at sides)",
+    "/tmp/knight_mblab_r8b.blend": "Latest mesh/material version with boots and toe caps"
+  },
+  "reference_library": {
+    "location": "/home/bbrelin/ShatteredArcana/Art/Reference/",
+    "videos": "44 captured (17 with actual content, 27 blocked by YouTube)",
+    "best_videos": {
+      "FzO1f1s4Bs8": "1005 poses detected, shoulder range 41-174 degrees, best overall reference",
+      "ofHmS4WxSu8": "663 poses detected, archery/fantasy content",
+      "_SeOyg3fL_k": "12 poses, person in medieval armor with sword guard",
+      "1SjxEgV9YOw": "4 poses, HEMA practitioners with longswords"
+    },
+    "pose_data": "/home/bbrelin/ShatteredArcana/Art/Reference/poses/",
+    "mediapipe_model": "/tmp/pose_landmarker.task (30MB, pose_landmarker_heavy)"
+  },
+  "motion_capture_tool": {
+    "script": "/home/bbrelin/ShatteredArcana/tools/motion_capture/yt_capture_win.py",
+    "config": "~/motion_capture/library/searches.json (47 categories)",
+    "issues": "27 of 44 captures blocked by YouTube bot detection. Need to add video-playing verification before recording."
+  },
+  "key_technical_lessons": [
+    "MB-Lab T-pose has arms at ~45 degrees, not 90. upperarm rotation of (10, 5, 55) Z brings arms to sides.",
+    "BONE parent positions at bone TAIL. Offset = bone.head_local - bone.tail_local.",
+    "ARMATURE_AUTO for deformable body mesh ONLY. BONE parent for all rigid accessories.",
+    "Cycles with RTX 4000 CUDA at 64 samples + denoising: ~5s per frame, significantly better than EEVEE for metals.",
+    "MediaPipe 0.10.33 uses Tasks API (PoseLandmarker), not legacy solutions.pose.",
+    "Blender 4.2 needed for MPFB2 but MB-Lab works and is sufficient.",
+    "The animation pipeline MUST verify each pose individually before proceeding to the next."
+  ],
+  "next_steps": [
+    "Re-execute pipeline Phase 3 properly: one pose at a time with visual verification",
+    "Fix YouTube capture script: verify video is playing before recording",
+    "Process more reference videos through MediaPipe for better pose data",
+    "Fix capture script to look more like a normal person browsing",
+    "Extend pipeline to other denizen types"
+  ]
+}

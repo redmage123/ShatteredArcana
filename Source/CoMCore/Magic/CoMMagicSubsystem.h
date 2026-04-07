@@ -131,41 +131,7 @@ struct FCoMSpellCast
 // RITUAL (multi-turn powerful spell)
 // ─────────────────────────────────────────────────────────────────────────────
 
-USTRUCT(BlueprintType)
-struct FCoMActiveRitual
-{
-    GENERATED_BODY()
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FName RitualId;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    int32 CasterWizardId = -1;
-
-    /** Total mana required. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    int32 TotalManaCost = 0;
-
-    /** Mana invested so far. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    int32 ManaInvested = 0;
-
-    /** Mana per turn being channeled into this ritual. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    int32 ManaPerTurn = 0;
-
-    /** Required components consumed at start. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    TMap<ECoMResource, int32> ComponentsConsumed;
-
-    /** Whether the ritual can be interrupted by combat/events. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    bool bInterruptible = true;
-
-    /** Turn started. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    int32 StartTurn = 0;
-};
+// FCoMActiveRitual is defined in CoMStructs.h
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RUNE INSCRIPTION

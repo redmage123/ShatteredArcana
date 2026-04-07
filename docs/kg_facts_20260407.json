@@ -1,0 +1,62 @@
+[
+  {
+    "subject": "Animation Pipeline",
+    "predicate": "formalized_at",
+    "object": "/home/bbrelin/ShatteredArcana/tools/animation_pipeline.py \u2014 6 phases: reference, setup, blocking, splining, polish, render",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Animation Pipeline",
+    "predicate": "critical_rule",
+    "object": "Phase 3 (blocking) MUST verify each pose individually via render+inspect before proceeding to next pose. Skipping this produces bad animation.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "MB-Lab Character",
+    "predicate": "T-pose_fix",
+    "object": "upperarm rotation (10, 5, 55) Z for right arm, (10, -5, -55) Z for left brings arms from T-pose to natural idle at sides",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Blender 4.2",
+    "predicate": "installed_at",
+    "object": "/home/bbrelin/blender-4.2/blender on dev server, symlinked to /usr/local/bin/blender. Old 4.0.2 removed.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Cycles Rendering",
+    "predicate": "performance",
+    "object": "RTX 4000 SFF Ada, CUDA+OptiX, 64 samples + denoising = ~5s/frame. 144 frames = ~12min. Significantly better metallic quality than EEVEE.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "MediaPipe 0.10.33",
+    "predicate": "api_change",
+    "object": "Uses Tasks API: PoseLandmarker from mediapipe.tasks.python.vision. Legacy solutions.pose removed. Needs pose_landmarker_heavy.task model file.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Reference Library",
+    "predicate": "status",
+    "object": "44 videos captured, 17 with content, 1005 poses extracted from FzO1f1s4Bs8 (best reference). Stored at /home/bbrelin/ShatteredArcana/Art/Reference/",
+    "org": "mythforge"
+  },
+  {
+    "subject": "YouTube Capture",
+    "predicate": "issue",
+    "object": "27 of 44 captures blocked by YouTube bot detection even in headed mode. Script needs video-playing verification before recording.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Knight Blend Files",
+    "predicate": "current_best",
+    "object": "/tmp/animation_checkpoints/setup.blend (verified rig) and /tmp/knight_mblab_r8b.blend (latest mesh/materials)",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Motion Capture Tool",
+    "predicate": "location",
+    "object": "/home/bbrelin/ShatteredArcana/tools/motion_capture/yt_capture_win.py \u2014 47 search categories, configurable via searches.json",
+    "org": "mythforge"
+  }
+]

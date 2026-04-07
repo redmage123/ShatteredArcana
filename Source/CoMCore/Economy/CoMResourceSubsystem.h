@@ -48,15 +48,12 @@ public:
 	const FCoMMineData* GetMine(int32 MineID) const;
 
 	/** All mines owned by the given city. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Resources")
-	TArray<const FCoMMineData*> GetMinesForCity(int32 CityID) const;
 
 	/**
 	 * Compute the resource yield for a mine this turn.
 	 * Based on mine level, workers assigned, and enchantments.
 	 * Returns 0 for exhausted or under-construction mines.
 	 */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Resources")
 	int32 GetResourceYield(int32 MineID) const;
 
 	// -----------------------------------------------------------------
@@ -67,23 +64,18 @@ public:
 	 * Establish a trade route between two cities for the given good.
 	 * Returns RouteID, or -1 on failure.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Resources")
 	int32 EstablishTradeRoute(int32 SourceCityID, int32 DestCityID, ECoMResource Good);
 
 	/** Cancel an active trade route. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Resources")
 	void CancelTradeRoute(int32 RouteID);
 
 	/** Calculate revenue, check raid risk, spread disease along routes. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Resources")
 	void ProcessTradeTurn();
 
 	/** Return trade route by ID, or nullptr. */
 	const FCoMTradeRoute* GetTradeRoute(int32 RouteID) const;
 
 	/** All trade routes involving the given city (source or dest). */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Resources")
-	TArray<const FCoMTradeRoute*> GetRoutesForCity(int32 CityID) const;
 
 	// -----------------------------------------------------------------
 	// Disease
@@ -93,19 +85,15 @@ public:
 	 * Start a disease outbreak in the given city.
 	 * Returns OutbreakID.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Resources")
 	int32 StartOutbreak(int32 CityID, ECoMDiseaseType Type);
 
 	/** Declare quarantine on a city. Stops trade routes, reduces spread. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Resources")
 	void DeclareQuarantine(int32 CityID);
 
 	/** Advance disease: spread along trade routes, increase severity, check cure. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Resources")
 	void ProcessDiseaseTurn();
 
 	/** All active outbreaks in the given city. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Resources")
 	TArray<FCoMDiseaseOutbreak> GetOutbreaksForCity(int32 CityID) const;
 
 	// -----------------------------------------------------------------

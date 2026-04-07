@@ -53,10 +53,10 @@ struct COMCORE_API FCoMTileData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 RoadLevel = 0;
 
 	/** Per-wizard fog-revealed bitmask (bit N = wizard N has ever seen this tile). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) uint32 FogRevealed = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 FogRevealed = 0;
 
 	/** Per-wizard current-vision bitmask (bit N = wizard N sees this tile now). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) uint32 CurrentVision = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 CurrentVision = 0;
 
 	/** Active corruption type on this tile (None = uncorrupted). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMCorruptionType Corruption = ECoMCorruptionType::None;

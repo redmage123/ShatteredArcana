@@ -30,7 +30,7 @@ struct COMCORE_API FCoMCitySeed
 	int32 WizardIndex = CoM::WIZARD_INDEX_NONE;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 InfluenceRadius = CoM::MAX_INFLUENCE_RADIUS;
+	int32 InfluenceRadius;
 };
 
 /**
@@ -92,7 +92,7 @@ public:
 	/** Register a city or tower as an influence source. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Territory")
 	void SetCitySeed(ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position, int32 WizardIndex,
-	                 int32 InfluenceRadius = CoM::MAX_INFLUENCE_RADIUS);
+	                 int32 InfluenceRadius);
 
 	/** Remove a previously registered city seed. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Territory")

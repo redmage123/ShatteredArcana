@@ -15,20 +15,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCityPopulationChanged, int32, 
 /**
  * Data for a single city enchantment instance (buff or curse applied to a city).
  */
-USTRUCT(BlueprintType)
-struct COMCORE_API FCoMEnchantmentInstance
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 EnchantmentID = -1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 CasterWizardIndex = -1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 TurnsRemaining = -1; // -1 = permanent until dispelled
-};
+// (struct defined in CoMStructs.h)
 
 /**
  * Full state for a single city in the world.
@@ -163,11 +150,9 @@ public:
 	const FCoMCityData* GetCity(int32 CityID) const;
 
 	/** All cities owned by a given wizard. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Cities")
 	TArray<const FCoMCityData*> GetCitiesForWizard(int32 WizardIndex) const;
 
 	/** All cities on a given plane (any layer). */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Cities")
 	TArray<const FCoMCityData*> GetCitiesOnPlane(ECoMPlane Plane) const;
 
 	// -----------------------------------------------------------------

@@ -41,23 +41,11 @@ public:
 
 	// --------------- Queries ---------------
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|LeyLines")
-	const FCoMLeyLine* GetLeyLine(int32 ID) const;
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Portals")
-	const FCoMPortal* GetPortal(int32 ID) const;
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|LeyLines")
-	TArray<const FCoMLeyLine*> GetLeyLinesOnPlane(ECoMPlane Plane) const;
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Portals")
-	TArray<const FCoMPortal*> GetPortalsOnPlane(ECoMPlane Plane) const;
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|LeyLines")
-	TArray<const FCoMLeyIntersection*> GetIntersectionsOnPlane(ECoMPlane Plane) const;
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Portals")
-	const FCoMPortal* FindNearestPortal(ECoMPlane Plane, FIntPoint Position) const;
 
 private:
 	// --------------- Storage ---------------

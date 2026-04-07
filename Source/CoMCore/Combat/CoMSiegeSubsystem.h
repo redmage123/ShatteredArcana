@@ -53,27 +53,20 @@ public:
 	const FCoMSiegeState* GetSiege(int32 SiegeID) const;
 
 	/** Return all active siege states. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Siege")
-	TArray<const FCoMSiegeState*> GetActiveSieges() const;
 
 	/** True if the given city is currently under siege. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Siege")
 	bool IsCityUnderSiege(int32 CityID) const;
 
 	/** Deploy a siege equipment unit to an active siege. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Siege")
 	void DeploySiegeEquipment(int32 SiegeID, int32 EquipmentUnitID);
 
 	/** Resolve a direct assault attempt against the city. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Siege")
 	void AttemptAssault(int32 SiegeID);
 
 	/** Offer surrender to defender. Returns true if defender accepts. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Siege")
 	bool OfferSurrender(int32 SiegeID);
 
 	/** Cut supply lines to accelerate starvation. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|Siege")
 	void CutSupplyLines(int32 SiegeID);
 
 	// -----------------------------------------------------------------

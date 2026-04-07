@@ -142,11 +142,9 @@ public:
 	const FCoMFleet* GetFleet(int32 FleetID) const;
 
 	/** All fleets owned by a given wizard. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Naval")
 	TArray<const FCoMFleet*> GetFleetsForWizard(int32 WizardIndex) const;
 
 	/** All fleets at the given map position on a plane. */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Naval")
 	TArray<const FCoMFleet*> GetFleetsAtPosition(ECoMPlane Plane, FIntPoint Position) const;
 
 	// -----------------------------------------------------------------

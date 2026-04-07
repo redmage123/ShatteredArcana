@@ -46,7 +46,7 @@ struct FCoMSpyAgent
 
     /** Target tile for location-based missions. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FIntPoint TargetTile = FIntPoint(-1, -1);
+    FIntPoint TargetTile;
 
     /** Turns remaining on current mission. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -181,67 +181,52 @@ public:
     TArray<FCoMSpyAgent> GetAgents(int32 WizardId) const;
 
     /** Get a specific agent. */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
-    FCoMSpyAgent* GetAgent(int32 AgentId);
 
     /** Dismiss an agent. */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     void DismissAgent(int32 AgentId);
 
     // ── Missions ─────────────────────────────────────────────────────────────
 
     /** Send an agent on a mission. Returns true if mission started. */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     bool AssignMission(int32 AgentId, ECoMAgentMission Mission, int32 TargetWizardId,
-                       FIntPoint TargetTile = FIntPoint(-1, -1));
+                       FIntPoint TargetTile);
 
     /** Cancel a mission in progress. Agent returns to idle. */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     void CancelMission(int32 AgentId);
 
     /** Get estimated success chance for a mission (0-100). */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     int32 GetMissionSuccessChance(int32 AgentId, ECoMAgentMission Mission,
                                   int32 TargetWizardId) const;
 
     /** Get duration in turns for a mission type. */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     int32 GetMissionDuration(ECoMAgentMission Mission) const;
 
     /** Get recent mission results for a wizard. */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     TArray<FCoMMissionResult> GetMissionHistory(int32 WizardId, int32 MaxResults = 10) const;
 
     // ── Counterintelligence ──────────────────────────────────────────────────
 
     /** Set security budget for a wizard (gold per turn spent on counter-espionage). */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     void SetSecurityBudget(int32 WizardId, int32 Budget);
 
     /** Assign agents to counterintelligence duty. */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     void AssignCounterSpy(int32 WizardId, int32 AgentId);
 
     /** Get counterintelligence status for a wizard. */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     FCoMCounterIntel GetCounterIntel(int32 WizardId) const;
 
     /** Execute a captured enemy agent (removes them, reputation impact). */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     void ExecuteCapturedAgent(int32 WizardId, int32 CapturedAgentId);
 
     /** Ransom a captured agent back (gain resources, agent returns to enemy). */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     void RansomCapturedAgent(int32 WizardId, int32 CapturedAgentId);
 
     /** Turn a captured agent into a double agent. */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     bool TurnCapturedAgent(int32 WizardId, int32 CapturedAgentId);
 
     // ── Turn Processing ──────────────────────────────────────────────────────
 
     /** Process all espionage activities for the turn. */
-    UFUNCTION(BlueprintCallable, Category = "Espionage")
     void ProcessTurn(int32 CurrentTurn);
 
 private:

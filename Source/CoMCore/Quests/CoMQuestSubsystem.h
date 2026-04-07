@@ -321,7 +321,6 @@ public:
     TArray<FCoMQuest> GetCompletedQuests(int32 WizardId) const;
 
     /** Get a specific quest by ID. */
-    UFUNCTION(BlueprintCallable, Category = "Quests")
     const FCoMQuest* GetQuest(int32 QuestId) const;
 
     /** Get active quest count for a wizard. */

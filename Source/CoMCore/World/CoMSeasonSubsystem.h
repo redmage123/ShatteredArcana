@@ -125,7 +125,7 @@ private:
 
 	/** Seasonal state per plane (current season + turn counter). */
 	UPROPERTY()
-	TMap<ECoMPlane, FCoMSeasonalState> PlaneSeasons;
+	TMap<ECoMPlane, FCoMPlaneSeasonConfig> PlaneSeasons;
 
 	/** Per-plane configuration (turns per year, modifier tables). */
 	TMap<ECoMPlane, FCoMPlaneSeasonConfig> PlaneConfigs;
