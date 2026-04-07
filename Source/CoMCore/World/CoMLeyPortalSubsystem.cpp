@@ -87,7 +87,7 @@ void UCoMLeyPortalSubsystem::GenerateLeyLines(UCoMWorldMapSubsystem* Map,
 			FCoMLeyLine Line;
 			Line.LeyLineID = NextLeyLineID++;
 			Line.Plane = Plane;
-			Line.Layer = ECoMLayer::Surface;
+			Line.Layer = ECoMMapLayer::Surface;
 			Line.Alignment = RandomAlignment(Rng);
 			Line.Path = MoveTemp(Path);
 			Line.PowerLevel = FFixed64(Line.Path.Num());
@@ -99,7 +99,7 @@ void UCoMLeyPortalSubsystem::GenerateLeyLines(UCoMWorldMapSubsystem* Map,
 			// 8. Mark each tile with this ley line ID.
 			for (const FIntPoint& Pt : Line.Path)
 			{
-				FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMLayer::Surface,
+				FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMMapLayer::Surface,
 														 Pt.X, Pt.Y);
 				if (Tile)
 				{
@@ -343,7 +343,7 @@ void UCoMLeyPortalSubsystem::DetectIntersections(ECoMPlane Plane)
 			Intersection.IntersectionID = NextIntersectionID++;
 			Intersection.Position = Pair.Key;
 			Intersection.Plane = Plane;
-			Intersection.Layer = ECoMLayer::Surface;
+			Intersection.Layer = ECoMMapLayer::Surface;
 			Intersection.ConvergingLeyLineIDs = Pair.Value;
 			Intersection.bHasNexus = true;
 			Intersection.ControllingWizard = INDEX_NONE;
@@ -416,8 +416,8 @@ void UCoMLeyPortalSubsystem::GeneratePortals(UCoMWorldMapSubsystem* Map,
 					: ECoMPortalType::PlanarRift;
 
 				CreatePortalPair(Map, Type,
-								 Plane, ECoMLayer::Surface, Src->Position,
-								 DestPlane, ECoMLayer::Surface, Dst->Position,
+								 Plane, ECoMMapLayer::Surface, Src->Position,
+								 DestPlane, ECoMMapLayer::Surface, Dst->Position,
 								 /*bBidirectional=*/true);
 			}
 		}
@@ -455,8 +455,8 @@ void UCoMLeyPortalSubsystem::GeneratePortals(UCoMWorldMapSubsystem* Map,
 
 				// Surface -> Underdark at same position on same plane.
 				CreatePortalPair(Map, ECoMPortalType::UnderdarkEntrance,
-								 Plane, ECoMLayer::Surface, Pos,
-								 Plane, ECoMLayer::Underdark, Pos,
+								 Plane, ECoMMapLayer::Surface, Pos,
+								 Plane, ECoMMapLayer::Underdark, Pos,
 								 /*bBidirectional=*/true);
 			}
 		}
@@ -494,8 +494,8 @@ void UCoMLeyPortalSubsystem::GeneratePortals(UCoMWorldMapSubsystem* Map,
 
 				// Surface -> Underwater at same position on same plane.
 				CreatePortalPair(Map, ECoMPortalType::UnderwaterAccess,
-								 Plane, ECoMLayer::Surface, Pos,
-								 Plane, ECoMLayer::Underwater, Pos,
+								 Plane, ECoMMapLayer::Surface, Pos,
+								 Plane, ECoMMapLayer::Underwater, Pos,
 								 /*bBidirectional=*/true);
 			}
 		}
@@ -686,7 +686,7 @@ bool UCoMLeyPortalSubsystem::IsTilePassable(UCoMWorldMapSubsystem* Map,
 											 ECoMPlane Plane,
 											 int32 X, int32 Y) const
 {
-	const FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMLayer::Surface, X, Y);
+	const FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMMapLayer::Surface, X, Y);
 	if (!Tile)
 	{
 		return false;
@@ -694,27 +694,27 @@ bool UCoMLeyPortalSubsystem::IsTilePassable(UCoMWorldMapSubsystem* Map,
 	// Ocean tiles are impassable for ley lines.
 	// Assumes ECoMTerrain::Ocean / DeepOcean exist on the tile.
 	return Tile->Terrain != ECoMTerrain::Ocean
-		&& Tile->Terrain != ECoMTerrain::DeepOcean;
+		&& Tile->Terrain != ECoMTerrain::DeepTrench;
 }
 
 bool UCoMLeyPortalSubsystem::IsMountainTile(UCoMWorldMapSubsystem* Map,
 											 ECoMPlane Plane,
 											 int32 X, int32 Y) const
 {
-	const FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMLayer::Surface, X, Y);
+	const FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMMapLayer::Surface, X, Y);
 	if (!Tile)
 	{
 		return false;
 	}
-	return Tile->Terrain == ECoMTerrain::Mountain
-		|| Tile->Terrain == ECoMTerrain::VolcanicMountain;
+	return Tile->Terrain == ECoMTerrain::Mountains
+		|| Tile->Terrain == ECoMTerrain::Mountains;
 }
 
 bool UCoMLeyPortalSubsystem::IsCoastalTile(UCoMWorldMapSubsystem* Map,
 											ECoMPlane Plane,
 											int32 X, int32 Y) const
 {
-	const FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMLayer::Surface, X, Y);
+	const FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMMapLayer::Surface, X, Y);
 	if (!Tile)
 	{
 		return false;

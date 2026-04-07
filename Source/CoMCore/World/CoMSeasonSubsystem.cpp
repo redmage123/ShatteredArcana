@@ -125,9 +125,9 @@ int32 UCoMSeasonSubsystem::GetTurnsPerSeason(ECoMPlane Plane) const
 FCoMSeasonEconomyModifiers UCoMSeasonSubsystem::MakeDefaultModifiers()
 {
 	FCoMSeasonEconomyModifiers Mods;
-	Mods.FoodMultiplier       = FFixed64(1, 0);
-	Mods.TradeMultiplier      = FFixed64(1, 0);
-	Mods.ProductionMultiplier = FFixed64(1, 0);
+	Mods.FoodMultiplier       = FFixed64(1);
+	Mods.TradeMultiplier      = FFixed64(1);
+	Mods.ProductionMultiplier = FFixed64(1);
 	Mods.bBuildingAllowed     = true;
 	return Mods;
 }

@@ -287,7 +287,7 @@ void UCoMWeatherSubsystem::GenerateWeatherFront(ECoMPlane Plane)
 	Zone.Intensity       = FFixed64(WeatherRng.RandRange(50, 100)) / FFixed64(100);
 
 	// Random drift direction: -1, 0, or 1 per axis
-	Zone.MovementDirection.X = WeatherRng.RandRange(-1, 1);
+	Zone.MovementDirection = FVector2D(WeatherRng.RandRange(-1, 1);
 	Zone.MovementDirection.Y = WeatherRng.RandRange(-1, 1);
 	Zone.MovementSpeed       = WeatherRng.RandRange(0, 2);
 

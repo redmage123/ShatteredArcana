@@ -174,6 +174,8 @@ private:
 	UPROPERTY()
 	TArray<FCoMDiseaseOutbreak> AllOutbreaks;
 
+	FRandomStream ResourceRng;
+
 	int32 NextMineID     = 1;
 	int32 NextRouteID    = 1;
 	int32 NextOutbreakID = 1;

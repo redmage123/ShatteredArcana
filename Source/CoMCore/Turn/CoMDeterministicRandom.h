@@ -91,8 +91,8 @@ struct COMCORE_API FCoMDeterministicRandom
     // ── Serializable state ────────────────────────────────────────────────────
     // Both fields must be included in FCoMGameStateSnapshot for determinism.
 
-    UPROPERTY(SaveGame) int64 State = 0;
-    UPROPERTY(SaveGame) int64 Inc   = 0;
+    UPROPERTY(SaveGame) uint64 State = 0;
+    UPROPERTY(SaveGame) uint64 Inc   = 0;
 
 private:
     FORCEINLINE uint32 NextUInt32_Internal()

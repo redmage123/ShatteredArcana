@@ -352,4 +352,7 @@ namespace CoM
 	/** World-space size of a single map tile in Unreal units (cm). */
 	constexpr float TILE_WORLD_SIZE_CM = 200.0f;
 
+// City
+static constexpr int32 MIN_CITY_DISTANCE = 3;
+
 } // namespace CoM

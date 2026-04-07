@@ -164,6 +164,6 @@ private:
 	int32 CurrentSeed = 0;
 
 	/** Map dimensions — sourced from CoMConstants.h, cached for convenience. */
-	static constexpr int32 MapWidth = 160;
-	static constexpr int32 MapHeight = 100;
+	static constexpr int32 MapWidth = CoM::MAP_WIDTH;
+	static constexpr int32 MapHeight = CoM::MAP_HEIGHT;
 };

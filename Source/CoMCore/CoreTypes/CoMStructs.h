@@ -53,13 +53,13 @@ struct COMCORE_API FCoMTileData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 RoadLevel = 0;
 
 	/** Per-wizard fog-revealed bitmask (bit N = wizard N has ever seen this tile). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 FogRevealed = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) uint32 FogRevealed = 0;
 
 	/** Per-wizard current-vision bitmask (bit N = wizard N sees this tile now). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 CurrentVision = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) uint32 CurrentVision = 0;
 
 	/** Active corruption type on this tile (None = uncorrupted). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMCorruptionType Corruption = ECoMCorruptionType::MAX;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMCorruptionType Corruption = ECoMCorruptionType::None;
 
 	/** Ley line presence: bitmask of ley line IDs passing through (compact encoding). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<int32> LeyLineIDs;
@@ -292,7 +292,7 @@ struct COMCORE_API FCoMWeatherState
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<FCoMWeatherZone> ActiveZones;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32                   SeasonTurnCounter = 0;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMSeason              CurrentSeason = ECoMSeason::Season1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMSeason              CurrentSeason = ECoMSeason::Spring;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -927,7 +927,7 @@ struct COMCORE_API FCoMCorruptionZone
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32              ZoneID            = -1;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMCorruptionType Type              = ECoMCorruptionType::MAX;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMCorruptionType Type              = ECoMCorruptionType::None;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane          Plane             = ECoMPlane::Aurelith;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMapLayer       Layer             = ECoMMapLayer::Surface;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint          Center;

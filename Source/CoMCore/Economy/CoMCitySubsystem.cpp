@@ -385,7 +385,7 @@ int32 UCoMCitySubsystem::ComputeTileFood(ECoMPlane Plane, ECoMMapLayer Layer,
 		return 0;
 	}
 
-	const FCoMTileData* Tile = MapSub->GetTileData(Plane, Layer, TilePos);
+	const FCoMTileData* Tile = MapSub->GetTile(Plane, Layer, TilePos);
 	if (!Tile)
 	{
 		return 0;
@@ -405,7 +405,7 @@ int32 UCoMCitySubsystem::ComputeTileFood(ECoMPlane Plane, ECoMMapLayer Layer,
 		case ECoMTerrain::Swamp:       return 1;
 		case ECoMTerrain::Desert:      return 0;
 		case ECoMTerrain::Tundra:      return 1;
-		case ECoMTerrain::Mountain:    return 0;
+		case ECoMTerrain::Mountains:    return 0;
 		case ECoMTerrain::Ocean:       return 0;
 		case ECoMTerrain::Shore:       return 1;
 		default:                       return 0;

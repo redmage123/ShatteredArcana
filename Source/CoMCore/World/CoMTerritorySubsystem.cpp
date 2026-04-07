@@ -39,14 +39,14 @@ const TArray<ECoMMapLayer>& UCoMTerritorySubsystem::AllLayers()
 const TArray<ECoMPlane>& UCoMTerritorySubsystem::AllPlanes()
 {
 	static const TArray<ECoMPlane> Planes = {
-		ECoMPlane::Arcanus,
-		ECoMPlane::Myrror,
-		ECoMPlane::Chaos,
-		ECoMPlane::Order,
-		ECoMPlane::Nature,
-		ECoMPlane::Death,
-		ECoMPlane::Life,
-		ECoMPlane::Sorcery
+		ECoMPlane::Aurelith,
+		ECoMPlane::Noctharion,
+		ECoMPlane::Verdantis,
+		ECoMPlane::Infernyx,
+		ECoMPlane::Aethermist,
+		ECoMPlane::Abyssal,
+		ECoMPlane::Ethereal,
+		ECoMPlane::Feywild
 	};
 	return Planes;
 }
@@ -73,7 +73,7 @@ bool UCoMTerritorySubsystem::IsTileOcean(const UCoMWorldMapSubsystem* Map, ECoMP
 		return false;
 	}
 	// Ocean terrain type blocks ownership.
-	return Tile->TerrainType == ECoMTerrainType::Ocean;
+	return Tile->Terrain == ECoMTerrain::Ocean;
 }
 
 bool UCoMTerritorySubsystem::IsTileMountain(const UCoMWorldMapSubsystem* Map, ECoMPlane Plane,
@@ -88,7 +88,7 @@ bool UCoMTerritorySubsystem::IsTileMountain(const UCoMWorldMapSubsystem* Map, EC
 	{
 		return false;
 	}
-	return Tile->TerrainType == ECoMTerrainType::Mountain;
+	return Tile->Terrain == ECoMTerrain::Mountains;
 }
 
 // ============================================================================
@@ -364,6 +364,7 @@ void UCoMTerritorySubsystem::RecalculatePlane(UCoMWorldMapSubsystem* Map, ECoMPl
 int32 UCoMTerritorySubsystem::GetTileOwner(ECoMPlane Plane, ECoMMapLayer Layer, int32 X,
                                             int32 Y) const
 {
+	Position.X = ((Position.X % CoM::MAP_WIDTH) + CoM::MAP_WIDTH) % CoM::MAP_WIDTH;
 	if (X < 0 || X >= MAP_WIDTH || Y < 0 || Y >= MAP_HEIGHT)
 	{
 		return CoM::WIZARD_INDEX_NONE;

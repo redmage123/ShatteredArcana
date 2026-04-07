@@ -37,7 +37,10 @@ void UCoMWorldMapSubsystem::InitializeLayers()
 		ECoMPlane::Noctharion,
 		ECoMPlane::Verdantis,
 		ECoMPlane::Infernyx,
-		ECoMPlane::Aethermist
+		ECoMPlane::Aethermist,
+		ECoMPlane::Abyssal,
+		ECoMPlane::Ethereal,
+		ECoMPlane::Feywild
 	};
 
 	const TArray<ECoMMapLayer> AllLayers =
@@ -234,7 +237,10 @@ void UCoMWorldMapSubsystem::ClearAllCurrentVision(int32 WizardIndex)
 	const TArray<ECoMPlane> AllPlanes =
 	{
 		ECoMPlane::Aurelith, ECoMPlane::Noctharion, ECoMPlane::Verdantis,
-		ECoMPlane::Infernyx, ECoMPlane::Aethermist
+		ECoMPlane::Infernyx, ECoMPlane::Aethermist,
+		ECoMPlane::Abyssal,
+		ECoMPlane::Ethereal,
+		ECoMPlane::Feywild
 	};
 	const TArray<ECoMMapLayer> AllLayers =
 	{

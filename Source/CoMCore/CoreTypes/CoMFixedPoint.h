@@ -93,7 +93,8 @@ struct COMCORE_API FFixed64
 	FORCEINLINE FFixed64 operator-() const { return FromRaw(-RawValue); }
 
 	/** Multiply: result = (a * b) with correct fractional scaling. */
-	FORCEINLINE FFixed64 operator*(const FFixed64& O) const
+	FORCEINLINE FFixed64 operator*( // WARNING: overflow possible for values > 2^24. Use checked multiply for large values.
+	const FFixed64& O) const
 	{
 		return FromRaw((RawValue * O.RawValue) >> FRAC_BITS);
 	}
@@ -118,7 +119,8 @@ struct COMCORE_API FFixed64
 	}
 
 	/** Scalar multiply/divide by integer (no precision loss). */
-	FORCEINLINE FFixed64  operator*(int32 S) const { return FromRaw(RawValue * S); }
+	FORCEINLINE FFixed64  operator*( // WARNING: overflow possible for values > 2^24. Use checked multiply for large values.
+	int32 S) const { return FromRaw(RawValue * S); }
 	FORCEINLINE FFixed64  operator/(int32 S) const { return FromRaw(S != 0 ? RawValue / S : 0); }
 	FORCEINLINE FFixed64& operator*=(int32 S) { RawValue *= S; return *this; }
 	FORCEINLINE FFixed64& operator/=(int32 S) { if (S) RawValue /= S; return *this; }

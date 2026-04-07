@@ -358,16 +358,16 @@ FCoMPathResult UCoMPathfinder::FindPath(
 				continue;
 			}
 
-			const FCoMTileData& TileData = Map->GetTile(Current.Plane, Current.Layer, NX, NY);
+			const FCoMTileData* TileData = Map->GetTile(Current.Plane, Current.Layer, NX, NY);
 
 			// Check passability
-			if (TileData.bImpassable || IsTerrainImpassable(TileData.Terrain))
+			if (TileData.bImpassable || IsTerrainImpassable(TileData->Terrain))
 			{
 				continue;
 			}
 
 			// Compute movement cost
-			FFixed64 MoveCost = GetTerrainBaseCost(TileData.Terrain) * TileData.MoveCostModifier;
+			FFixed64 MoveCost = GetTerrainBaseCost(TileData->Terrain) * TileData.MoveCostModifier;
 
 			// Ley line bonus: 0.5x multiplier
 			if (TileData.LeyLineIDs.Num() > 0)
@@ -408,7 +408,7 @@ FCoMPathResult UCoMPathfinder::FindPath(
 
 			if (CurrentTile.PortalID >= 0)
 			{
-				const FCoMPortal& Portal = LeyPortals->GetPortal(CurrentTile.PortalID);
+				const FCoMPortal* Portal = LeyPortals->GetPortal(CurrentTile.PortalID);
 
 				if (Portal.bAlwaysActive)
 				{
@@ -425,9 +425,9 @@ FCoMPathResult UCoMPathfinder::FindPath(
 
 					if (bAtSource)
 					{
-						DestPlane = Portal.DestPlane;
-						DestLayer = Portal.DestLayer;
-						DestPos = Portal.DestPosition;
+						DestPlane = Portal->DestPlane;
+						DestLayer = Portal->DestLayer;
+						DestPos = Portal->DestPosition;
 					}
 					else if (Portal.bBidirectional)
 					{
@@ -438,7 +438,7 @@ FCoMPathResult UCoMPathfinder::FindPath(
 					else
 					{
 						// Standing on destination side of a one-way portal; no traversal
-						goto SkipPortal;
+						continue; // was: goto SkipPortal
 					}
 
 					{
@@ -472,7 +472,7 @@ FCoMPathResult UCoMPathfinder::FindPath(
 					}
 				}
 			}
-			SkipPortal:;
+			// SkipPortal: (removed goto target);
 		}
 	}
 

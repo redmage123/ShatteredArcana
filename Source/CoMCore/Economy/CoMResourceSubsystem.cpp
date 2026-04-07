@@ -54,7 +54,7 @@ int32 UCoMResourceSubsystem::BuildMine(int32 CityID, ECoMPlane Plane, FIntPoint 
 	Mine.MineID = MineID;
 	Mine.Position = Position;
 	Mine.Plane = Plane;
-	Mine.ResourceType = ECoMResource::Iron; // TODO: read from tile data
+	Mine.ResourceType = Tile->Resource // Read actual tile resource; // TODO: read from tile data
 	Mine.OwnerCityID = CityID;
 	Mine.MineLevel = 0; // Under construction
 	Mine.WorkersAssigned = 0;
@@ -177,8 +177,8 @@ int32 UCoMResourceSubsystem::EstablishTradeRoute(int32 SourceCityID, int32 DestC
 	// Check for duplicate route
 	for (const FCoMTradeRoute& Route : AllTradeRoutes)
 	{
-		if ((Route.SourceCity == SourceCityID && Route.DestCity == DestCityID) ||
-		    (Route.SourceCity == DestCityID && Route.DestCity == SourceCityID))
+		if ((Route.SourceCityID == SourceCityID && Route.DestCityID == DestCityID) ||
+		    (Route.SourceCityID == DestCityID && Route.DestCityID == SourceCityID))
 		{
 			if (Route.Good == Good)
 			{
@@ -192,8 +192,8 @@ int32 UCoMResourceSubsystem::EstablishTradeRoute(int32 SourceCityID, int32 DestC
 
 	FCoMTradeRoute Route;
 	Route.RouteID = RouteID;
-	Route.SourceCity = SourceCityID;
-	Route.DestCity = DestCityID;
+	Route.SourceCityID = SourceCityID;
+	Route.DestCityID = DestCityID;
 	Route.Good = Good;
 	Route.Quantity = 1; // Base quantity
 	Route.RouteLength = 10; // TODO: compute from pathfinder
@@ -267,10 +267,10 @@ void UCoMResourceSubsystem::ProcessTradeTurn()
 		{
 			if (Outbreak.bQuarantined) continue;
 
-			if (Outbreak.CityID == Route.SourceCity || Outbreak.CityID == Route.DestCity)
+			if (Outbreak.CityID == Route.SourceCityID || Outbreak.CityID == Route.DestCityID)
 			{
-				const int32 TargetCity = (Outbreak.CityID == Route.SourceCity)
-					? Route.DestCity : Route.SourceCity;
+				const int32 TargetCity = (Outbreak.CityID == Route.SourceCityID)
+					? Route.DestCityID : Route.SourceCityID;
 
 				// Check if target already has this disease
 				bool bAlreadyInfected = false;
@@ -310,7 +310,7 @@ TArray<const FCoMTradeRoute*> UCoMResourceSubsystem::GetRoutesForCity(int32 City
 	TArray<const FCoMTradeRoute*> Result;
 	for (const FCoMTradeRoute& Route : AllTradeRoutes)
 	{
-		if (Route.SourceCity == CityID || Route.DestCity == CityID)
+		if (Route.SourceCityID == CityID || Route.DestCityID == CityID)
 		{
 			Result.Add(&Route);
 		}
@@ -382,7 +382,7 @@ void UCoMResourceSubsystem::DeclareQuarantine(int32 CityID)
 	// Suspend trade routes involving this city
 	for (FCoMTradeRoute& Route : AllTradeRoutes)
 	{
-		if (Route.SourceCity == CityID || Route.DestCity == CityID)
+		if (Route.SourceCityID == CityID || Route.DestCityID == CityID)
 		{
 			Route.GoldPerTurn = 0; // No revenue during quarantine
 			RoutesStopped++;

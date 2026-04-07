@@ -18,7 +18,7 @@ struct COMCORE_API FCoMCitySeed
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	ECoMPlane Plane = ECoMPlane::Arcanus;
+	ECoMPlane Plane = ECoMPlane::Aurelith;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	ECoMMapLayer Layer = ECoMMapLayer::Surface;
@@ -41,7 +41,7 @@ struct FCoMLayerKey
 {
 	GENERATED_BODY()
 
-	ECoMPlane Plane = ECoMPlane::Arcanus;
+	ECoMPlane Plane = ECoMPlane::Aurelith;
 	ECoMMapLayer Layer = ECoMMapLayer::Surface;
 
 	FCoMLayerKey() = default;

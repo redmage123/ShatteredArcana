@@ -4,8 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
-#include "CoMTypes.h"
-#include "FixedPoint/Fixed64.h"
+#include "CoMCore/CoreTypes/CoMEnums.h"
+#include "CoMCore/CoreTypes/CoMStructs.h"
+#include "CoMCore/CoreTypes/CoMFixedPoint.h"
 #include "CoMSeasonSubsystem.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnSeasonChanged, ECoMPlane, Plane, ECoMSeason, OldSeason, ECoMSeason, NewSeason);

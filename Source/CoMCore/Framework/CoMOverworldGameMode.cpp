@@ -27,7 +27,7 @@ void ACoMOverworldGameMode::BeginPlay()
 	{
 		// WorldMap and Turn subsystems auto-initialise via UWorldSubsystem::Initialize().
 		// Log readiness so QA can confirm in the PIE output log.
-		const UCoMWorldMapSubsystem* MapSys  = W->GetSubsystem<UCoMWorldMapSubsystem>();
+		const UCoMWorldMapSubsystem* MapSys  = GetGameInstance()->GetSubsystem<UCoMWorldMapSubsystem>();
 		const UCoMTurnSubsystem*     TurnSys = W->GetSubsystem<UCoMTurnSubsystem>();
 
 		UE_LOG(LogTemp, Log, TEXT("[CoMOverworldGameMode] WorldMapSubsystem ready: %s"),
@@ -57,7 +57,7 @@ void ACoMOverworldGameMode::StartNewGame(int32 NumWizards)
 	if (!W) { return; }
 
 	// Initialise the 15-layer world map (5 planes × 3 layers).
-	UCoMWorldMapSubsystem* MapSys = W->GetSubsystem<UCoMWorldMapSubsystem>();
+	UCoMWorldMapSubsystem* MapSys = GetGameInstance()->GetSubsystem<UCoMWorldMapSubsystem>();
 	if (MapSys)
 	{
 		MapSys->InitializeLayers();
