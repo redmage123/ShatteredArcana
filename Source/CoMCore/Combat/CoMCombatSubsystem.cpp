@@ -6,41 +6,42 @@
 // Fixed-point constants
 // =====================================================================
 
+
 namespace CoMCombatConstants
 {
 	static const int32    MaxCombatRounds = 50;
 
 	// Base hit chance: (30 + attack_value) %
-	static const FFixed64 BaseHitChance(30, 0);
+	static const FFixed64 BaseHitChance = FFixed64::FromRaw(1966080);
 
 	// Defense block: (defense_value * 3) %
-	static const FFixed64 DefenseBlockMultiplier(3, 0);
+	static const FFixed64 DefenseBlockMultiplier = FFixed64::FromRaw(196608);
 
 	// XP per enemy unit killed, awarded to each survivor
 	static const int32    XPPerKill = 2;
 
 	// Hero tier attack bonuses (additive to attack rolls)
-	static const FFixed64 BonusAdventurer(0, 500);   // +5%  (0.05)
-	static const FFixed64 BonusHero(0, 1000);         // +10% (0.10)
-	static const FFixed64 BonusChampion(0, 1500);      // +15% (0.15)
-	static const FFixed64 BonusDemigod(0, 2500);       // +25% (0.25)
+	static const FFixed64 BonusAdventurer = FFixed64::FromRaw(500);   // +5%  (0.05)
+	static const FFixed64 BonusHero = FFixed64::FromRaw(1000);         // +10% (0.10)
+	static const FFixed64 BonusChampion = FFixed64::FromRaw(1500);      // +15% (0.15)
+	static const FFixed64 BonusDemigod = FFixed64::FromRaw(2500);       // +25% (0.25)
 
 	// Terrain defense modifiers
-	static const FFixed64 TerrainMountain(0, 3000);    // +30% defense
-	static const FFixed64 TerrainForest(0, 2000);      // +20% defense
-	static const FFixed64 TerrainHills(0, 1500);       // +15% defense
-	static const FFixed64 TerrainSwamp(-0, 1000);      // -10% defense (unstable ground)
-	static const FFixed64 TerrainDesert(0, 500);       // +5% defense (elevation)
+	static const FFixed64 TerrainMountain = FFixed64::FromRaw(3000);    // +30% defense
+	static const FFixed64 TerrainForest = FFixed64::FromRaw(2000);      // +20% defense
+	static const FFixed64 TerrainHills = FFixed64::FromRaw(1500);       // +15% defense
+	static const FFixed64 TerrainSwamp = FFixed64::FromRaw(-1000);      // -10% defense (unstable ground)
+	static const FFixed64 TerrainDesert = FFixed64::FromRaw(500);       // +5% defense (elevation)
 
 	// Weather modifiers (applied to ranged attack chance)
-	static const FFixed64 WeatherStorm(-0, 3000);      // -30% ranged
-	static const FFixed64 WeatherRain(-0, 1500);       // -15% ranged
-	static const FFixed64 WeatherFog(-0, 2000);        // -20% ranged
+	static const FFixed64 WeatherStorm = FFixed64::FromRaw(-3000);      // -30% ranged
+	static const FFixed64 WeatherRain = FFixed64::FromRaw(-1500);       // -15% ranged
+	static const FFixed64 WeatherFog = FFixed64::FromRaw(-2000);        // -20% ranged
 
 	// Percentage constants
-	static const FFixed64 Hundred(100, 0);
-	static const FFixed64 Zero(0, 0);
-	static const FFixed64 One(1, 0);
+	static const FFixed64 Hundred = FFixed64::FromRaw(6553600);
+	static const FFixed64 Zero = FFixed64::FromRaw(0);
+	static const FFixed64 One = FFixed64::FromRaw(65536);
 }
 
 // =====================================================================
@@ -66,10 +67,10 @@ FFixed64 UCoMCombatSubsystem::GetTerrainModifier(ECoMTerrain TerrainType)
 {
 	switch (TerrainType)
 	{
-	case ECoMTerrain::Mountain:    return CoMCombatConstants::TerrainMountain;
+	case ECoMTerrain::Mountains:    return CoMCombatConstants::TerrainMountain;
 	case ECoMTerrain::Forest:      return CoMCombatConstants::TerrainForest;
 	case ECoMTerrain::Hills:       return CoMCombatConstants::TerrainHills;
-	case ECoMTerrain::Swamp:       return FFixed64(0, 0) - FFixed64(0, 1000); // -10%
+	case ECoMTerrain::Swamp:       return FFixed64(0) - FFixed64::FromRaw(1000); // -10%
 	case ECoMTerrain::Desert:      return CoMCombatConstants::TerrainDesert;
 	default:                       return CoMCombatConstants::Zero;
 	}
@@ -79,9 +80,9 @@ FFixed64 UCoMCombatSubsystem::GetWeatherModifier(ECoMWeatherType WeatherType)
 {
 	switch (WeatherType)
 	{
-	case ECoMWeatherType::Storm:   return FFixed64(0, 0) - FFixed64(0, 3000); // -30%
-	case ECoMWeatherType::Rain:    return FFixed64(0, 0) - FFixed64(0, 1500); // -15%
-	case ECoMWeatherType::Fog:     return FFixed64(0, 0) - FFixed64(0, 2000); // -20%
+	case ECoMWeatherType::Clear:   return FFixed64(0) - FFixed64::FromRaw(3000); // -30%
+	case ECoMWeatherType::Rain:    return FFixed64(0) - FFixed64::FromRaw(1500); // -15%
+	case ECoMWeatherType::HeavyRain:     return FFixed64(0) - FFixed64::FromRaw(2000); // -20%
 	default:                       return CoMCombatConstants::Zero;
 	}
 }
@@ -135,8 +136,8 @@ FFixed64 UCoMCombatSubsystem::CalculateArmyPower(int32 ArmyID) const
 	for (const FCoMCombatUnitState& Unit : Units)
 	{
 		// Power = (MeleeAttack + RangedAttack) * FiguresRemaining + Defense * HP
-		FFixed64 AttackPower = (Unit.MeleeAttack + Unit.RangedAttack) * FFixed64(Unit.FiguresRemaining, 0);
-		FFixed64 DefPower    = Unit.Defense * FFixed64(Unit.HitPoints, 0);
+		FFixed64 AttackPower = (Unit.MeleeAttack + Unit.RangedAttack) * FFixed64(Unit.FiguresRemaining);
+		FFixed64 DefPower    = Unit.Defense * FFixed64(Unit.HitPoints);
 		TotalPower = TotalPower + AttackPower + DefPower;
 	}
 
@@ -344,7 +345,7 @@ void UCoMCombatSubsystem::ExecuteAttackRound(
 
 		// Number of attack dice = attack stat * figures remaining.
 		int32 AttackDice = static_cast<int32>(
-			(AttackStat * FFixed64(Attacker.FiguresRemaining, 0)).GetWhole());
+			(AttackStat * FFixed64(Attacker.FiguresRemaining)).ToInt32());
 
 		if (AttackDice <= 0)
 		{
@@ -370,7 +371,7 @@ void UCoMCombatSubsystem::ExecuteAttackRound(
 		}
 
 		// Clamp hit chance to [1, 95].
-		int32 HitChanceInt = FMath::Clamp(static_cast<int32>(HitChancePct.GetWhole()), 1, 95);
+		int32 HitChanceInt = FMath::Clamp(static_cast<int32>(HitChancePct.ToInt32()), 1, 95);
 
 		// Choose a target defender (round-robin distribution).
 		int32 TargetIndex = RngStream.RandRange(0, Defenders.Num() - 1);
@@ -384,7 +385,7 @@ void UCoMCombatSubsystem::ExecuteAttackRound(
 			EffectiveDefense = EffectiveDefense * (CoMCombatConstants::One + DefenseTerrainMod);
 		}
 		FFixed64 BlockChancePct = EffectiveDefense * CoMCombatConstants::DefenseBlockMultiplier;
-		int32 BlockChanceInt = FMath::Clamp(static_cast<int32>(BlockChancePct.GetWhole()), 0, 90);
+		int32 BlockChanceInt = FMath::Clamp(static_cast<int32>(BlockChancePct.ToInt32()), 0, 90);
 
 		// Roll each attack die.
 		int32 TotalHits = 0;

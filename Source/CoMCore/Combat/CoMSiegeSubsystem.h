@@ -6,7 +6,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
-#include "FixedPoint/Fixed64.h"
+#include "CoMCore/CoreTypes/CoMFixedPoint.h"
 #include "CoMSiegeSubsystem.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSiegeStarted, int32, SiegeID, int32, DefenderCityID);

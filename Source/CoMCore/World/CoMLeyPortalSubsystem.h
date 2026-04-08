@@ -4,9 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
-#include "CoMEnums.h"
-#include "CoMStructs.h"
-#include "CoMConstants.h"
+#include "CoMCore/CoreTypes/CoMEnums.h"
+#include "CoMCore/CoreTypes/CoMStructs.h"
+#include "CoMCore/CoreTypes/CoMConstants.h"
 #include "CoMLeyPortalSubsystem.generated.h"
 
 class UCoMWorldMapSubsystem;
@@ -47,6 +47,14 @@ public:
 
 
 
+
+	// Query helpers
+	const FCoMLeyLine* GetLeyLine(int32 LeyLineID) const;
+	const FCoMPortal* GetPortal(int32 PortalID) const;
+	TArray<const FCoMLeyLine*> GetLeyLinesOnPlane(ECoMPlane Plane) const;
+	TArray<const FCoMPortal*> GetPortalsOnPlane(ECoMPlane Plane) const;
+	TArray<const FCoMLeyIntersection*> GetIntersectionsOnPlane(ECoMPlane Plane) const;
+	const FCoMPortal* FindNearestPortal(ECoMPlane Plane, FIntPoint Position) const;
 private:
 	// --------------- Storage ---------------
 
@@ -111,7 +119,7 @@ private:
 	/** Create a portal pair and register on tiles. Returns the source portal ID. */
 	int32 CreatePortalPair(UCoMWorldMapSubsystem* Map,
 						   ECoMPortalType Type,
-						   ECoMPlane SrcPlane, ECoMLayer SrcLayer, FIntPoint SrcPos,
-						   ECoMPlane DstPlane, ECoMLayer DstLayer, FIntPoint DstPos,
+						   ECoMPlane SrcPlane, ECoMMapLayer SrcLayer, FIntPoint SrcPos,
+						   ECoMPlane DstPlane, ECoMMapLayer DstLayer, FIntPoint DstPos,
 						   bool bBidirectional);
 };

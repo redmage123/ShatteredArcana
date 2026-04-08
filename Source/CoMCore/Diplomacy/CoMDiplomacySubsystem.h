@@ -131,7 +131,7 @@ struct FCoMDiplomaticPersonality
     int32 Forgiveness = 50;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    ECoMVictoryType PreferredVictory = ECoMVictoryType::Domination;
+    ECoMVictoryType PreferredVictory = ECoMVictoryType::None;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

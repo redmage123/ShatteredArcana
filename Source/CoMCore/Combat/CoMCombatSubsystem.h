@@ -6,6 +6,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
+#include "CoMCore/Units/CoMHeroSubsystem.h"
 #include "CoMCombatSubsystem.generated.h"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -45,10 +46,10 @@ struct COMCORE_API FCoMCombatModifiers
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FFixed64 TerrainBonus    = FFixed64(0, 0);
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FFixed64 WeatherBonus    = FFixed64(0, 0);
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FFixed64 HeroCommandBonus = FFixed64(0, 0);
-	UPROPERTY(EditAnywhere, BlueprintReadOnly) FFixed64 EnchantmentBonus = FFixed64(0, 0);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) FFixed64 TerrainBonus    = FFixed64(0);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) FFixed64 WeatherBonus    = FFixed64(0);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) FFixed64 HeroCommandBonus = FFixed64(0);
+	UPROPERTY(EditAnywhere, BlueprintReadOnly) FFixed64 EnchantmentBonus = FFixed64(0);
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -70,9 +71,9 @@ struct FCoMCombatUnitState
 	int32 OwnerWizardID  = INDEX_NONE;
 
 	// Combat stats
-	FFixed64 MeleeAttack  = FFixed64(3, 0);
-	FFixed64 RangedAttack = FFixed64(0, 0);
-	FFixed64 Defense      = FFixed64(3, 0);
+	FFixed64 MeleeAttack  = FFixed64(3);
+	FFixed64 RangedAttack = FFixed64(0);
+	FFixed64 Defense      = FFixed64(3);
 	int32    HitPoints    = 1;
 	int32    MaxHP        = 1;
 	int32    FiguresRemaining = 1;  // multi-figure units (e.g. 8 swordsmen)
@@ -139,6 +140,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Combat")
 	FOnCombatResolved OnCombatResolved;
 
+	static FFixed64 GetHeroTierAttackBonus(ECoMHeroTier Tier);
 private:
 	// -----------------------------------------------------------------
 	// Internal helpers
@@ -159,7 +161,6 @@ private:
 	TArray<int32> RemoveDeadUnits(TArray<FCoMCombatUnitState>& Units);
 
 	/** Get hero tier bonus as a multiplier (Adventurer +5%, Hero +10%, etc.). */
-	static FFixed64 GetHeroTierAttackBonus(ECoMHeroTier Tier);
 
 	// -----------------------------------------------------------------
 	// State

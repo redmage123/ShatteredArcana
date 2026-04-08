@@ -1,3 +1,5 @@
+// OLD Phase 3 code — disabled
+#if 0
 // Copyright Mythforge Studios. All Rights Reserved.
 // COM-S3-T2: Per-Plane Terrain Distribution DataAsset implementation.
 
@@ -475,3 +477,6 @@ UCoMTerrainWeightDataAsset* UCoMTerrainDistributionDataAsset::MakePlaneAsset(
 
 #undef COM_ADD_WEIGHT
 #undef COM_ADD_W
+
+
+#endif

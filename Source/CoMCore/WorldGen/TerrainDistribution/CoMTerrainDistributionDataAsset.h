@@ -1,3 +1,5 @@
+// OLD Phase 3 code — disabled
+#if 0
 // Copyright Mythforge Studios. All Rights Reserved.
 // COM-S3-T2: Per-Plane Terrain Distribution DataAsset (registry for all 8 planes).
 // Asset type: "CoMTerrainDistribution"
@@ -94,3 +96,6 @@ private:
 	/** Populate a single UCoMTerrainWeightDataAsset with plane-specific default tables. */
 	static UCoMTerrainWeightDataAsset* MakePlaneAsset(ECoMPlane Plane, UObject* Outer);
 };
+
+
+#endif

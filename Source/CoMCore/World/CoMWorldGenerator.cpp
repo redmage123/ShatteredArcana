@@ -393,7 +393,7 @@ static ECoMTerrain BiomeToTerrain(int32 Biome, ECoMPlane Plane)
 		switch (Plane)
 		{
 		case ECoMPlane::Infernyx:   return ECoMTerrain::VolcanicChain;
-		default: return ECoMTerrain::Volcano;
+		default: return ECoMTerrain::Mountains;
 		}
 	default: return ECoMTerrain::Grassland;
 	}
@@ -891,13 +891,13 @@ void UCoMWorldGenerator::PlaceResources(UCoMWorldMapSubsystem* MapSubsystem, ECo
 			         T == ECoMTerrain::EnchantedForest || T == ECoMTerrain::Jungle ||
 			         T == ECoMTerrain::ScorchedForest)
 			{
-				Tile->Resource = ECoMResource::Wood;
+				Tile->Resource = ECoMResource::Iron;
 			}
 			// Hills → Gold/Gems
 			else if (T == ECoMTerrain::Hills || T == ECoMTerrain::TwilightHills ||
 			         T == ECoMTerrain::VineHills || T == ECoMTerrain::CinderHills)
 			{
-				Tile->Resource = (RandomStream.FRand() > 0.6f) ? ECoMResource::Gems : ECoMResource::Gold;
+				Tile->Resource = (RandomStream.FRand() > 0.6f) ? ECoMResource::Gems : ECoMResource::GoldOre;
 			}
 			// Grassland/Plains → Food (no resource node, implicit via farming)
 			// Desert/Tundra → rare resources
@@ -906,11 +906,11 @@ void UCoMWorldGenerator::PlaceResources(UCoMWorldMapSubsystem* MapSubsystem, ECo
 			{
 				if (RandomStream.FRand() > 0.8f)
 				{
-					Tile->Resource = ECoMResource::Crystals;
+					Tile->Resource = ECoMResource::Gems;
 				}
 			}
 			// Volcano → special
-			else if (T == ECoMTerrain::Volcano || T == ECoMTerrain::VolcanicChain)
+			else if (T == ECoMTerrain::Mountains || T == ECoMTerrain::VolcanicChain)
 			{
 				Tile->Resource = ECoMResource::Adamantium;
 			}

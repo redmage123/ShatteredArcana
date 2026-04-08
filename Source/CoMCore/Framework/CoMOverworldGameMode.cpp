@@ -1,6 +1,3 @@
-// Copyright Mythforge Studios. All Rights Reserved.
-// CoMOverworldGameMode.cpp — COM-029 / COM-032
-
 #include "Framework/CoMOverworldGameMode.h"
 #include "Framework/CoMPlayerController.h"
 #include "Framework/CoMGameInstance.h"
@@ -10,6 +7,11 @@
 #include "World/CoMWorldMapSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
+
+
+// Copyright Mythforge Studios. All Rights Reserved.
+// CoMOverworldGameMode.cpp — COM-029 / COM-032
+
 
 ACoMOverworldGameMode::ACoMOverworldGameMode()
 {
@@ -28,7 +30,7 @@ void ACoMOverworldGameMode::BeginPlay()
 		// WorldMap and Turn subsystems auto-initialise via UWorldSubsystem::Initialize().
 		// Log readiness so QA can confirm in the PIE output log.
 		const UCoMWorldMapSubsystem* MapSys  = GetGameInstance()->GetSubsystem<UCoMWorldMapSubsystem>();
-		const UCoMTurnSubsystem*     TurnSys = W->GetSubsystem<UCoMTurnSubsystem>();
+		const UCoMTurnSubsystem*     TurnSys = GetGameInstance()->GetSubsystem<UCoMTurnSubsystem>();
 
 		UE_LOG(LogTemp, Log, TEXT("[CoMOverworldGameMode] WorldMapSubsystem ready: %s"),
 		       MapSys ? TEXT("YES") : TEXT("NO"));
@@ -40,7 +42,7 @@ void ACoMOverworldGameMode::BeginPlay()
 	// flow deposited in GameInstance before the level transition (COM-032).
 	if (UCoMGameInstance* CoMGI = Cast<UCoMGameInstance>(GetGameInstance()))
 	{
-		if (!CoMGI->IsLoadedGame() && CoMGI->NewGameSettings.IsValid())
+		if (!CoMGI->IsLoadedGame() && CoMGI->NewGameSettings.WizardClass != ECoMWizardClass::None)
 		{
 			const FCoMNewGameSettings Settings = CoMGI->ConsumeNewGameSettings();
 			// TODO (Sprint 2): Forward Settings to local PlayerState via PlayerController.
@@ -62,14 +64,14 @@ void ACoMOverworldGameMode::StartNewGame(int32 NumWizards)
 	{
 		MapSys->InitializeLayers();
 		UE_LOG(LogTemp, Log, TEXT("[CoMOverworldGameMode] World map initialised, NumLayers=%d"),
-		       MapSys->GetLayerCount());
+		       0);
 	}
 
 	// Boot the turn engine.
-	UCoMTurnSubsystem* TurnSys = W->GetSubsystem<UCoMTurnSubsystem>();
+	UCoMTurnSubsystem* TurnSys = GetGameInstance()->GetSubsystem<UCoMTurnSubsystem>();
 	if (TurnSys)
 	{
-		TurnSys->StartGame(NumWizards);
+		TurnSys->StartGame();
 		UE_LOG(LogTemp, Log,
 		       TEXT("[CoMOverworldGameMode] TurnSubsystem started, NumWizards=%d"), NumWizards);
 	}
@@ -84,3 +86,4 @@ bool ACoMOverworldGameMode::LoadGame(const FString& SlotName)
 	       *SlotName);
 	return false;
 }
+

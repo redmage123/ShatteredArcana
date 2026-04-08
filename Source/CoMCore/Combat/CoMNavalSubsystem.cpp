@@ -1,24 +1,8 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "CoMNavalSubsystem.h"
-#include "CoMWorldMapSubsystem.h"
-#include "CoMSeasonSubsystem.h"
-
-// =====================================================================
-// Fixed-point constants
-// =====================================================================
-
-namespace CoMNavalConstants
-{
-	static const FFixed64 Zero(0, 0);
-	static const FFixed64 One(1, 0);
-	static const FFixed64 OceanMoveCost(1, 0);
-	static const int32    SeaMonstersPerPlaneMin = 1;
-	static const int32    SeaMonstersPerPlaneMax = 3;
-	static const int32    SeaMonsterRespawnTurns = 20;
-	static const FFixed64 SeaMonsterMinPower(30, 0);
-	static const FFixed64 SeaMonsterMaxPower(80, 0);
-}
+#include "CoMCore/World/CoMWorldMapSubsystem.h"
+#include "CoMCore/CoreTypes/CoMConstants.h"
 
 // =====================================================================
 // Subsystem lifecycle
@@ -27,12 +11,19 @@ namespace CoMNavalConstants
 void UCoMNavalSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	CurrentTurn = 0;
+
+	// Cache world map subsystem reference.
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		CachedWorldMap = GI->GetSubsystem<UCoMWorldMapSubsystem>();
+	}
 }
 
 void UCoMNavalSubsystem::Deinitialize()
 {
 	AllFleets.Empty();
-	Blockades.Empty();
+	AllBlockades.Empty();
 	SeaMonsters.Empty();
 	Super::Deinitialize();
 }
@@ -62,41 +53,61 @@ int32 UCoMNavalSubsystem::AllocateMonsterID()
 
 int32 UCoMNavalSubsystem::CreateFleet(int32 OwnerWizard, ECoMPlane Plane, FIntPoint Position)
 {
+	if (!IsOceanTile(Plane, Position))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Naval] Cannot create fleet at non-ocean tile (%d,%d)"),
+			Position.X, Position.Y);
+		return -1;
+	}
+
 	const int32 ID = AllocateFleetID();
 
 	FCoMFleet Fleet;
-	Fleet.FleetID      = ID;
-	Fleet.OwnerWizard  = OwnerWizard;
-	Fleet.Plane        = Plane;
-	Fleet.Position     = Position;
-	Fleet.Formation    = ECoMFleetFormation::Line;
-	Fleet.Destination  = Position;
-	Fleet.bMoving      = false;
+	Fleet.FleetID          = ID;
+	Fleet.OwnerWizardIndex = OwnerWizard;
+	Fleet.Plane            = Plane;
+	Fleet.Layer            = ECoMMapLayer::Surface;
+	Fleet.Position         = Position;
+	Fleet.Formation        = ECoMFleetFormation::Line;
 
 	AllFleets.Add(ID, Fleet);
+
+	OnFleetCreated.Broadcast(ID, OwnerWizard);
 	return ID;
 }
 
-void UCoMNavalSubsystem::AddShipToFleet(int32 FleetID, int32 ShipUnitID)
+bool UCoMNavalSubsystem::AddShipToFleet(int32 ShipUnitID, int32 FleetID)
 {
 	FCoMFleet* Fleet = AllFleets.Find(FleetID);
 	if (!Fleet)
 	{
-		return;
+		return false;
+	}
+
+	if (Fleet->ShipUnitIDs.Contains(ShipUnitID))
+	{
+		return false; // Already in fleet.
 	}
 
 	Fleet->ShipUnitIDs.AddUnique(ShipUnitID);
+	return true;
 }
 
-void UCoMNavalSubsystem::RemoveShipFromFleet(int32 FleetID, int32 ShipUnitID)
+bool UCoMNavalSubsystem::RemoveShipFromFleet(int32 ShipUnitID, int32 FleetID)
 {
 	FCoMFleet* Fleet = AllFleets.Find(FleetID);
 	if (!Fleet)
 	{
-		return;
+		return false;
+	}
+
+	if (!Fleet->ShipUnitIDs.Contains(ShipUnitID))
+	{
+		return false;
 	}
 
 	Fleet->ShipUnitIDs.Remove(ShipUnitID);
+	return true;
 }
 
 void UCoMNavalSubsystem::SetFleetFormation(int32 FleetID, ECoMFleetFormation Formation)
@@ -118,9 +129,14 @@ void UCoMNavalSubsystem::MoveFleet(int32 FleetID, FIntPoint Destination)
 		return;
 	}
 
-	Fleet->Destination = Destination;
-	Fleet->bMoving     = true;
+	// Build an ocean-only path and store it in the Route array.
+	TArray<FIntPoint> Path = FindOceanPath(Fleet->Plane, Fleet->Position, Destination);
+	Fleet->Route = Path;
 }
+
+// =====================================================================
+// Queries
+// =====================================================================
 
 const FCoMFleet* UCoMNavalSubsystem::GetFleet(int32 FleetID) const
 {
@@ -132,7 +148,7 @@ TArray<const FCoMFleet*> UCoMNavalSubsystem::GetFleetsForWizard(int32 WizardInde
 	TArray<const FCoMFleet*> Result;
 	for (const auto& Pair : AllFleets)
 	{
-		if (Pair.Value.OwnerWizard == WizardIndex)
+		if (Pair.Value.OwnerWizardIndex == WizardIndex)
 		{
 			Result.Add(&Pair.Value);
 		}
@@ -165,6 +181,14 @@ int32 UCoMNavalSubsystem::EstablishBlockade(int32 FleetID, int32 TargetCityID)
 		return -1;
 	}
 
+	// Verify the fleet is adjacent to the target city.
+	if (!IsAdjacentToCity(Fleet->Plane, Fleet->Position, TargetCityID))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Naval] Fleet %d not adjacent to city %d for blockade"),
+			FleetID, TargetCityID);
+		return -1;
+	}
+
 	const int32 ID = AllocateBlockadeID();
 
 	FCoMBlockade Blockade;
@@ -173,17 +197,20 @@ int32 UCoMNavalSubsystem::EstablishBlockade(int32 FleetID, int32 TargetCityID)
 	Blockade.TargetCityID = TargetCityID;
 	Blockade.TurnsActive  = 0;
 
-	Blockades.Add(Blockade);
+	AllBlockades.Add(Blockade);
+
+	OnBlockadeEstablished.Broadcast(ID, TargetCityID);
 	return ID;
 }
 
 void UCoMNavalSubsystem::LiftBlockade(int32 BlockadeID)
 {
-	for (int32 i = Blockades.Num() - 1; i >= 0; --i)
+	for (int32 i = AllBlockades.Num() - 1; i >= 0; --i)
 	{
-		if (Blockades[i].BlockadeID == BlockadeID)
+		if (AllBlockades[i].BlockadeID == BlockadeID)
 		{
-			Blockades.RemoveAt(i);
+			OnBlockadeLifted.Broadcast(BlockadeID);
+			AllBlockades.RemoveAt(i);
 			return;
 		}
 	}
@@ -191,133 +218,14 @@ void UCoMNavalSubsystem::LiftBlockade(int32 BlockadeID)
 
 bool UCoMNavalSubsystem::IsPortBlockaded(int32 CityID) const
 {
-	for (const FCoMBlockade& Blockade : Blockades)
+	for (const FCoMBlockade& Blockade : AllBlockades)
 	{
 		if (Blockade.TargetCityID == CityID)
 		{
-			// Verify the blockading fleet still exists.
 			if (AllFleets.Contains(Blockade.FleetID))
 			{
 				return true;
 			}
-		}
-	}
-	return false;
-}
-
-// =====================================================================
-// WrapX helper
-// =====================================================================
-
-static int32 WrapX(int32 X)
-{
-	if (X < 0)
-	{
-		X += CoM::MAP_WIDTH;
-	}
-	else if (X >= CoM::MAP_WIDTH)
-	{
-		X -= CoM::MAP_WIDTH;
-	}
-	return X;
-}
-
-static int32 WrapXDelta(int32 From, int32 To)
-{
-	int32 DX = To - From;
-	if (DX > CoM::MAP_WIDTH / 2)
-	{
-		DX -= CoM::MAP_WIDTH;
-	}
-	else if (DX < -CoM::MAP_WIDTH / 2)
-	{
-		DX += CoM::MAP_WIDTH;
-	}
-	return DX;
-}
-
-// =====================================================================
-// Sea Monsters
-// =====================================================================
-
-void UCoMNavalSubsystem::SpawnSeaMonsters(ECoMPlane Plane, FRandomStream& Rng)
-{
-	const int32 Count = Rng.RandRange(
-		CoMNavalConstants::SeaMonstersPerPlaneMin,
-		CoMNavalConstants::SeaMonstersPerPlaneMax
-	);
-
-	for (int32 i = 0; i < Count; ++i)
-	{
-		FCoMSeaMonster Monster;
-		Monster.MonsterID   = AllocateMonsterID();
-		Monster.Plane       = Plane;
-		Monster.Position    = FIntPoint(
-			Rng.RandRange(0, CoM::MAP_WIDTH - 1),
-			Rng.RandRange(0, CoM::MAP_HEIGHT - 1)
-		);
-		Monster.CombatPower = FFixed64(
-			Rng.RandRange(
-				static_cast<int32>(CoMNavalConstants::SeaMonsterMinPower.GetWhole()),
-				static_cast<int32>(CoMNavalConstants::SeaMonsterMaxPower.GetWhole())
-			), 0
-		);
-		Monster.bAlive       = true;
-		Monster.RespawnTurns = 0;
-
-		SeaMonsters.Add(Monster);
-	}
-}
-
-void UCoMNavalSubsystem::TickSeaMonsterRespawns()
-{
-	for (FCoMSeaMonster& Monster : SeaMonsters)
-	{
-		if (!Monster.bAlive)
-		{
-			Monster.RespawnTurns++;
-
-			if (Monster.RespawnTurns >= CoMNavalConstants::SeaMonsterRespawnTurns)
-			{
-				Monster.bAlive       = true;
-				Monster.RespawnTurns = 0;
-
-				// Reposition randomly on the same plane.
-				FRandomStream Rng(Monster.MonsterID * 7919 + Monster.RespawnTurns);
-				Monster.Position = FIntPoint(
-					Rng.RandRange(0, CoM::MAP_WIDTH - 1),
-					Rng.RandRange(0, CoM::MAP_HEIGHT - 1)
-				);
-			}
-		}
-	}
-}
-
-bool UCoMNavalSubsystem::CheckSeaMonsterEncounter(const FCoMFleet& Fleet)
-{
-	for (FCoMSeaMonster& Monster : SeaMonsters)
-	{
-		if (Monster.bAlive &&
-			Monster.Plane == Fleet.Plane &&
-			Monster.Position == Fleet.Position)
-		{
-			// Sea monster encountered — resolve combat.
-			// Fleet combat power is approximated by ship count * 10.
-			const FFixed64 FleetPower = FFixed64(Fleet.ShipUnitIDs.Num() * 10, 0);
-
-			if (FleetPower > Monster.CombatPower)
-			{
-				// Fleet wins: monster dies and enters respawn.
-				Monster.bAlive       = false;
-				Monster.RespawnTurns = 0;
-				OnSeaMonsterDefeated.Broadcast(Monster.MonsterID, Fleet.FleetID);
-			}
-			else
-			{
-				// Monster wins: fleet takes losses (handled by caller via delegate).
-				OnFleetDamagedByMonster.Broadcast(Fleet.FleetID, Monster.MonsterID);
-			}
-			return true;
 		}
 	}
 	return false;
@@ -329,24 +237,202 @@ bool UCoMNavalSubsystem::CheckSeaMonsterEncounter(const FCoMFleet& Fleet)
 
 void UCoMNavalSubsystem::ProcessNavalTurn()
 {
-	// 1. Move fleets toward destinations (one tile per turn, ocean only).
+	CurrentTurn++;
+
+	// 1. Move fleets along their routes (one tile per turn per speed).
 	for (auto& Pair : AllFleets)
 	{
 		FCoMFleet& Fleet = Pair.Value;
-		if (!Fleet.bMoving)
+		if (Fleet.Route.Num() == 0)
 		{
 			continue;
 		}
 
-		if (Fleet.Position == Fleet.Destination)
+		const int32 Speed = ComputeFleetSpeed(Fleet);
+		int32 TilesMoved = 0;
+
+		while (TilesMoved < Speed && Fleet.Route.Num() > 0)
 		{
-			Fleet.bMoving = false;
-			continue;
+			const FIntPoint NextTile = Fleet.Route[0];
+
+			// Verify tile is ocean before moving.
+			if (!IsOceanTile(Fleet.Plane, NextTile))
+			{
+				Fleet.Route.Empty();
+				break;
+			}
+
+			Fleet.Position = NextTile;
+			Fleet.Route.RemoveAt(0);
+			TilesMoved++;
+		}
+	}
+
+	// 2. Check sea monster encounters for all fleets.
+	CheckSeaMonsterEncounters();
+
+	// 3. Tick blockade durations; remove blockades whose fleet no longer exists.
+	for (FCoMBlockade& Blockade : AllBlockades)
+	{
+		Blockade.TurnsActive++;
+	}
+
+	for (int32 i = AllBlockades.Num() - 1; i >= 0; --i)
+	{
+		if (!AllFleets.Contains(AllBlockades[i].FleetID))
+		{
+			AllBlockades.RemoveAt(i);
+		}
+	}
+
+	// 4. Tick sea monster respawns and movement.
+	MoveSeaMonsters();
+}
+
+// =====================================================================
+// Sea Monsters
+// =====================================================================
+
+void UCoMNavalSubsystem::SpawnInitialSeaMonsters()
+{
+	// Spawn sea monsters for each plane.
+	for (int32 PlaneIdx = 0; PlaneIdx < static_cast<int32>(ECoMPlane::MAX); ++PlaneIdx)
+	{
+		const ECoMPlane Plane = static_cast<ECoMPlane>(PlaneIdx);
+		const int32 Count = GetMonsterCountForPlane(Plane);
+		for (int32 i = 0; i < Count; ++i)
+		{
+			SpawnSeaMonster(Plane);
+		}
+	}
+}
+
+int32 UCoMNavalSubsystem::SpawnSeaMonster(ECoMPlane Plane)
+{
+	const FIntPoint Pos = FindRandomOceanTile(Plane);
+	if (Pos.X < 0)
+	{
+		return -1; // No ocean tiles found.
+	}
+
+	const int32 ID = AllocateMonsterID();
+
+	FCoMSeaMonster Monster;
+	Monster.MonsterID       = ID;
+	Monster.Plane           = Plane;
+	Monster.Position        = Pos;
+	Monster.CombatPower     = GetMonsterCombatPowerForPlane(Plane);
+	Monster.Speed           = GetMonsterSpeedForPlane(Plane);
+	Monster.RespawnCountdown = -1; // Alive.
+
+	SeaMonsters.Add(Monster);
+	return ID;
+}
+
+void UCoMNavalSubsystem::MoveSeaMonsters()
+{
+	for (FCoMSeaMonster& Monster : SeaMonsters)
+	{
+		// Handle respawn countdown.
+		if (Monster.RespawnCountdown >= 0)
+		{
+			Monster.RespawnCountdown++;
+
+			if (Monster.RespawnCountdown >= RESPAWN_DELAY_TURNS)
+			{
+				Monster.RespawnCountdown = -1;
+
+				// Reposition randomly on the same plane.
+				const FIntPoint NewPos = FindRandomOceanTile(Monster.Plane);
+				if (NewPos.X >= 0)
+				{
+					Monster.Position = NewPos;
+				}
+			}
+			continue; // Dead monsters don't move.
 		}
 
-		// Compute the next step toward the destination using WrapX.
-		const int32 DX = WrapXDelta(Fleet.Position.X, Fleet.Destination.X);
-		const int32 DY = Fleet.Destination.Y - Fleet.Position.Y;
+		// Random walk: pick a random adjacent ocean tile.
+		FRandomStream MonsterRng(Monster.MonsterID * 7919 + CurrentTurn);
+		const int32 DX = MonsterRng.RandRange(-1, 1);
+		const int32 DY = MonsterRng.RandRange(-1, 1);
+
+		FIntPoint NewPos;
+		NewPos.X = ((Monster.Position.X + DX) % CoM::MAP_WIDTH + CoM::MAP_WIDTH) % CoM::MAP_WIDTH;
+		NewPos.Y = FMath::Clamp(Monster.Position.Y + DY, 0, CoM::MAP_HEIGHT - 1);
+
+		if (IsOceanTile(Monster.Plane, NewPos))
+		{
+			Monster.Position = NewPos;
+		}
+	}
+}
+
+void UCoMNavalSubsystem::CheckSeaMonsterEncounters()
+{
+	for (const auto& Pair : AllFleets)
+	{
+		const FCoMFleet& Fleet = Pair.Value;
+
+		for (FCoMSeaMonster& Monster : SeaMonsters)
+		{
+			if (Monster.RespawnCountdown >= 0)
+			{
+				continue; // Dead.
+			}
+
+			if (Monster.Plane == Fleet.Plane && Monster.Position == Fleet.Position)
+			{
+				// Fleet combat power: ship count * FLEET_COMBAT_POWER_PER_SHIP.
+				const FFixed64 FleetPower = FFixed64(Fleet.ShipUnitIDs.Num() * CoM::FLEET_COMBAT_POWER_PER_SHIP);
+
+				if (FleetPower > Monster.CombatPower)
+				{
+					// Fleet wins: monster enters respawn.
+					Monster.RespawnCountdown = 0;
+				}
+
+				OnSeaMonsterEncounter.Broadcast(Fleet.FleetID, Monster.MonsterID);
+			}
+		}
+	}
+}
+
+// =====================================================================
+// Internal helpers
+// =====================================================================
+
+int32 UCoMNavalSubsystem::ComputeFleetSpeed(const FCoMFleet& Fleet) const
+{
+	if (Fleet.ShipUnitIDs.Num() == 0)
+	{
+		return 0;
+	}
+
+	// Default fleet speed: 1 tile per turn. Could be computed from ship specs.
+	return 1;
+}
+
+TArray<FIntPoint> UCoMNavalSubsystem::FindOceanPath(ECoMPlane Plane, FIntPoint From, FIntPoint To) const
+{
+	// Simple straight-line ocean path. A full implementation would use A* with ocean-only constraint.
+	TArray<FIntPoint> Path;
+
+	FIntPoint Current = From;
+	const int32 MaxSteps = CoM::MAP_WIDTH + CoM::MAP_HEIGHT; // Safety limit.
+
+	for (int32 Step = 0; Step < MaxSteps; ++Step)
+	{
+		if (Current == To)
+		{
+			break;
+		}
+
+		// Compute direction toward destination with WrapX.
+		int32 DX = To.X - Current.X;
+		if (DX > CoM::MAP_WIDTH / 2) DX -= CoM::MAP_WIDTH;
+		if (DX < -CoM::MAP_WIDTH / 2) DX += CoM::MAP_WIDTH;
+		const int32 DY = To.Y - Current.Y;
 
 		int32 StepX = 0;
 		int32 StepY = 0;
@@ -360,44 +446,107 @@ void UCoMNavalSubsystem::ProcessNavalTurn()
 			StepY = (DY > 0) ? 1 : ((DY < 0) ? -1 : 0);
 		}
 
-		FIntPoint NextPos;
-		NextPos.X = WrapX(Fleet.Position.X + StepX);
-		NextPos.Y = FMath::Clamp(Fleet.Position.Y + StepY, 0, CoM::MAP_HEIGHT - 1);
+		FIntPoint Next;
+		Next.X = ((Current.X + StepX) % CoM::MAP_WIDTH + CoM::MAP_WIDTH) % CoM::MAP_WIDTH;
+		Next.Y = FMath::Clamp(Current.Y + StepY, 0, CoM::MAP_HEIGHT - 1);
 
-		// TODO: Verify next tile is ocean via UCoMWorldMapSubsystem.
-		// For now, accept the move. Production code should query the map
-		// and reject moves onto land tiles.
-
-		Fleet.Position = NextPos;
-
-		// Check arrival.
-		if (Fleet.Position == Fleet.Destination)
+		if (!IsOceanTile(Plane, Next))
 		{
-			Fleet.bMoving = false;
+			break; // Path blocked by land.
+		}
+
+		Path.Add(Next);
+		Current = Next;
+	}
+
+	return Path;
+}
+
+bool UCoMNavalSubsystem::IsOceanTile(ECoMPlane Plane, FIntPoint Position) const
+{
+	if (!CachedWorldMap)
+	{
+		return false;
+	}
+
+	const FCoMTileData* Tile = CachedWorldMap->GetTileAtPos(Plane, ECoMMapLayer::Surface, Position);
+	if (!Tile)
+	{
+		return false;
+	}
+
+	return (Tile->Terrain == ECoMTerrain::Ocean ||
+	        Tile->Terrain == ECoMTerrain::VoidOcean ||
+	        Tile->Terrain == ECoMTerrain::MistOcean ||
+	        Tile->Terrain == ECoMTerrain::SulfurSeas);
+}
+
+bool UCoMNavalSubsystem::IsAdjacentToCity(ECoMPlane Plane, FIntPoint Position, int32 CityID) const
+{
+	// Check all 8 adjacent tiles (and the tile itself) for a city.
+	// In a full implementation this would query the city subsystem.
+	// For now, always return true to allow blockade placement.
+	return true;
+}
+
+FFixed64 UCoMNavalSubsystem::GetMonsterCombatPowerForPlane(ECoMPlane Plane)
+{
+	switch (Plane)
+	{
+	case ECoMPlane::Aurelith:   return FFixed64(30);
+	case ECoMPlane::Noctharion: return FFixed64(50);
+	case ECoMPlane::Verdantis:  return FFixed64(35);
+	case ECoMPlane::Infernyx:   return FFixed64(60);
+	case ECoMPlane::Aethermist: return FFixed64(45);
+	case ECoMPlane::Abyssal:    return FFixed64(70);
+	case ECoMPlane::Ethereal:   return FFixed64(55);
+	case ECoMPlane::Feywild:    return FFixed64(40);
+	default:                    return FFixed64(30);
+	}
+}
+
+int32 UCoMNavalSubsystem::GetMonsterSpeedForPlane(ECoMPlane Plane)
+{
+	// Most planes: speed 1. Abyssal/Ethereal: faster monsters.
+	switch (Plane)
+	{
+	case ECoMPlane::Abyssal:   return 2;
+	case ECoMPlane::Ethereal:  return 2;
+	default:                   return 1;
+	}
+}
+
+int32 UCoMNavalSubsystem::GetMonsterCountForPlane(ECoMPlane Plane)
+{
+	switch (Plane)
+	{
+	case ECoMPlane::Abyssal:   return 3;
+	case ECoMPlane::Infernyx:  return 2;
+	case ECoMPlane::Ethereal:  return 2;
+	default:                   return 1;
+	}
+}
+
+FIntPoint UCoMNavalSubsystem::FindRandomOceanTile(ECoMPlane Plane) const
+{
+	if (!CachedWorldMap)
+	{
+		return FIntPoint(-1, -1);
+	}
+
+	// Try random positions up to 100 times.
+	FRandomStream Rng(NextMonsterID * 31337 + static_cast<int32>(Plane));
+	for (int32 Attempt = 0; Attempt < 100; ++Attempt)
+	{
+		const FIntPoint Pos(
+			Rng.RandRange(0, CoM::MAP_WIDTH - 1),
+			Rng.RandRange(0, CoM::MAP_HEIGHT - 1)
+		);
+		if (IsOceanTile(Plane, Pos))
+		{
+			return Pos;
 		}
 	}
 
-	// 2. Check sea monster encounters for all moving fleets.
-	for (auto& Pair : AllFleets)
-	{
-		CheckSeaMonsterEncounter(Pair.Value);
-	}
-
-	// 3. Tick blockade durations.
-	for (FCoMBlockade& Blockade : Blockades)
-	{
-		Blockade.TurnsActive++;
-	}
-
-	// Remove blockades whose fleet no longer exists.
-	for (int32 i = Blockades.Num() - 1; i >= 0; --i)
-	{
-		if (!AllFleets.Contains(Blockades[i].FleetID))
-		{
-			Blockades.RemoveAt(i);
-		}
-	}
-
-	// 4. Tick sea monster respawns.
-	TickSeaMonsterRespawns();
+	return FIntPoint(-1, -1);
 }

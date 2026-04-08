@@ -1,9 +1,9 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "CoMCitySubsystem.h"
-#include "CoMSeasonSubsystem.h"
-#include "CoMWorldMapSubsystem.h"
-#include "CoMConstants.h"
+#include "CoMCore/World/CoMSeasonSubsystem.h"
+#include "CoMCore/World/CoMWorldMapSubsystem.h"
+#include "CoMCore/CoreTypes/CoMConstants.h"
 
 // =====================================================================
 // Subsystem lifecycle
@@ -55,14 +55,14 @@ int32 UCoMCitySubsystem::FoundCity(int32 OwnerWizard, ECoMPlane Plane,
 	const int32 CityID = NextCityID++;
 
 	FCoMCityData City;
-	City.CityID           = CityID;
-	City.CityName         = Name;
-	City.OwnerWizardIndex = OwnerWizard;
-	City.Plane            = Plane;
-	City.Layer            = Layer;
-	City.Position         = Position;
-	City.Population       = 1;
-	City.PrimaryRace      = Race;
+	City.CityID            = CityID;
+	City.CityName          = Name;
+	City.OwnerWizardIndex  = OwnerWizard;
+	City.Plane             = Plane;
+	City.Layer             = Layer;
+	City.Position          = Position;
+	City.Population        = 1;
+	City.PrimaryRace       = Race;
 	City.CurrentBuildingID = -1;
 	City.BuildingProgress  = 0;
 	City.GarrisonArmyID    = -1;
@@ -98,7 +98,6 @@ void UCoMCitySubsystem::DestroyCity(int32 CityID)
 
 void UCoMCitySubsystem::ProcessCityTurn()
 {
-	// Collect keys first; rebellion may modify AllCities.
 	TArray<int32> CityIDs;
 	AllCities.GetKeys(CityIDs);
 
@@ -110,7 +109,7 @@ void UCoMCitySubsystem::ProcessCityTurn()
 			continue;
 		}
 
-		// 1. Recalculate all outputs (terrain + buildings + season + weather + enchantments).
+		// 1. Recalculate all outputs.
 		RecalcCityOutputs(CityID);
 
 		// 2. Growth from food surplus.
@@ -177,7 +176,6 @@ bool UCoMCitySubsystem::SetBuildingQueue(int32 CityID, int32 BuildingID)
 		return false;
 	}
 
-	// Cannot queue a building the city already has.
 	if (City->BuildingIDs.Contains(BuildingID))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("SetBuildingQueue: city %d already has building %d."),
@@ -220,12 +218,9 @@ void UCoMCitySubsystem::RecalcCityOutputs(int32 CityID)
 		}
 	}
 
-	// Apply season food multiplier. Integer math: (RawFood * Numerator) / Denominator.
-	// FFixed64 stores whole + fractional; approximate with integer rounding.
 	const int32 FoodAfterSeason = FMath::RoundToInt32(
 		static_cast<float>(RawFood) * SeasonMods.FoodMultiplier.ToFloat());
 
-	// Food surplus = food produced - population consumption (1 food per pop).
 	City->FoodSurplus = FoodAfterSeason - City->Population;
 
 	// --- Gold ---
@@ -266,7 +261,6 @@ int32 UCoMCitySubsystem::GetCityPopulationCap(int32 CityID) const
 		return 0;
 	}
 
-	// Base cap from terrain: Surface = 10, Underdark = 6, Underwater = 5.
 	int32 Cap = 10;
 	if (City->Layer == ECoMMapLayer::Underdark)
 	{
@@ -277,15 +271,13 @@ int32 UCoMCitySubsystem::GetCityPopulationCap(int32 CityID) const
 		Cap = 5;
 	}
 
-	// Buildings add to cap. Each building contributes +1 for simplicity;
-	// a real implementation would look up building data for housing capacity.
 	Cap += City->BuildingIDs.Num();
 
 	return Cap;
 }
 
 // =====================================================================
-// Internal helpers — distance & validation
+// Internal helpers -- distance & validation
 // =====================================================================
 
 bool UCoMCitySubsystem::IsTooCloseToExistingCity(ECoMPlane Plane, ECoMMapLayer Layer,
@@ -309,7 +301,6 @@ bool UCoMCitySubsystem::IsTooCloseToExistingCity(ECoMPlane Plane, ECoMMapLayer L
 int32 UCoMCitySubsystem::WrappedDistance(FIntPoint A, FIntPoint B)
 {
 	int32 DX = FMath::Abs(A.X - B.X);
-	// WrapX: shortest distance on a 160-wide torus.
 	DX = FMath::Min(DX, MapWidth - DX);
 
 	const int32 DY = FMath::Abs(A.Y - B.Y);
@@ -318,14 +309,9 @@ int32 UCoMCitySubsystem::WrappedDistance(FIntPoint A, FIntPoint B)
 
 bool UCoMCitySubsystem::IsAquaticRace(ECoMRace Race)
 {
-	// Aquatic races that can settle underwater. Extend as the race enum grows.
 	switch (Race)
 	{
 	case ECoMRace::Merfolk:
-	case ECoMRace::Naga:
-	case ECoMRace::SeaElf:
-	case ECoMRace::Sahuagin:
-	case ECoMRace::Triton:
 		return true;
 	default:
 		return false;
@@ -333,7 +319,7 @@ bool UCoMCitySubsystem::IsAquaticRace(ECoMRace Race)
 }
 
 // =====================================================================
-// Internal helpers — city radius tiles
+// Internal helpers -- city radius tiles
 // =====================================================================
 
 TArray<FIntPoint> UCoMCitySubsystem::GetCityRadiusTiles(FIntPoint Center) const
@@ -345,7 +331,6 @@ TArray<FIntPoint> UCoMCitySubsystem::GetCityRadiusTiles(FIntPoint Center) const
 	{
 		for (int32 DX = -CityRadius; DX <= CityRadius; ++DX)
 		{
-			// Diamond/Manhattan radius.
 			if (FMath::Abs(DX) + FMath::Abs(DY) > CityRadius)
 			{
 				continue;
@@ -354,11 +339,9 @@ TArray<FIntPoint> UCoMCitySubsystem::GetCityRadiusTiles(FIntPoint Center) const
 			int32 TX = Center.X + DX;
 			int32 TY = Center.Y + DY;
 
-			// WrapX.
-			if (TX < 0)       TX += MapWidth;
+			if (TX < 0)        TX += MapWidth;
 			if (TX >= MapWidth) TX -= MapWidth;
 
-			// Clamp Y (no vertical wrap).
 			if (TY < 0 || TY >= MapHeight)
 			{
 				continue;
@@ -372,20 +355,20 @@ TArray<FIntPoint> UCoMCitySubsystem::GetCityRadiusTiles(FIntPoint Center) const
 }
 
 // =====================================================================
-// Internal helpers — per-tile food
+// Internal helpers -- per-tile food
 // =====================================================================
 
 int32 UCoMCitySubsystem::ComputeTileFood(ECoMPlane Plane, ECoMMapLayer Layer,
 	FIntPoint TilePos) const
 {
-	// Query the world map for tile data.
 	const UCoMWorldMapSubsystem* MapSub = GetGameInstance()->GetSubsystem<UCoMWorldMapSubsystem>();
 	if (!MapSub)
 	{
 		return 0;
 	}
 
-	const FCoMTileData* Tile = MapSub->GetTile(Plane, Layer, TilePos);
+	// Use GetTileAtPos which takes FIntPoint (not GetTile which takes X, Y separately).
+	const FCoMTileData* Tile = MapSub->GetTileAtPos(Plane, Layer, TilePos);
 	if (!Tile)
 	{
 		return 0;
@@ -394,7 +377,6 @@ int32 UCoMCitySubsystem::ComputeTileFood(ECoMPlane Plane, ECoMMapLayer Layer,
 	switch (Layer)
 	{
 	case ECoMMapLayer::Surface:
-		// Standard terrain food values.
 		switch (Tile->Terrain)
 		{
 		case ECoMTerrain::Grassland:   return 3;
@@ -405,98 +387,80 @@ int32 UCoMCitySubsystem::ComputeTileFood(ECoMPlane Plane, ECoMMapLayer Layer,
 		case ECoMTerrain::Swamp:       return 1;
 		case ECoMTerrain::Desert:      return 0;
 		case ECoMTerrain::Tundra:      return 1;
-		case ECoMTerrain::Mountains:    return 0;
+		case ECoMTerrain::Mountains:   return 0;
 		case ECoMTerrain::Ocean:       return 0;
 		case ECoMTerrain::Shore:       return 1;
 		default:                       return 0;
 		}
 
 	case ECoMMapLayer::Underdark:
-		// No farms in the Underdark. Fungal food only.
-		if (Tile->Terrain == ECoMTerrain::FungalForest)
+		if (Tile->Terrain == ECoMTerrain::FungalGrove)
 		{
 			return 1;
 		}
 		return 0;
 
 	case ECoMMapLayer::Underwater:
-		// Kelp forests and coral reefs provide food.
 		if (Tile->Terrain == ECoMTerrain::KelpForest || Tile->Terrain == ECoMTerrain::CoralReef)
 		{
 			return 1;
 		}
 		return 0;
-	}
 
-	return 0;
+	default:
+		return 0;
+	}
 }
 
 // =====================================================================
-// Internal helpers — base economy
+// Internal helpers -- base economy
 // =====================================================================
 
 int32 UCoMCitySubsystem::ComputeBaseGold(const FCoMCityData& City) const
 {
-	// Base gold = 1 per 2 population (workers generate trade).
 	int32 Gold = City.Population / 2;
-
-	// Placeholder: each building contributes a flat +1 gold.
-	// Real implementation would look up building gold bonuses from a data table.
 	Gold += City.BuildingIDs.Num();
-
 	return FMath::Max(0, Gold);
 }
 
 int32 UCoMCitySubsystem::ComputeBaseProduction(const FCoMCityData& City) const
 {
-	// Base production = 1 per 2 population (worker output).
 	int32 Prod = City.Population / 2;
-
-	// Placeholder: each building contributes a flat +1 production.
 	Prod += City.BuildingIDs.Num();
-
 	return FMath::Max(0, Prod);
 }
 
 int32 UCoMCitySubsystem::ComputeBaseMana(const FCoMCityData& City) const
 {
-	// Mana comes primarily from buildings (shrines, temples, wizard towers).
-	// Placeholder: 1 mana per 3 buildings.
 	return City.BuildingIDs.Num() / 3;
 }
 
 int32 UCoMCitySubsystem::ComputeBaseResearch(const FCoMCityData& City) const
 {
-	// Research from population (scholars) and buildings (libraries, universities).
-	// Placeholder: 1 research per 3 population + 1 per 4 buildings.
 	return (City.Population / 3) + (City.BuildingIDs.Num() / 4);
 }
 
 // =====================================================================
-// Internal helpers — unrest
+// Internal helpers -- unrest
 // =====================================================================
 
 int32 UCoMCitySubsystem::ComputeUnrest(const FCoMCityData& City) const
 {
 	int32 UnrestLevel = 0;
 
-	// Source: racial mismatch (minority races unhappy in a city of another race).
 	UnrestLevel += City.MinorityRaces.Num();
 
-	// Source: overcrowding (population above cap).
 	const int32 Cap = GetCityPopulationCap(City.CityID);
 	if (City.Population > Cap)
 	{
 		UnrestLevel += (City.Population - Cap);
 	}
 
-	// Source: starvation (negative food surplus).
 	if (City.FoodSurplus < 0)
 	{
 		UnrestLevel += FMath::Abs(City.FoodSurplus);
 	}
 
-	// Reduction: garrison and temple-type buildings.
 	UnrestLevel -= CountUnrestReduction(City);
 
 	return FMath::Clamp(UnrestLevel, 0, MaxUnrest);
@@ -506,29 +470,24 @@ int32 UCoMCitySubsystem::CountUnrestReduction(const FCoMCityData& City) const
 {
 	int32 Reduction = 0;
 
-	// Garrison army present: -2 unrest.
 	if (City.GarrisonArmyID >= 0)
 	{
 		Reduction += 2;
 	}
 
-	// Placeholder: each building reduces unrest by a small amount.
-	// Real implementation would check building type (temple = -1, cathedral = -2, etc.).
-	// For now, approximate: 1 reduction per 4 buildings.
 	Reduction += City.BuildingIDs.Num() / 4;
 
 	return Reduction;
 }
 
 // =====================================================================
-// Internal helpers — growth & building
+// Internal helpers -- growth & building
 // =====================================================================
 
 void UCoMCitySubsystem::ProcessGrowth(FCoMCityData& City)
 {
 	if (City.FoodSurplus <= 0)
 	{
-		// Starvation: lose 1 pop if surplus is negative and pop > 1.
 		if (City.FoodSurplus < 0 && City.Population > 1)
 		{
 			const int32 OldPop = City.Population;
@@ -544,7 +503,6 @@ void UCoMCitySubsystem::ProcessGrowth(FCoMCityData& City)
 		return;
 	}
 
-	// Growth rate: FoodSurplus / GrowthDivisor per turn (minimum 0).
 	const int32 Growth = FMath::Max(1, City.FoodSurplus / GrowthDivisor);
 	const int32 OldPop = City.Population;
 	City.Population = FMath::Min(City.Population + Growth, Cap);
@@ -564,8 +522,6 @@ void UCoMCitySubsystem::ProcessBuilding(FCoMCityData& City)
 
 	City.BuildingProgress += City.ProductionOutput;
 
-	// Placeholder building cost. Real implementation reads from a building data table.
-	// Approximate: cost = BuildingID * 10 (so building 5 costs 50 production).
 	const int32 BuildingCost = FMath::Max(10, City.CurrentBuildingID * 10);
 
 	if (City.BuildingProgress >= BuildingCost)
@@ -580,7 +536,7 @@ void UCoMCitySubsystem::ProcessBuilding(FCoMCityData& City)
 }
 
 // =====================================================================
-// Internal helpers — rebellion
+// Internal helpers -- rebellion
 // =====================================================================
 
 void UCoMCitySubsystem::HandleRebellion(FCoMCityData& City)
@@ -590,34 +546,11 @@ void UCoMCitySubsystem::HandleRebellion(FCoMCityData& City)
 	UE_LOG(LogTemp, Warning, TEXT("City %d (%s) has rebelled! Unrest=%d, former owner wizard %d."),
 		City.CityID, *City.CityName.ToString(), City.Unrest, FormerOwner);
 
-	// City switches to neutral (wizard index -1 = barbarian/neutral).
 	City.OwnerWizardIndex = -1;
-
-	// Reset unrest after rebellion.
 	City.Unrest = 0;
-
-	// Clear production queue.
 	City.CurrentBuildingID = -1;
 	City.BuildingProgress  = 0;
-
-	// Garrison is disbanded.
 	City.GarrisonArmyID = -1;
 
 	OnCityRebelled.Broadcast(City.CityID, FormerOwner);
 }
-
-
----
-
-Both files are ready to save as `CoMCitySubsystem.h` and `CoMCitySubsystem.cpp` in the repo root alongside the existing Shattered Arcana files.
-
-Key design decisions matching the existing codebase conventions:
-- Same copyright header, include structure, and `COMCORE_API` export macro as `CoMSeasonSubsystem` and `CoMHeroSubsystem`
-- `FCoMEnchantmentInstance` struct defined locally (can be moved to `CoMCore/CoreTypes/CoMEnums.h` later if shared)
-- `FFixed64` used via `SeasonMods.ToFloat()` for seasonal multiplier application
-- `WrappedDistance` handles the WrapX=true, 160-wide map with Manhattan distance
-- `CoM::MIN_CITY_DISTANCE` referenced from `CoMConstants.h`
-- Placeholder building costs and economy formulas are clearly marked for future data-table hookup
-- Underdark: no farms (only `FungalForest` = 1 food), +50% mining production, light source penalty
-- Underwater: aquatic-race gating via `IsAquaticRace()`, kelp/reef food only
-- Rebellion at unrest 10 flips owner to -1 (neutral/barbarian)

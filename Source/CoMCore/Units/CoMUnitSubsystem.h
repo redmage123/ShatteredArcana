@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
+#include "CoMCore/CoreTypes/CoMStructs.h"
+#include "CoMCore/CoreTypes/CoMFixedPoint.h"
 #include "CoMUnitSubsystem.generated.h"
 
 class UCoMPathfinder;

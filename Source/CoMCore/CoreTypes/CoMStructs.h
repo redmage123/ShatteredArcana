@@ -6,9 +6,9 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "CoMEnums.h"
-#include "CoMConstants.h"
-#include "CoMFixedPoint.h"
+#include "CoMCore/CoreTypes/CoMEnums.h"
+#include "CoMCore/CoreTypes/CoMConstants.h"
+#include "CoMCore/CoreTypes/CoMFixedPoint.h"
 #include "CoMCore/Turn/CoMCommandQueue.h"
 #include "CoMCore/Turn/CoMDeterministicRandom.h"
 #include "CoMStructs.generated.h"
@@ -35,7 +35,7 @@ struct COMCORE_API FCoMTileData
 	GENERATED_BODY()
 
 	/** Grid position within the layer (0–159, 0–99 for main grids). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint Position;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint Position = FIntPoint(0, 0);
 
 	/** Terrain type — determines movement cost, food yield, terrain features. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMTerrain Terrain = ECoMTerrain::Grassland;
@@ -59,7 +59,7 @@ struct COMCORE_API FCoMTileData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 CurrentVision = 0;
 
 	/** Active corruption type on this tile (None = uncorrupted). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMCorruptionType Corruption = ECoMCorruptionType::None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMCorruptionType Corruption = ECoMCorruptionType::InfernyxCorruption;
 
 	/** Ley line presence: bitmask of ley line IDs passing through (compact encoding). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<int32> LeyLineIDs;
@@ -154,7 +154,7 @@ struct COMCORE_API FCoMUnderwaterZone
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32      ZoneID       = -1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane  Plane        = ECoMPlane::Aurelith;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint  SurfaceCenter;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint  SurfaceCenter = FIntPoint(0, 0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32      Radius       = 20;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32      Depth        = 1;  // Affects pressure/light
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<FCoMTileData> Tiles;
@@ -254,7 +254,7 @@ struct COMCORE_API FCoMWeatherZone
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint         Center;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint         Center = FIntPoint(0, 0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32             Radius         = 15;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMWeatherType   Type           = ECoMWeatherType::Clear;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FFixed64          Intensity      = FFixed64::Half(); // 0.0–1.0
@@ -292,7 +292,7 @@ struct COMCORE_API FCoMWeatherState
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<FCoMWeatherZone> ActiveZones;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32                   SeasonTurnCounter = 0;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMSeason              CurrentSeason = ECoMSeason::Spring;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMSeason              CurrentSeason = ECoMSeason::Season1;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -311,12 +311,12 @@ struct COMCORE_API FCoMPortal
 	// Source
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane        SourcePlane        = ECoMPlane::Aurelith;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMapLayer     SourceLayer        = ECoMMapLayer::Surface;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint        SourcePosition;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint        SourcePosition = FIntPoint(0, 0);
 
 	// Destination
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane        DestPlane          = ECoMPlane::Noctharion;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMapLayer     DestLayer          = ECoMMapLayer::Surface;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint        DestPosition;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint        DestPosition = FIntPoint(0, 0);
 
 	// Properties
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool             bBidirectional     = true;
@@ -361,7 +361,7 @@ struct COMCORE_API FCoMLeyIntersection
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32        IntersectionID    = -1;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint    Position;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint    Position = FIntPoint(0, 0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane    Plane             = ECoMPlane::Aurelith;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMapLayer Layer             = ECoMMapLayer::Surface;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<int32> ConvergingLeyLineIDs;
@@ -430,7 +430,7 @@ struct COMCORE_API FCoMArmyGroup
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32             ArmyGroupID       = -1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32             OwnerWizardIndex  = CoM::WIZARD_INDEX_NONE;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<int32>     UnitIDs;            // Up to MAX_ARMY_SIZE
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint         Position;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint         Position = FIntPoint(0, 0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane         Plane             = ECoMPlane::Aurelith;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMapLayer      Layer             = ECoMMapLayer::Surface;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32             MovementRemaining = 0;
@@ -508,7 +508,7 @@ struct COMCORE_API FCoMDragonDomain
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32                 RulerDragonID         = -1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane             Plane                 = ECoMPlane::Aurelith;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMapLayer          Layer                 = ECoMMapLayer::Surface;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint             LairPosition;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint             LairPosition = FIntPoint(0, 0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32                 InfluenceRadius       = 8;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<FIntPoint>     ClaimedTiles;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<int32>         ArmyGroupIDs;
@@ -670,7 +670,7 @@ struct COMCORE_API FCoMMineData
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32            MineID          = -1;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint        Position;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint        Position = FIntPoint(0, 0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane        Plane           = ECoMPlane::Aurelith;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMapLayer     Layer           = ECoMMapLayer::Surface;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMResource     ResourceType    = ECoMResource::Iron;
@@ -711,7 +711,7 @@ struct COMCORE_API FCoMFleet
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32               OwnerWizardIndex   = CoM::WIZARD_INDEX_NONE;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<int32>       ShipUnitIDs;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32               AdmiralHeroID      = -1;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint           Position;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint           Position = FIntPoint(0, 0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane           Plane              = ECoMPlane::Aurelith;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMapLayer        Layer              = ECoMMapLayer::Surface;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<FIntPoint>   Route;
@@ -866,7 +866,7 @@ struct COMCORE_API FCoMActiveRitual
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32            RitualID            = -1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FName            RitualSpellID;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32            WizardIndex         = CoM::WIZARD_INDEX_NONE;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint        Location;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint        Location = FIntPoint(0, 0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane        Plane               = ECoMPlane::Aurelith;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<int32>    ParticipantUnitIDs;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32            TurnsRemaining      = 0;
@@ -910,7 +910,7 @@ struct COMCORE_API FCoMWorldEvent
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32                     Duration        = 5; // Turns
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<ECoMPlane>         AffectedPlanes;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<ECoMMapLayer>      AffectedLayers;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint                 EpicenterPosition;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint                 EpicenterPosition = FIntPoint(0, 0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32                     EpicenterRadius = 0; // 0 = global
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FFixed64                   Intensity       = FFixed64(1);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<FCoMStatModifier>  GlobalModifiers;
@@ -927,10 +927,10 @@ struct COMCORE_API FCoMCorruptionZone
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32              ZoneID            = -1;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMCorruptionType Type              = ECoMCorruptionType::None;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMCorruptionType Type              = ECoMCorruptionType::InfernyxCorruption;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane          Plane             = ECoMPlane::Aurelith;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMapLayer       Layer             = ECoMMapLayer::Surface;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint          Center;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint          Center = FIntPoint(0, 0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32              Radius            = 3;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FFixed64            Intensity         = FFixed64::Half(); // 0–1
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FFixed64            SpreadRate        = FFixed64(0.1f); // Tiles/turn
@@ -1040,7 +1040,7 @@ struct COMCORE_API FCoMWarband
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMWarbandType       Type            = ECoMWarbandType::Bandits;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FCoMWarbandLeader     Leader;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<int32>         UnitIDs;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint             Position;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint             Position = FIntPoint(0, 0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane             Plane           = ECoMPlane::Aurelith;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMapLayer          Layer           = ECoMMapLayer::Surface;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMWarbandBehavior   Behavior        = ECoMWarbandBehavior::Patrol;
@@ -1065,7 +1065,7 @@ struct COMCORE_API FCoMOrgAgent
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FText              Name;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32              SkillLevel      = 1; // 1–10
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMAgentMission   CurrentMission  = ECoMAgentMission::Spy;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint          Location;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint          Location = FIntPoint(0, 0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane          Plane           = ECoMPlane::Aurelith;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32              TargetWizardIndex = CoM::WIZARD_INDEX_NONE;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32              TurnsOnMission  = 0;

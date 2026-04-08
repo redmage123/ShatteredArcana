@@ -1,10 +1,11 @@
 #include "CoMPathfinder.h"
-#include "CoMWorldMapSubsystem.h"
+#include "CoMCore/World/CoMWorldMapSubsystem.h"
 #include "CoMLeyPortalSubsystem.h"
 
 // --------------------------------------------------------------------------
 // Node packing: Plane(4 bits) | Layer(4 bits) | X(24 bits) | Y(24 bits) = 56 bits used
 // --------------------------------------------------------------------------
+
 uint64 UCoMPathfinder::PackNode(ECoMPlane Plane, ECoMMapLayer Layer, int32 X, int32 Y)
 {
 	const uint64 P = static_cast<uint64>(Plane) & 0xF;
@@ -26,30 +27,29 @@ FFixed64 UCoMPathfinder::GetTerrainBaseCost(ECoMTerrain Terrain)
 	case ECoMTerrain::Savanna:
 	case ECoMTerrain::River:
 	case ECoMTerrain::Shore:
-		return FFixed64(1.0);
+		return FFixed64(1);
 
 	case ECoMTerrain::Desert:
 	case ECoMTerrain::Tundra:
-		return FFixed64(1.5);
+		return FFixed64::FromRaw(98304); // 1.5
 
 	case ECoMTerrain::Forest:
 	case ECoMTerrain::Jungle:
 	case ECoMTerrain::Hills:
-		return FFixed64(2.0);
+		return FFixed64(2);
 
 	case ECoMTerrain::Mountains:
-		return FFixed64(3.0);
+		return FFixed64(3);
 
 	case ECoMTerrain::Swamp:
-	case ECoMTerrain::Marsh:
-		return FFixed64(3.0);
+		return FFixed64(3);
 
 	case ECoMTerrain::Ocean:
-		// Should not be queried for ground cost; treated as impassable
-		return FFixed64(100.0);
+		// Impassable for ground units; high cost as a fallback.
+		return FFixed64(100);
 
 	default:
-		return FFixed64(1.0);
+		return FFixed64(1);
 	}
 }
 
@@ -67,7 +67,7 @@ FFixed64 UCoMPathfinder::ComputeHeuristic(
 {
 	if (FromPlane != GoalPlane || FromLayer != GoalLayer)
 	{
-		return FFixed64(0.0);
+		return FFixed64(0);
 	}
 
 	// WrapX Manhattan distance
@@ -78,7 +78,7 @@ FFixed64 UCoMPathfinder::ComputeHeuristic(
 	}
 	const int32 DY = FMath::Abs(GoalY - FromY);
 
-	return FFixed64(static_cast<double>(DX + DY));
+	return FFixed64(DX + DY);
 }
 
 // --------------------------------------------------------------------------
@@ -191,7 +191,7 @@ FCoMPathResult UCoMPathfinder::ReconstructPath(
 	FCoMPathSegment CurrentSegment;
 	CurrentSegment.Plane = NodeChain[0]->Plane;
 	CurrentSegment.Layer = NodeChain[0]->Layer;
-	CurrentSegment.SegmentCost = FFixed64(0.0);
+	CurrentSegment.SegmentCost = FFixed64(0);
 	CurrentSegment.PortalUsed = -1;
 
 	for (int32 i = 0; i < NodeChain.Num(); ++i)
@@ -208,7 +208,7 @@ FCoMPathResult UCoMPathfinder::ReconstructPath(
 			CurrentSegment = FCoMPathSegment();
 			CurrentSegment.Plane = Node->Plane;
 			CurrentSegment.Layer = Node->Layer;
-			CurrentSegment.SegmentCost = FFixed64(0.0);
+			CurrentSegment.SegmentCost = FFixed64(0);
 			CurrentSegment.PortalUsed = Node->PortalUsedToReach;
 		}
 
@@ -260,13 +260,13 @@ FCoMPathResult UCoMPathfinder::FindPath(
 	{
 		FCoMPathResult Result;
 		Result.bFound = true;
-		Result.TotalCost = FFixed64(0.0);
+		Result.TotalCost = FFixed64(0);
 
 		FCoMPathSegment Seg;
 		Seg.Plane = Request.StartPlane;
 		Seg.Layer = Request.StartLayer;
 		Seg.Tiles.Add(StartNorm);
-		Seg.SegmentCost = FFixed64(0.0);
+		Seg.SegmentCost = FFixed64(0);
 		Seg.PortalUsed = -1;
 		Result.Segments.Add(MoveTemp(Seg));
 		return Result;
@@ -288,7 +288,7 @@ FCoMPathResult UCoMPathfinder::FindPath(
 	StartNode.Layer = Request.StartLayer;
 	StartNode.X = StartNorm.X;
 	StartNode.Y = StartNorm.Y;
-	StartNode.GCost = FFixed64(0.0);
+	StartNode.GCost = FFixed64(0);
 	StartNode.FCost = ComputeHeuristic(
 		Request.StartPlane, Request.StartLayer, StartNorm.X, StartNorm.Y,
 		Request.GoalPlane, Request.GoalLayer, GoalNorm.X, GoalNorm.Y
@@ -302,8 +302,8 @@ FCoMPathResult UCoMPathfinder::FindPath(
 	int32 NodesExpanded = 0;
 
 	// 4-directional neighbor offsets
-	static constexpr int32 DX[] = { 1, -1, 0, 0 };
-	static constexpr int32 DY[] = { 0, 0, 1, -1 };
+	static constexpr int32 NeighborDX[] = { 1, -1, 0, 0 };
+	static constexpr int32 NeighborDY[] = { 0, 0, 1, -1 };
 
 	while (OpenHeap.Num() > 0)
 	{
@@ -333,8 +333,8 @@ FCoMPathResult UCoMPathfinder::FindPath(
 		// ----- Expand cardinal neighbors -----
 		for (int32 Dir = 0; Dir < 4; ++Dir)
 		{
-			int32 NX = Current.X + DX[Dir];
-			int32 NY = Current.Y + DY[Dir];
+			int32 NX = Current.X + NeighborDX[Dir];
+			int32 NY = Current.Y + NeighborDY[Dir];
 
 			// WrapX normalization
 			if (NX < 0)
@@ -359,20 +359,24 @@ FCoMPathResult UCoMPathfinder::FindPath(
 			}
 
 			const FCoMTileData* TileData = Map->GetTile(Current.Plane, Current.Layer, NX, NY);
+			if (!TileData)
+			{
+				continue;
+			}
 
 			// Check passability
-			if (TileData.bImpassable || IsTerrainImpassable(TileData->Terrain))
+			if (TileData->bImpassable || IsTerrainImpassable(TileData->Terrain))
 			{
 				continue;
 			}
 
 			// Compute movement cost
-			FFixed64 MoveCost = GetTerrainBaseCost(TileData->Terrain) * TileData.MoveCostModifier;
+			FFixed64 MoveCost = GetTerrainBaseCost(TileData->Terrain) * TileData->MoveCostModifier;
 
 			// Ley line bonus: 0.5x multiplier
-			if (TileData.LeyLineIDs.Num() > 0)
+			if (TileData->LeyLineIDs.Num() > 0)
 			{
-				MoveCost = MoveCost * FFixed64(0.5);
+				MoveCost = MoveCost * FFixed64::Half();
 			}
 
 			const FFixed64 TentativeG = Current.GCost + MoveCost;
@@ -404,75 +408,74 @@ FCoMPathResult UCoMPathfinder::FindPath(
 		// ----- Expand portal edges -----
 		if (Request.bAllowPortals)
 		{
-			const FCoMTileData& CurrentTile = Map->GetTile(Current.Plane, Current.Layer, Current.X, Current.Y);
-
-			if (CurrentTile.PortalID >= 0)
+			const FCoMTileData* CurrentTile = Map->GetTile(Current.Plane, Current.Layer, Current.X, Current.Y);
+			if (!CurrentTile || CurrentTile->PortalID < 0)
 			{
-				const FCoMPortal* Portal = LeyPortals->GetPortal(CurrentTile.PortalID);
+				continue;
+			}
 
-				if (Portal.bAlwaysActive)
+			const FCoMPortal* Portal = LeyPortals->GetPortal(CurrentTile->PortalID);
+			if (!Portal || !Portal->bAlwaysActive)
+			{
+				continue;
+			}
+
+			// Determine destination based on which end we are standing on
+			ECoMPlane DestPlane;
+			ECoMMapLayer DestLayer;
+			FIntPoint DestPos;
+
+			const bool bAtSource =
+				Current.Plane == Portal->SourcePlane &&
+				Current.Layer == Portal->SourceLayer &&
+				Current.X == Portal->SourcePosition.X &&
+				Current.Y == Portal->SourcePosition.Y;
+
+			if (bAtSource)
+			{
+				DestPlane = Portal->DestPlane;
+				DestLayer = Portal->DestLayer;
+				DestPos = Portal->DestPosition;
+			}
+			else if (Portal->bBidirectional)
+			{
+				DestPlane = Portal->SourcePlane;
+				DestLayer = Portal->SourceLayer;
+				DestPos = Portal->SourcePosition;
+			}
+			else
+			{
+				// Standing on destination side of a one-way portal; no traversal
+				continue;
+			}
+
+			const uint64 PortalDestKey = PackNode(DestPlane, DestLayer, DestPos.X, DestPos.Y);
+
+			if (!ClosedSet.Contains(PortalDestKey))
+			{
+				const FFixed64 PortalCost = FFixed64(1);
+				const FFixed64 TentativeG = Current.GCost + PortalCost;
+
+				const FPathNode* ExistingNode = AllNodes.Find(PortalDestKey);
+				if (!ExistingNode || ExistingNode->GCost > TentativeG)
 				{
-					// Determine destination based on which end we are standing on
-					ECoMPlane DestPlane;
-					ECoMMapLayer DestLayer;
-					FIntPoint DestPos;
+					FPathNode PortalNode;
+					PortalNode.Plane = DestPlane;
+					PortalNode.Layer = DestLayer;
+					PortalNode.X = DestPos.X;
+					PortalNode.Y = DestPos.Y;
+					PortalNode.GCost = TentativeG;
+					PortalNode.FCost = TentativeG + ComputeHeuristic(
+						DestPlane, DestLayer, DestPos.X, DestPos.Y,
+						Request.GoalPlane, Request.GoalLayer, GoalNorm.X, GoalNorm.Y
+					);
+					PortalNode.ParentKey = CurrentKey;
+					PortalNode.PortalUsedToReach = CurrentTile->PortalID;
 
-					const bool bAtSource =
-						Current.Plane == Portal.SourcePlane &&
-						Current.Layer == Portal.SourceLayer &&
-						Current.X == Portal.SourcePosition.X &&
-						Current.Y == Portal.SourcePosition.Y;
-
-					if (bAtSource)
-					{
-						DestPlane = Portal->DestPlane;
-						DestLayer = Portal->DestLayer;
-						DestPos = Portal->DestPosition;
-					}
-					else if (Portal.bBidirectional)
-					{
-						DestPlane = Portal.SourcePlane;
-						DestLayer = Portal.SourceLayer;
-						DestPos = Portal.SourcePosition;
-					}
-					else
-					{
-						// Standing on destination side of a one-way portal; no traversal
-						continue; // was: goto SkipPortal
-					}
-
-					{
-						const uint64 PortalDestKey = PackNode(DestPlane, DestLayer, DestPos.X, DestPos.Y);
-
-						if (!ClosedSet.Contains(PortalDestKey))
-						{
-							const FFixed64 PortalCost = FFixed64(1.0);
-							const FFixed64 TentativeG = Current.GCost + PortalCost;
-
-							const FPathNode* ExistingNode = AllNodes.Find(PortalDestKey);
-							if (!ExistingNode || ExistingNode->GCost > TentativeG)
-							{
-								FPathNode PortalNode;
-								PortalNode.Plane = DestPlane;
-								PortalNode.Layer = DestLayer;
-								PortalNode.X = DestPos.X;
-								PortalNode.Y = DestPos.Y;
-								PortalNode.GCost = TentativeG;
-								PortalNode.FCost = TentativeG + ComputeHeuristic(
-									DestPlane, DestLayer, DestPos.X, DestPos.Y,
-									Request.GoalPlane, Request.GoalLayer, GoalNorm.X, GoalNorm.Y
-								);
-								PortalNode.ParentKey = CurrentKey;
-								PortalNode.PortalUsedToReach = CurrentTile.PortalID;
-
-								AllNodes.Add(PortalDestKey, PortalNode);
-								HeapPush(OpenHeap, PortalNode);
-							}
-						}
-					}
+					AllNodes.Add(PortalDestKey, PortalNode);
+					HeapPush(OpenHeap, PortalNode);
 				}
 			}
-			// SkipPortal: (removed goto target);
 		}
 	}
 

@@ -1,11 +1,11 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 
-#include "CoMTurnManager.h"
+#include "CoMCore/Turn/CoMTurnManager.h"
 
 // Subsystem headers — resolved at call time, never cached.
-#include "CoMSeasonSubsystem.h"
-#include "CoMHeroSubsystem.h"
-#include "CoMFogOfWarSubsystem.h"
+#include "CoMCore/World/CoMSeasonSubsystem.h"
+#include "CoMCore/Units/CoMHeroSubsystem.h"
+#include "CoMCore/World/CoMFogOfWarSubsystem.h"
 
 // Subsystems that may not exist yet — forward-declared, null-checked.
 // #include "CoMCombatSubsystem.h"

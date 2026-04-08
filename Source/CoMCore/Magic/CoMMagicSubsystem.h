@@ -153,7 +153,7 @@ struct FCoMActiveRune
     int32 InscribedByWizardId = -1;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    ECoMRuneTarget TargetType = ECoMRuneTarget::Weapon;
+    ECoMRuneTarget TargetType = ECoMRuneTarget::Item;
 
     /** Target item/unit/city ID. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)

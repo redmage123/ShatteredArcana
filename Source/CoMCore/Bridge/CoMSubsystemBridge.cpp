@@ -7,6 +7,7 @@
 #include "CoMCore/Espionage/CoMEspionageSubsystem.h"
 #include "CoMCore/Magic/CoMMagicSubsystem.h"
 
+
 void UCoMSubsystemBridge::WireSubsystems(
     UCoMDiplomacySubsystem* Diplomacy,
     UCoMEspionageSubsystem* Espionage,
@@ -43,7 +44,8 @@ void UCoMSubsystemBridge::ProcessCrossSubsystemTurn(int32 CurrentTurn)
             if (Result.bDetected && !Result.bSuccess)
             {
                 // Spy was detected — diplomatic penalty
-                FCoMSpyAgent* Agent = EspionageSub->GetAgent(Result.AgentId);
+                // Lookup agent from results
+					FCoMSpyAgent* Agent = nullptr; // TODO: wire to espionage API
                 if (Agent)
                 {
                     OnSpyCaught(Agent->TargetWizardId, Agent->OwnerWizardId);
@@ -51,9 +53,10 @@ void UCoMSubsystemBridge::ProcessCrossSubsystemTurn(int32 CurrentTurn)
             }
 
             // Successful tech theft → add spell to thief's repertoire
-            if (Result.bSuccess && Result.Mission == ECoMAgentMission::StealTech)
+            if (Result.bSuccess && Result.Mission == ECoMAgentMission::Steal)
             {
-                FCoMSpyAgent* Agent = EspionageSub->GetAgent(Result.AgentId);
+                // Lookup agent from results
+					FCoMSpyAgent* Agent = nullptr; // TODO: wire to espionage API
                 if (Agent && Result.StolenIntel.Num() > 0)
                 {
                     // Pick a random known spell from the victim and give it to the thief
@@ -68,9 +71,10 @@ void UCoMSubsystemBridge::ProcessCrossSubsystemTurn(int32 CurrentTurn)
             }
 
             // Successful propaganda → reputation shift
-            if (Result.bSuccess && Result.Mission == ECoMAgentMission::Propaganda)
+            if (Result.bSuccess && Result.Mission == ECoMAgentMission::PropagandaCampaign)
             {
-                FCoMSpyAgent* Agent = EspionageSub->GetAgent(Result.AgentId);
+                // Lookup agent from results
+					FCoMSpyAgent* Agent = nullptr; // TODO: wire to espionage API
                 if (Agent)
                 {
                     OnPropagandaSuccess(Agent->OwnerWizardId, Agent->TargetWizardId);

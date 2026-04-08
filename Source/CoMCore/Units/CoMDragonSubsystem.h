@@ -44,6 +44,7 @@ public:
 	const FCoMDragonDomain* GetDomain(int32 DomainID) const;
 
 	/** All domains on the specified plane. */
+	TArray<const FCoMDragonDomain*> GetDomainsOnPlane(ECoMPlane Plane) const;
 
 	// -----------------------------------------------------------------
 	// Dragon Eggs

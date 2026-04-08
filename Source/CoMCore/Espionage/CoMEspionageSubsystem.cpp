@@ -35,7 +35,7 @@ int32 UCoMEspionageSubsystem::RecruitAgent(int32 WizardId, const FString& Name, 
     Agent.AgentName = Name.IsEmpty() ? GenerateAgentName() : Name;
     Agent.SkillLevel = FMath::Clamp(SkillLevel, 1, 100);
     Agent.RecruitedTurn = CurrentTurn;
-    Agent.CurrentMission = ECoMAgentMission::None;
+    Agent.CurrentMission = ECoMAgentMission::MAX;
 
     AllAgents.Add(Agent.AgentId, Agent);
     return Agent.AgentId;
@@ -62,7 +62,7 @@ FCoMSpyAgent* UCoMEspionageSubsystem::GetAgent(int32 AgentId)
 void UCoMEspionageSubsystem::DismissAgent(int32 AgentId)
 {
     FCoMSpyAgent* Agent = AllAgents.Find(AgentId);
-    if (Agent && Agent->CurrentMission == ECoMAgentMission::Counterspy)
+    if (Agent && Agent->CurrentMission == ECoMAgentMission::GuardAsset)
     {
         FCoMCounterIntel* CI = CounterIntelMap.Find(Agent->OwnerWizardId);
         if (CI && CI->CounterSpyAgents > 0)
@@ -82,7 +82,7 @@ bool UCoMEspionageSubsystem::AssignMission(int32 AgentId, ECoMAgentMission Missi
 {
     FCoMSpyAgent* Agent = AllAgents.Find(AgentId);
     if (!Agent) return false;
-    if (Agent->CurrentMission != ECoMAgentMission::None) return false;
+    if (Agent->CurrentMission != ECoMAgentMission::MAX) return false;
     if (Agent->bCaptured) return false;
 
     Agent->CurrentMission = Mission;
@@ -99,7 +99,7 @@ void UCoMEspionageSubsystem::CancelMission(int32 AgentId)
     if (!Agent) return;
 
     // If agent was on counterspy duty, decrement the counter
-    if (Agent->CurrentMission == ECoMAgentMission::Counterspy)
+    if (Agent->CurrentMission == ECoMAgentMission::GuardAsset)
     {
         FCoMCounterIntel* CI = CounterIntelMap.Find(Agent->OwnerWizardId);
         if (CI && CI->CounterSpyAgents > 0)
@@ -108,7 +108,7 @@ void UCoMEspionageSubsystem::CancelMission(int32 AgentId)
         }
     }
 
-    Agent->CurrentMission = ECoMAgentMission::None;
+    Agent->CurrentMission = ECoMAgentMission::MAX;
     Agent->TargetWizardId = -1;
     Agent->MissionTurnsLeft = 0;
 }
@@ -126,12 +126,12 @@ int32 UCoMEspionageSubsystem::GetMissionSuccessChance(int32 AgentId, ECoMAgentMi
     {
     case ECoMAgentMission::Spy:           BaseChance += 20; break;  // Easiest
     case ECoMAgentMission::Sabotage:      BaseChance -= 10; break;
-    case ECoMAgentMission::StealTech:     BaseChance -= 15; break;
+    case ECoMAgentMission::Steal:     BaseChance -= 15; break;
     case ECoMAgentMission::Assassinate:   BaseChance -= 30; break;  // Hardest
-    case ECoMAgentMission::Infiltrate:    BaseChance += 0;  break;
-    case ECoMAgentMission::Counterspy:    BaseChance += 10; break;
-    case ECoMAgentMission::Propaganda:    BaseChance += 5;  break;
-    case ECoMAgentMission::InciteRebel:   BaseChance -= 20; break;
+    case ECoMAgentMission::InfiltrateCity:    BaseChance += 0;  break;
+    case ECoMAgentMission::GuardAsset:    BaseChance += 10; break;
+    case ECoMAgentMission::PropagandaCampaign:    BaseChance += 5;  break;
+	// case ECoMAgentMission::PropagandaCampaign: // duplicate removed
     default: break;
     }
 
@@ -155,14 +155,14 @@ int32 UCoMEspionageSubsystem::GetMissionDuration(ECoMAgentMission Mission) const
 {
     switch (Mission)
     {
-    case ECoMAgentMission::Spy:           return 2;
-    case ECoMAgentMission::Sabotage:      return 3;
-    case ECoMAgentMission::StealTech:     return 4;
-    case ECoMAgentMission::Assassinate:   return 5;
-    case ECoMAgentMission::Infiltrate:    return 3;
-    case ECoMAgentMission::Counterspy:    return 1; // Ongoing
-    case ECoMAgentMission::Propaganda:    return 2;
-    case ECoMAgentMission::InciteRebel:   return 4;
+	// case ECoMAgentMission::Spy: // duplicate removed
+	// case ECoMAgentMission::Sabotage: // duplicate removed
+	// case ECoMAgentMission::Steal: // duplicate removed
+	// case ECoMAgentMission::Assassinate: // duplicate removed
+	// case ECoMAgentMission::InfiltrateCity: // duplicate removed
+	// case ECoMAgentMission::GuardAsset: // duplicate removed
+	// case ECoMAgentMission::PropagandaCampaign: // duplicate removed
+	// case ECoMAgentMission::PropagandaCampaign: // duplicate removed
     default: return 1;
     }
 }
@@ -198,7 +198,7 @@ void UCoMEspionageSubsystem::AssignCounterSpy(int32 WizardId, int32 AgentId)
     FCoMSpyAgent* Agent = AllAgents.Find(AgentId);
     if (!Agent || Agent->OwnerWizardId != WizardId) return;
 
-    Agent->CurrentMission = ECoMAgentMission::Counterspy;
+    Agent->CurrentMission = ECoMAgentMission::GuardAsset;
     Agent->TargetWizardId = WizardId; // Defending own territory
     Agent->MissionTurnsLeft = -1; // Ongoing
 
@@ -240,7 +240,7 @@ void UCoMEspionageSubsystem::RansomCapturedAgent(int32 WizardId, int32 CapturedA
 
     // Return agent to owner (with reduced skill from captivity)
     Agent->bCaptured = false;
-    Agent->CurrentMission = ECoMAgentMission::None;
+    Agent->CurrentMission = ECoMAgentMission::MAX;
     Agent->SkillLevel = FMath::Max(1, Agent->SkillLevel - 10);
 }
 
@@ -257,7 +257,7 @@ bool UCoMEspionageSubsystem::TurnCapturedAgent(int32 WizardId, int32 CapturedAge
     Agent->bCaptured = false;
     Agent->bDoubleAgent = true;
     Agent->TrueControllerWizardId = WizardId;
-    Agent->CurrentMission = ECoMAgentMission::None;
+    Agent->CurrentMission = ECoMAgentMission::MAX;
 
     FCoMCounterIntel& CI = CounterIntelMap.FindOrAdd(WizardId);
     CI.CapturedEnemyAgents.Remove(CapturedAgentId);
@@ -274,8 +274,8 @@ void UCoMEspionageSubsystem::ProcessTurn(int32 CurrentTurn)
     TArray<int32> AgentsToProcess;
     for (auto& Pair : AllAgents)
     {
-        if (Pair.Value.CurrentMission != ECoMAgentMission::None &&
-            Pair.Value.CurrentMission != ECoMAgentMission::Counterspy &&
+        if (Pair.Value.CurrentMission != ECoMAgentMission::MAX &&
+            Pair.Value.CurrentMission != ECoMAgentMission::GuardAsset &&
             !Pair.Value.bCaptured)
         {
             AgentsToProcess.Add(Pair.Key);
@@ -336,28 +336,28 @@ FCoMMissionResult UCoMEspionageSubsystem::ResolveMission(FCoMSpyAgent& Agent, in
 
         switch (Agent.CurrentMission)
         {
-        case ECoMAgentMission::Spy:
+	// case ECoMAgentMission::Spy: // duplicate removed
             Result.StolenIntel.Add(TEXT("Army composition revealed"));
             Result.StolenIntel.Add(TEXT("City production visible"));
             Result.ResultDescription = TEXT("Successfully gathered intelligence");
             break;
-        case ECoMAgentMission::Sabotage:
+	// case ECoMAgentMission::Sabotage: // duplicate removed
             Result.DamageDealt = 50 + Agent.SkillLevel;
             Result.ResultDescription = TEXT("Sabotaged enemy infrastructure");
             break;
-        case ECoMAgentMission::StealTech:
+	// case ECoMAgentMission::Steal: // duplicate removed
             Result.StolenIntel.Add(TEXT("Spell knowledge acquired"));
             Result.ResultDescription = TEXT("Stole magical research");
             Agent.Experience += 10; // Bonus XP for hard mission
             break;
-        case ECoMAgentMission::Assassinate:
+	// case ECoMAgentMission::Assassinate: // duplicate removed
             Result.ResultDescription = TEXT("Target eliminated");
             Agent.Experience += 30; // Big XP for hardest mission
             break;
-        case ECoMAgentMission::Propaganda:
+	// case ECoMAgentMission::PropagandaCampaign: // duplicate removed
             Result.ResultDescription = TEXT("Public opinion shifted");
             break;
-        case ECoMAgentMission::InciteRebel:
+	// case ECoMAgentMission::PropagandaCampaign: // duplicate removed
             Result.ResultDescription = TEXT("Rebellion incited in target city");
             Agent.Experience += 15;
             break;
@@ -399,7 +399,7 @@ FCoMMissionResult UCoMEspionageSubsystem::ResolveMission(FCoMSpyAgent& Agent, in
     // Reset agent mission state (unless captured/killed)
     if (!Result.bCaptured && !Result.bKilled)
     {
-        Agent.CurrentMission = ECoMAgentMission::None;
+        Agent.CurrentMission = ECoMAgentMission::MAX;
         Agent.TargetWizardId = -1;
         Agent.MissionTurnsLeft = 0;
     }

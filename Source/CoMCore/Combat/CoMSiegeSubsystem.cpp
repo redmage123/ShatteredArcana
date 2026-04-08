@@ -1,6 +1,7 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 #include "CoMSiegeSubsystem.h"
 
+
 void UCoMSiegeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
@@ -28,21 +29,23 @@ int32 UCoMSiegeSubsystem::BeginSiege(int32 AttackerArmyID, int32 DefenderCityID)
 
 	FCoMSiegeState Siege;
 	Siege.SiegeID = SiegeID;
-	Siege.AttackerArmyGroup = AttackerArmyID;
-	Siege.DefenderCity = DefenderCityID;
+	Siege.AttackerArmyGroupID = AttackerArmyID;
+	Siege.DefenderCityID = DefenderCityID;
 	Siege.Phase = ECoMSiegePhase::Approach;
 	Siege.TurnsUnderSiege = 0;
-	Siege.CityFoodReserves = 50; // Default food reserves
-	Siege.CityMorale = 100;
+	Siege.CityFoodReserves = CoM::DEFAULT_FOOD_RESERVES;
+	Siege.CityMorale = CoM::DEFAULT_MORALE;
 	Siege.bSupplyLinesCut = false;
 
 	// Wall HP based on city wall level (TODO: query from CitySubsystem)
 	// Palisade=50, Stone=100, Fortress=200
-	Siege.WallMaxHP = 100; // Default stone walls
+	Siege.WallMaxHP = CoM::DEFAULT_WALL_HP;
 	Siege.WallHP = Siege.WallMaxHP;
 	Siege.GatehouseHP = Siege.WallMaxHP / 2;
 
 	AllSieges.Add(SiegeID, Siege);
+
+	OnSiegeStarted.Broadcast(SiegeID, DefenderCityID);
 
 	UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d begun: army %d vs city %d"), SiegeID, AttackerArmyID, DefenderCityID);
 	return SiegeID;
@@ -52,6 +55,8 @@ void UCoMSiegeSubsystem::EndSiege(int32 SiegeID, bool bAttackerVictory)
 {
 	if (AllSieges.Contains(SiegeID))
 	{
+		OnSiegeEnded.Broadcast(SiegeID, bAttackerVictory);
+
 		UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d ended: %s"), SiegeID,
 			bAttackerVictory ? TEXT("attacker victory") : TEXT("defender held"));
 		AllSieges.Remove(SiegeID);
@@ -74,12 +79,12 @@ void UCoMSiegeSubsystem::ProcessSiegeTurn()
 		if (Siege->Phase == ECoMSiegePhase::Approach && Siege->TurnsUnderSiege >= 1)
 		{
 			Siege->Phase = ECoMSiegePhase::Bombardment;
+			OnSiegePhaseChanged.Broadcast(SiegeID, ECoMSiegePhase::Bombardment);
 		}
 
 		// Bombardment: siege equipment damages walls
 		if (Siege->Phase == ECoMSiegePhase::Bombardment)
 		{
-			// TODO: check weather — Blizzard/Rain halve bombardment damage
 			int32 TotalDamage = 0;
 			for (int32 EquipID : Siege->SiegeEquipmentIDs)
 			{
@@ -100,10 +105,14 @@ void UCoMSiegeSubsystem::ProcessSiegeTurn()
 			// Check for breach
 			if (Siege->WallHP <= 0 || Siege->GatehouseHP <= 0)
 			{
-				Siege->Phase = ECoMSiegePhase::Breach;
+				Siege->Phase = ECoMSiegePhase::Breakthrough;
+				OnSiegePhaseChanged.Broadcast(SiegeID, ECoMSiegePhase::Breakthrough);
+
 				if (Siege->WallHP <= 0)
 				{
-					Siege->BreachPoints.Add(Siege->TurnsUnderSiege); // Use turn as breach ID
+					const int32 BreachSeg = Siege->TurnsUnderSiege;
+					Siege->BreachPoints.Add(FIntPoint(BreachSeg, 0));
+					OnWallBreached.Broadcast(SiegeID, BreachSeg);
 				}
 				UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d: BREACH! WallHP=%d GateHP=%d"),
 					SiegeID, Siege->WallHP, Siege->GatehouseHP);
@@ -111,30 +120,34 @@ void UCoMSiegeSubsystem::ProcessSiegeTurn()
 		}
 
 		// Starvation
-		int32 FoodLoss = Siege->bSupplyLinesCut ? 3 : 1;
+		const int32 FoodLoss = Siege->bSupplyLinesCut
+			? CoM::STARVATION_RATE_CUT
+			: CoM::STARVATION_RATE_NORMAL;
 		Siege->CityFoodReserves = FMath::Max(0, Siege->CityFoodReserves - FoodLoss);
 
 		if (Siege->CityFoodReserves <= 0)
 		{
-			if (Siege->Phase != ECoMSiegePhase::Starvation && Siege->Phase != ECoMSiegePhase::Surrender)
+			if (Siege->Phase != ECoMSiegePhase::Assault && Siege->Phase != ECoMSiegePhase::Surrender)
 			{
-				Siege->Phase = ECoMSiegePhase::Starvation;
+				Siege->Phase = ECoMSiegePhase::Assault;
+				OnSiegePhaseChanged.Broadcast(SiegeID, ECoMSiegePhase::Assault);
 			}
-			// Morale drops 2/turn when starving
-			Siege->CityMorale = FMath::Max(0, Siege->CityMorale - 2);
+			// Morale drops when starving
+			Siege->CityMorale = FMath::Max(0, Siege->CityMorale - CoM::MORALE_DECAY_RATE);
 		}
 
 		// Auto-surrender at morale 0
 		if (Siege->CityMorale <= 0)
 		{
 			Siege->Phase = ECoMSiegePhase::Surrender;
+			OnSiegeSurrender.Broadcast(SiegeID);
 			UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d: city morale 0, auto-surrender"), SiegeID);
 			EndSiege(SiegeID, true);
 			continue;
 		}
 
 		// Morale decay from siege duration
-		if (Siege->TurnsUnderSiege > 5)
+		if (Siege->TurnsUnderSiege > CoM::MORALE_DECAY_THRESHOLD_TURNS)
 		{
 			Siege->CityMorale = FMath::Max(0, Siege->CityMorale - 1);
 		}
@@ -146,21 +159,11 @@ const FCoMSiegeState* UCoMSiegeSubsystem::GetSiege(int32 SiegeID) const
 	return AllSieges.Find(SiegeID);
 }
 
-TArray<const FCoMSiegeState*> UCoMSiegeSubsystem::GetActiveSieges() const
-{
-	TArray<const FCoMSiegeState*> Result;
-	for (const auto& Pair : AllSieges)
-	{
-		Result.Add(&Pair.Value);
-	}
-	return Result;
-}
-
 bool UCoMSiegeSubsystem::IsCityUnderSiege(int32 CityID) const
 {
 	for (const auto& Pair : AllSieges)
 	{
-		if (Pair.Value.DefenderCity == CityID)
+		if (Pair.Value.DefenderCityID == CityID)
 		{
 			return true;
 		}
@@ -191,25 +194,23 @@ void UCoMSiegeSubsystem::AttemptAssault(int32 SiegeID)
 		return;
 	}
 
-	// TODO: check weather — Thunderstorm blocks assault
-
 	Siege->Phase = ECoMSiegePhase::Assault;
+	OnSiegePhaseChanged.Broadcast(SiegeID, ECoMSiegePhase::Assault);
 
 	// Determine defender advantage multiplier
 	float DefenderMult = 1.0f;
 
 	if (Siege->BreachPoints.Num() == 0 && Siege->GatehouseHP > 0)
 	{
-		// No breach, no gatehouse down — 3x defender advantage (very costly assault)
+		// No breach, no gatehouse down -- 3x defender advantage (very costly assault)
 		DefenderMult = 3.0f;
 	}
 	else if (Siege->BreachPoints.Num() == 0)
 	{
-		// Gatehouse down but walls up — siege towers might help
-		// Check if any siege towers deployed (simplified: check equipment count > 2)
+		// Gatehouse down but walls up -- siege towers might help
 		if (Siege->SiegeEquipmentIDs.Num() > 2)
 		{
-			DefenderMult = 1.5f; // Siege towers reduce advantage
+			DefenderMult = 1.5f;
 		}
 		else
 		{
@@ -218,7 +219,7 @@ void UCoMSiegeSubsystem::AttemptAssault(int32 SiegeID)
 	}
 	else
 	{
-		// Breach exists — normal combat
+		// Breach exists -- normal combat
 		DefenderMult = 1.0f;
 	}
 
@@ -226,8 +227,6 @@ void UCoMSiegeSubsystem::AttemptAssault(int32 SiegeID)
 		SiegeID, DefenderMult, Siege->BreachPoints.Num());
 
 	// TODO: trigger tactical combat with DefenderMult applied to defender stats
-	// For now, resolve based on simple comparison
-	// Actual combat resolution will be wired in the Combat subsystem (Phase 8)
 }
 
 bool UCoMSiegeSubsystem::OfferSurrender(int32 SiegeID)
@@ -265,6 +264,7 @@ bool UCoMSiegeSubsystem::OfferSurrender(int32 SiegeID)
 	if (bAccepted)
 	{
 		Siege->Phase = ECoMSiegePhase::Surrender;
+		OnSiegeSurrender.Broadcast(SiegeID);
 		EndSiege(SiegeID, true);
 	}
 
@@ -277,6 +277,51 @@ void UCoMSiegeSubsystem::CutSupplyLines(int32 SiegeID)
 	if (Siege && !Siege->bSupplyLinesCut)
 	{
 		Siege->bSupplyLinesCut = true;
-		UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d: supply lines CUT — starvation accelerated"), SiegeID);
+		UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d: supply lines CUT -- starvation accelerated"), SiegeID);
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Private helpers (stubs for future wiring)
+// ---------------------------------------------------------------------------
+
+void UCoMSiegeSubsystem::ProcessBombardment(FCoMSiegeState& Siege)
+{
+	// Handled inline in ProcessSiegeTurn for now.
+}
+
+void UCoMSiegeSubsystem::ProcessStarvation(FCoMSiegeState& Siege)
+{
+	// Handled inline in ProcessSiegeTurn for now.
+}
+
+void UCoMSiegeSubsystem::UpdatePhase(FCoMSiegeState& Siege)
+{
+	// Handled inline in ProcessSiegeTurn for now.
+}
+
+FFixed64 UCoMSiegeSubsystem::GetWeatherBombardmentFactor(int32 CityID) const
+{
+	// TODO: query weather subsystem
+	return FFixed64(1);
+}
+
+bool UCoMSiegeSubsystem::IsAssaultBlockedByWeather(int32 CityID) const
+{
+	// TODO: query weather subsystem for thunderstorms
+	return false;
+}
+
+bool UCoMSiegeSubsystem::HasSiegeTowers(const FCoMSiegeState& Siege) const
+{
+	// TODO: check equipment types when UnitSubsystem is wired
+	return Siege.SiegeEquipmentIDs.Num() > 2;
+}
+
+void UCoMSiegeSubsystem::InitializeWallHP(FCoMSiegeState& Siege, int32 CityID)
+{
+	// TODO: query CitySubsystem for wall level
+	Siege.WallMaxHP = CoM::DEFAULT_WALL_HP;
+	Siege.WallHP = Siege.WallMaxHP;
+	Siege.GatehouseHP = Siege.WallMaxHP / 2;
 }

@@ -1,8 +1,10 @@
-// Copyright Mythforge Studios. All Rights Reserved.
-// CoMGameMode.cpp — COM-032
 #include "Framework/CoMGameMode.h"
 #include "Framework/CoMPlayerController.h"
 #include "Framework/CoMGameInstance.h"
+
+
+// Copyright Mythforge Studios. All Rights Reserved.
+// CoMGameMode.cpp — COM-032
 
 // ─── ACoMCombatGameMode ───────────────────────────────────────────────────────
 
@@ -19,7 +21,7 @@ void ACoMCombatGameMode::BeginPlay()
 
 	if (const UCoMGameInstance* CoMGI = Cast<UCoMGameInstance>(GetGameInstance()))
 	{
-		if (!CoMGI->CombatContext.IsValid())
+		if (CoMGI->CombatContext.ParticipatingArmyGroupIDs.Num() == 0)
 		{
 			UE_LOG(LogTemp, Error,
 			       TEXT("ACoMCombatGameMode: CombatContext is invalid — level entered "
@@ -43,7 +45,7 @@ void ACoMExplorationGameMode::BeginPlay()
 
 	if (const UCoMGameInstance* CoMGI = Cast<UCoMGameInstance>(GetGameInstance()))
 	{
-		if (!CoMGI->ExplorationContext.IsValid())
+		if (CoMGI->ExplorationContext.EntryArmyGroupID < 0)
 		{
 			UE_LOG(LogTemp, Error,
 			       TEXT("ACoMExplorationGameMode: ExplorationContext is invalid — level "
@@ -52,3 +54,4 @@ void ACoMExplorationGameMode::BeginPlay()
 		// TODO (Phase 7): Pass ExplorationContext to UCoMExplorationSubsystem.
 	}
 }
+

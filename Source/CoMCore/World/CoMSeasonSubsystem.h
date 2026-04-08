@@ -20,13 +20,13 @@ struct COMCORE_API FCoMSeasonEconomyModifiers
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FFixed64 FoodMultiplier = FFixed64(1, 0);
+	FFixed64 FoodMultiplier = FFixed64(1);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FFixed64 TradeMultiplier = FFixed64(1, 0);
+	FFixed64 TradeMultiplier = FFixed64(1);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FFixed64 ProductionMultiplier = FFixed64(1, 0);
+	FFixed64 ProductionMultiplier = FFixed64(1);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	bool bBuildingAllowed = true;
@@ -124,8 +124,8 @@ private:
 	// -----------------------------------------------------------------
 
 	/** Seasonal state per plane (current season + turn counter). */
-	UPROPERTY()
-	TMap<ECoMPlane, FCoMPlaneSeasonConfig> PlaneSeasons;
+	struct FCoMSeasonalState { ECoMSeason CurrentSeason = ECoMSeason::Season1; int32 TurnsIntoSeason = 0; int32 TurnsPerSeason = 12; };
+	TMap<ECoMPlane, FCoMSeasonalState> PlaneSeasons;
 
 	/** Per-plane configuration (turns per year, modifier tables). */
 	TMap<ECoMPlane, FCoMPlaneSeasonConfig> PlaneConfigs;

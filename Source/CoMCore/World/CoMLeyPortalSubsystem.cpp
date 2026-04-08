@@ -1,11 +1,12 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "CoMLeyPortalSubsystem.h"
-#include "CoMWorldMapSubsystem.h"
+#include "CoMCore/World/CoMWorldMapSubsystem.h"
 
 // ============================================================================
 // Subsystem lifecycle
 // ============================================================================
+
 
 void UCoMLeyPortalSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -54,7 +55,6 @@ void UCoMLeyPortalSubsystem::GenerateLeyLines(UCoMWorldMapSubsystem* Map,
 		TArray<TPair<int32, int32>> Edges = BuildEdges(Nodes, 3);
 
 		// Clamp to 15-25 ley lines per plane.
-		const int32 DesiredMin = 15;
 		const int32 DesiredMax = 25;
 		if (Edges.Num() > DesiredMax)
 		{
@@ -65,11 +65,6 @@ void UCoMLeyPortalSubsystem::GenerateLeyLines(UCoMWorldMapSubsystem* Map,
 				Edges.Swap(i, j);
 			}
 			Edges.SetNum(DesiredMax);
-		}
-
-		if (Edges.Num() < DesiredMin)
-		{
-			// Accept what we have; sparse planes get fewer lines.
 		}
 
 		// 4. For each edge, create a ley line.
@@ -96,7 +91,7 @@ void UCoMLeyPortalSubsystem::GenerateLeyLines(UCoMWorldMapSubsystem* Map,
 			Line.bSevered = false;
 			Line.ControllingWizard = INDEX_NONE;
 
-			// 8. Mark each tile with this ley line ID.
+			// Mark each tile with this ley line ID.
 			for (const FIntPoint& Pt : Line.Path)
 			{
 				FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMMapLayer::Surface,
@@ -454,7 +449,7 @@ void UCoMLeyPortalSubsystem::GeneratePortals(UCoMWorldMapSubsystem* Map,
 				const FIntPoint& Pos = MountainTiles[i];
 
 				// Surface -> Underdark at same position on same plane.
-				CreatePortalPair(Map, ECoMPortalType::UnderdarkEntrance,
+				CreatePortalPair(Map, ECoMPortalType::CaveEntrance,
 								 Plane, ECoMMapLayer::Surface, Pos,
 								 Plane, ECoMMapLayer::Underdark, Pos,
 								 /*bBidirectional=*/true);
@@ -493,7 +488,7 @@ void UCoMLeyPortalSubsystem::GeneratePortals(UCoMWorldMapSubsystem* Map,
 				const FIntPoint& Pos = CoastalTiles[i];
 
 				// Surface -> Underwater at same position on same plane.
-				CreatePortalPair(Map, ECoMPortalType::UnderwaterAccess,
+				CreatePortalPair(Map, ECoMPortalType::DeepMine,
 								 Plane, ECoMMapLayer::Surface, Pos,
 								 Plane, ECoMMapLayer::Underwater, Pos,
 								 /*bBidirectional=*/true);
@@ -505,8 +500,8 @@ void UCoMLeyPortalSubsystem::GeneratePortals(UCoMWorldMapSubsystem* Map,
 int32 UCoMLeyPortalSubsystem::CreatePortalPair(
 	UCoMWorldMapSubsystem* Map,
 	ECoMPortalType Type,
-	ECoMPlane SrcPlane, ECoMLayer SrcLayer, FIntPoint SrcPos,
-	ECoMPlane DstPlane, ECoMLayer DstLayer, FIntPoint DstPos,
+	ECoMPlane SrcPlane, ECoMMapLayer SrcLayer, FIntPoint SrcPos,
+	ECoMPlane DstPlane, ECoMMapLayer DstLayer, FIntPoint DstPos,
 	bool bBidirectional)
 {
 	// Source portal.
@@ -521,7 +516,7 @@ int32 UCoMLeyPortalSubsystem::CreatePortalPair(
 	SrcPortal.DestPosition = DstPos;
 	SrcPortal.bBidirectional = bBidirectional;
 	SrcPortal.bAlwaysActive = true;
-	SrcPortal.ActivationManaCost = FFixed64(0);
+	SrcPortal.ActivationManaCost = 0;
 	SrcPortal.bDiscovered = false;
 	SrcPortal.bPlayerBuilt = false;
 	SrcPortal.OwnerWizardIndex = INDEX_NONE;
@@ -553,7 +548,7 @@ int32 UCoMLeyPortalSubsystem::CreatePortalPair(
 		DstPortal.DestPosition = SrcPos;
 		DstPortal.bBidirectional = true;
 		DstPortal.bAlwaysActive = true;
-		DstPortal.ActivationManaCost = FFixed64(0);
+		DstPortal.ActivationManaCost = 0;
 		DstPortal.bDiscovered = false;
 		DstPortal.bPlayerBuilt = false;
 		DstPortal.OwnerWizardIndex = INDEX_NONE;
@@ -686,13 +681,12 @@ bool UCoMLeyPortalSubsystem::IsTilePassable(UCoMWorldMapSubsystem* Map,
 											 ECoMPlane Plane,
 											 int32 X, int32 Y) const
 {
-	const FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMMapLayer::Surface, X, Y);
+	const FCoMTileData* Tile = Map->GetTile(Plane, ECoMMapLayer::Surface, X, Y);
 	if (!Tile)
 	{
 		return false;
 	}
 	// Ocean tiles are impassable for ley lines.
-	// Assumes ECoMTerrain::Ocean / DeepOcean exist on the tile.
 	return Tile->Terrain != ECoMTerrain::Ocean
 		&& Tile->Terrain != ECoMTerrain::DeepTrench;
 }
@@ -701,20 +695,22 @@ bool UCoMLeyPortalSubsystem::IsMountainTile(UCoMWorldMapSubsystem* Map,
 											 ECoMPlane Plane,
 											 int32 X, int32 Y) const
 {
-	const FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMMapLayer::Surface, X, Y);
+	const FCoMTileData* Tile = Map->GetTile(Plane, ECoMMapLayer::Surface, X, Y);
 	if (!Tile)
 	{
 		return false;
 	}
 	return Tile->Terrain == ECoMTerrain::Mountains
-		|| Tile->Terrain == ECoMTerrain::Mountains;
+		|| Tile->Terrain == ECoMTerrain::BasaltMountains
+		|| Tile->Terrain == ECoMTerrain::DarkMountains
+		|| Tile->Terrain == ECoMTerrain::RootMountains;
 }
 
 bool UCoMLeyPortalSubsystem::IsCoastalTile(UCoMWorldMapSubsystem* Map,
 											ECoMPlane Plane,
 											int32 X, int32 Y) const
 {
-	const FCoMTileData* Tile = Map->GetTileMutable(Plane, ECoMMapLayer::Surface, X, Y);
+	const FCoMTileData* Tile = Map->GetTile(Plane, ECoMMapLayer::Surface, X, Y);
 	if (!Tile)
 	{
 		return false;
@@ -725,8 +721,8 @@ bool UCoMLeyPortalSubsystem::IsCoastalTile(UCoMWorldMapSubsystem* Map,
 
 ECoMSpellRealm UCoMLeyPortalSubsystem::RandomAlignment(FRandomStream& Rng) const
 {
-	// Assumes ECoMSpellRealm has a known count. Pick uniformly.
-	const int32 RealmCount = static_cast<int32>(ECoMSpellRealm::MAX);
+	// Pick uniformly from valid spell realms (exclude None and MAX).
+	const int32 RealmCount = static_cast<int32>(ECoMSpellRealm::None);
 	return static_cast<ECoMSpellRealm>(Rng.RandRange(0, RealmCount - 1));
 }
 

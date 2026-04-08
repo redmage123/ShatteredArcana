@@ -38,7 +38,7 @@ struct FCoMSpyAgent
 
     /** Current mission (None if idle). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    ECoMAgentMission CurrentMission = ECoMAgentMission::None;
+    ECoMAgentMission CurrentMission = ECoMAgentMission::MAX;
 
     /** Target wizard for current mission. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -94,7 +94,7 @@ struct FCoMMissionResult
     int32 AgentId = 0;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    ECoMAgentMission Mission = ECoMAgentMission::None;
+    ECoMAgentMission Mission = ECoMAgentMission::MAX;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     bool bSuccess = false;
@@ -183,7 +183,9 @@ public:
     /** Get a specific agent. */
 
     /** Dismiss an agent. */
-    void DismissAgent(int32 AgentId);
+    FCoMSpyAgent* GetAgent(int32 AgentId);
+
+	void DismissAgent(int32 AgentId);
 
     // ── Missions ─────────────────────────────────────────────────────────────
 

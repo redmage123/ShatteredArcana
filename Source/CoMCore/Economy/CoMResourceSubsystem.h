@@ -4,8 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
-#include "CoMTypes.h"
-#include "FixedPoint/Fixed64.h"
+#include "CoMCore/CoreTypes/CoMEnums.h"
+#include "CoMCore/CoreTypes/CoMStructs.h"
+#include "CoMCore/CoreTypes/CoMFixedPoint.h"
 #include "CoMResourceSubsystem.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnMineExhausted, int32, MineID, ECoMResource, ResourceType);
@@ -92,6 +93,8 @@ public:
 
 	/** Advance disease: spread along trade routes, increase severity, check cure. */
 	void ProcessDiseaseTurn();
+
+	TArray<int32> GetMinesForCity(int32 CityID) const;
 
 	/** All active outbreaks in the given city. */
 	TArray<FCoMDiseaseOutbreak> GetOutbreaksForCity(int32 CityID) const;

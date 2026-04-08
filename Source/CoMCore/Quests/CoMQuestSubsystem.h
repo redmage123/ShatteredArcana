@@ -89,7 +89,7 @@ struct FCoMQuestReward
 
     /** Resource type (for resource rewards). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    ECoMResource ResourceType = ECoMResource::Gold;
+    ECoMResource ResourceType = ECoMResource::GoldOre;
 
     /** Spell name (for unique spell rewards). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)

@@ -1,6 +1,6 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 
-#include "CoMSeasonSubsystem.h"
+#include "CoMCore/World/CoMSeasonSubsystem.h"
 
 // =====================================================================
 // Subsystem lifecycle
@@ -31,7 +31,7 @@ void UCoMSeasonSubsystem::InitializeSeasons()
 	for (const auto& Pair : PlaneConfigs)
 	{
 		FCoMSeasonalState State;
-		State.CurrentSeason    = ECoMSeason::Spring;
+		State.CurrentSeason    = ECoMSeason::Season1;
 		State.TurnsIntoSeason  = 0;
 		State.TurnsPerSeason   = Pair.Value.TurnsPerYear / 4;
 		PlaneSeasons.Add(Pair.Key, State);
@@ -67,7 +67,7 @@ ECoMSeason UCoMSeasonSubsystem::GetCurrentSeason(ECoMPlane Plane) const
 	{
 		return State->CurrentSeason;
 	}
-	return ECoMSeason::Spring;
+	return ECoMSeason::Season1;
 }
 
 int32 UCoMSeasonSubsystem::GetTurnsIntoSeason(ECoMPlane Plane) const
@@ -150,32 +150,32 @@ void UCoMSeasonSubsystem::BuildDefaultConfigs()
 		return M;
 	};
 
-	// Shorthand for FFixed64 literals.
-	const FFixed64 F0_3(0, 3000);  // 0.3
-	const FFixed64 F0_5(0, 5000);  // 0.5
-	const FFixed64 F1_0(1, 0);     // 1.0
-	const FFixed64 F1_25(1, 2500); // 1.25
-	const FFixed64 F1_5(1, 5000);  // 1.5
-	const FFixed64 F2_0(2, 0);     // 2.0
+	// Shorthand for FFixed64 literals using float constructor (init-time only).
+	const FFixed64 F0_3(0.3f);   // 0.3
+	const FFixed64 F0_5(0.5f);   // 0.5
+	const FFixed64 F1_0(1);      // 1.0
+	const FFixed64 F1_25(1.25f); // 1.25
+	const FFixed64 F1_5(1.5f);   // 1.5
+	const FFixed64 F2_0(2);      // 2.0
 
 	// -----------------------------------------------------------------
-	// Aurelith — 48 turns/year (12/season)
+	// Aurelith -- 48 turns/year (12/season)
 	// Spring: food x1.25. Summer: baseline. Autumn: trade x1.25, food x1.5. Winter: food x0.5.
 	// -----------------------------------------------------------------
 	{
 		FCoMPlaneSeasonConfig Cfg;
 		Cfg.TurnsPerYear = 48;
 
-		Cfg.SeasonModifiers.Add(ECoMSeason::Spring, MakeMods(F1_25, F1_0,  F1_0, true));
-		Cfg.SeasonModifiers.Add(ECoMSeason::Summer, MakeMods(F1_0,  F1_0,  F1_0, true));
-		Cfg.SeasonModifiers.Add(ECoMSeason::Autumn, MakeMods(F1_5,  F1_25, F1_0, true));
-		Cfg.SeasonModifiers.Add(ECoMSeason::Winter, MakeMods(F0_5,  F1_0,  F1_0, true));
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season1, MakeMods(F1_25, F1_0,  F1_0, true));
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season2, MakeMods(F1_0,  F1_0,  F1_0, true));
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season3, MakeMods(F1_5,  F1_25, F1_0, true));
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season4, MakeMods(F0_5,  F1_0,  F1_0, true));
 
 		PlaneConfigs.Add(ECoMPlane::Aurelith, Cfg);
 	}
 
 	// -----------------------------------------------------------------
-	// Noctharion — 40 turns/year (10/season)
+	// Noctharion -- 40 turns/year (10/season)
 	// Waxing Shadow / Waning / Eclipse / Void
 	// Eclipse: Death magic x1.5. Void: all magic x0.5.
 	// -----------------------------------------------------------------
@@ -183,32 +183,32 @@ void UCoMSeasonSubsystem::BuildDefaultConfigs()
 		FCoMPlaneSeasonConfig Cfg;
 		Cfg.TurnsPerYear = 40;
 
-		Cfg.SeasonModifiers.Add(ECoMSeason::Spring, MakeMods(F1_0, F1_0, F1_0, true)); // Waxing Shadow
-		Cfg.SeasonModifiers.Add(ECoMSeason::Summer, MakeMods(F1_0, F1_0, F1_0, true)); // Waning
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season1, MakeMods(F1_0, F1_0, F1_0, true)); // Waxing Shadow
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season2, MakeMods(F1_0, F1_0, F1_0, true)); // Waning
 
 		// Eclipse: Death magic x1.5
 		{
 			FCoMSeasonEconomyModifiers Eclipse = MakeMods(F1_0, F1_0, F1_0, true);
 			Eclipse.MagicSchoolBonuses.Add(ECoMSpellRealm::Death, F1_5);
-			Cfg.SeasonModifiers.Add(ECoMSeason::Autumn, Eclipse);
+			Cfg.SeasonModifiers.Add(ECoMSeason::Season3, Eclipse);
 		}
 		// Void: all magic x0.5
 		{
-			FCoMSeasonEconomyModifiers Void = MakeMods(F1_0, F1_0, F1_0, true);
-			Void.MagicSchoolBonuses.Add(ECoMSpellRealm::Life,    F0_5);
-			Void.MagicSchoolBonuses.Add(ECoMSpellRealm::Death,   F0_5);
-			Void.MagicSchoolBonuses.Add(ECoMSpellRealm::Nature,  F0_5);
-			Void.MagicSchoolBonuses.Add(ECoMSpellRealm::Chaos,   F0_5);
-			Void.MagicSchoolBonuses.Add(ECoMSpellRealm::Sorcery, F0_5);
-			Void.MagicSchoolBonuses.Add(ECoMSpellRealm::Glamour, F0_5);
-			Cfg.SeasonModifiers.Add(ECoMSeason::Winter, Void);
+			FCoMSeasonEconomyModifiers VoidMods = MakeMods(F1_0, F1_0, F1_0, true);
+			VoidMods.MagicSchoolBonuses.Add(ECoMSpellRealm::Life,    F0_5);
+			VoidMods.MagicSchoolBonuses.Add(ECoMSpellRealm::Death,   F0_5);
+			VoidMods.MagicSchoolBonuses.Add(ECoMSpellRealm::Nature,  F0_5);
+			VoidMods.MagicSchoolBonuses.Add(ECoMSpellRealm::Chaos,   F0_5);
+			VoidMods.MagicSchoolBonuses.Add(ECoMSpellRealm::Sorcery, F0_5);
+			VoidMods.MagicSchoolBonuses.Add(ECoMSpellRealm::Glamour, F0_5);
+			Cfg.SeasonModifiers.Add(ECoMSeason::Season4, VoidMods);
 		}
 
 		PlaneConfigs.Add(ECoMPlane::Noctharion, Cfg);
 	}
 
 	// -----------------------------------------------------------------
-	// Verdantis — 52 turns/year (13/season)
+	// Verdantis -- 52 turns/year (13/season)
 	// Bloom / Growth / Harvest / Dormancy
 	// Bloom: Nature magic x1.5, food x1.5. Dormancy: food x0.3.
 	// -----------------------------------------------------------------
@@ -220,19 +220,19 @@ void UCoMSeasonSubsystem::BuildDefaultConfigs()
 		{
 			FCoMSeasonEconomyModifiers Bloom = MakeMods(F1_5, F1_0, F1_0, true);
 			Bloom.MagicSchoolBonuses.Add(ECoMSpellRealm::Nature, F1_5);
-			Cfg.SeasonModifiers.Add(ECoMSeason::Spring, Bloom);
+			Cfg.SeasonModifiers.Add(ECoMSeason::Season1, Bloom);
 		}
-		Cfg.SeasonModifiers.Add(ECoMSeason::Summer, MakeMods(F1_0, F1_0, F1_0, true)); // Growth
-		Cfg.SeasonModifiers.Add(ECoMSeason::Autumn, MakeMods(F1_0, F1_0, F1_0, true)); // Harvest
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season2, MakeMods(F1_0, F1_0, F1_0, true)); // Growth
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season3, MakeMods(F1_0, F1_0, F1_0, true)); // Harvest
 
 		// Dormancy
-		Cfg.SeasonModifiers.Add(ECoMSeason::Winter, MakeMods(F0_3, F1_0, F1_0, true));
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season4, MakeMods(F0_3, F1_0, F1_0, true));
 
 		PlaneConfigs.Add(ECoMPlane::Verdantis, Cfg);
 	}
 
 	// -----------------------------------------------------------------
-	// Infernyx — 36 turns/year (9/season)
+	// Infernyx -- 36 turns/year (9/season)
 	// Eruption / Smolder / Dormant / Ember
 	// Eruption: Chaos magic x2.0, bBuildingAllowed=false. Dormant: production x1.5.
 	// -----------------------------------------------------------------
@@ -244,20 +244,20 @@ void UCoMSeasonSubsystem::BuildDefaultConfigs()
 		{
 			FCoMSeasonEconomyModifiers Eruption = MakeMods(F1_0, F1_0, F1_0, /*bBuilding=*/false);
 			Eruption.MagicSchoolBonuses.Add(ECoMSpellRealm::Chaos, F2_0);
-			Cfg.SeasonModifiers.Add(ECoMSeason::Spring, Eruption);
+			Cfg.SeasonModifiers.Add(ECoMSeason::Season1, Eruption);
 		}
-		Cfg.SeasonModifiers.Add(ECoMSeason::Summer, MakeMods(F1_0, F1_0, F1_0, true)); // Smolder
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season2, MakeMods(F1_0, F1_0, F1_0, true)); // Smolder
 
 		// Dormant: production x1.5
-		Cfg.SeasonModifiers.Add(ECoMSeason::Autumn, MakeMods(F1_0, F1_0, F1_5, true));
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season3, MakeMods(F1_0, F1_0, F1_5, true));
 
-		Cfg.SeasonModifiers.Add(ECoMSeason::Winter, MakeMods(F1_0, F1_0, F1_0, true)); // Ember
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season4, MakeMods(F1_0, F1_0, F1_0, true)); // Ember
 
 		PlaneConfigs.Add(ECoMPlane::Infernyx, Cfg);
 	}
 
 	// -----------------------------------------------------------------
-	// Aethermist — 44 turns/year (11/season)
+	// Aethermist -- 44 turns/year (11/season)
 	// Convergence / Drift / Null / Resonance
 	// Convergence: Sorcery magic x1.5, trade (portal cost proxy) x0.5. Null: all magic x0.5.
 	// -----------------------------------------------------------------
@@ -269,28 +269,28 @@ void UCoMSeasonSubsystem::BuildDefaultConfigs()
 		{
 			FCoMSeasonEconomyModifiers Conv = MakeMods(F1_0, F0_5, F1_0, true);
 			Conv.MagicSchoolBonuses.Add(ECoMSpellRealm::Sorcery, F1_5);
-			Cfg.SeasonModifiers.Add(ECoMSeason::Spring, Conv);
+			Cfg.SeasonModifiers.Add(ECoMSeason::Season1, Conv);
 		}
-		Cfg.SeasonModifiers.Add(ECoMSeason::Summer, MakeMods(F1_0, F1_0, F1_0, true)); // Drift
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season2, MakeMods(F1_0, F1_0, F1_0, true)); // Drift
 
 		// Null: all magic x0.5
 		{
-			FCoMSeasonEconomyModifiers Null = MakeMods(F1_0, F1_0, F1_0, true);
-			Null.MagicSchoolBonuses.Add(ECoMSpellRealm::Life,    F0_5);
-			Null.MagicSchoolBonuses.Add(ECoMSpellRealm::Death,   F0_5);
-			Null.MagicSchoolBonuses.Add(ECoMSpellRealm::Nature,  F0_5);
-			Null.MagicSchoolBonuses.Add(ECoMSpellRealm::Chaos,   F0_5);
-			Null.MagicSchoolBonuses.Add(ECoMSpellRealm::Sorcery, F0_5);
-			Null.MagicSchoolBonuses.Add(ECoMSpellRealm::Glamour, F0_5);
-			Cfg.SeasonModifiers.Add(ECoMSeason::Autumn, Null);
+			FCoMSeasonEconomyModifiers NullMods = MakeMods(F1_0, F1_0, F1_0, true);
+			NullMods.MagicSchoolBonuses.Add(ECoMSpellRealm::Life,    F0_5);
+			NullMods.MagicSchoolBonuses.Add(ECoMSpellRealm::Death,   F0_5);
+			NullMods.MagicSchoolBonuses.Add(ECoMSpellRealm::Nature,  F0_5);
+			NullMods.MagicSchoolBonuses.Add(ECoMSpellRealm::Chaos,   F0_5);
+			NullMods.MagicSchoolBonuses.Add(ECoMSpellRealm::Sorcery, F0_5);
+			NullMods.MagicSchoolBonuses.Add(ECoMSpellRealm::Glamour, F0_5);
+			Cfg.SeasonModifiers.Add(ECoMSeason::Season3, NullMods);
 		}
-		Cfg.SeasonModifiers.Add(ECoMSeason::Winter, MakeMods(F1_0, F1_0, F1_0, true)); // Resonance
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season4, MakeMods(F1_0, F1_0, F1_0, true)); // Resonance
 
 		PlaneConfigs.Add(ECoMPlane::Aethermist, Cfg);
 	}
 
 	// -----------------------------------------------------------------
-	// Abyssal — 48 turns/year (12/season)
+	// Abyssal -- 48 turns/year (12/season)
 	// Hunger / Feast / Madness / Calm
 	// Feast: food x2.0. Madness: Chaos magic x2.0.
 	// -----------------------------------------------------------------
@@ -298,24 +298,24 @@ void UCoMSeasonSubsystem::BuildDefaultConfigs()
 		FCoMPlaneSeasonConfig Cfg;
 		Cfg.TurnsPerYear = 48;
 
-		Cfg.SeasonModifiers.Add(ECoMSeason::Spring, MakeMods(F1_0, F1_0, F1_0, true)); // Hunger
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season1, MakeMods(F1_0, F1_0, F1_0, true)); // Hunger
 
 		// Feast
-		Cfg.SeasonModifiers.Add(ECoMSeason::Summer, MakeMods(F2_0, F1_0, F1_0, true));
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season2, MakeMods(F2_0, F1_0, F1_0, true));
 
 		// Madness: Chaos magic x2.0
 		{
 			FCoMSeasonEconomyModifiers Madness = MakeMods(F1_0, F1_0, F1_0, true);
 			Madness.MagicSchoolBonuses.Add(ECoMSpellRealm::Chaos, F2_0);
-			Cfg.SeasonModifiers.Add(ECoMSeason::Autumn, Madness);
+			Cfg.SeasonModifiers.Add(ECoMSeason::Season3, Madness);
 		}
-		Cfg.SeasonModifiers.Add(ECoMSeason::Winter, MakeMods(F1_0, F1_0, F1_0, true)); // Calm
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season4, MakeMods(F1_0, F1_0, F1_0, true)); // Calm
 
 		PlaneConfigs.Add(ECoMPlane::Abyssal, Cfg);
 	}
 
 	// -----------------------------------------------------------------
-	// Ethereal — 60 turns/year (15/season)
+	// Ethereal -- 60 turns/year (15/season)
 	// Thin Veil / Thick Veil / Crossing / Silence
 	// Thin Veil: spirit (Life) magic x2.0.
 	// -----------------------------------------------------------------
@@ -327,17 +327,17 @@ void UCoMSeasonSubsystem::BuildDefaultConfigs()
 		{
 			FCoMSeasonEconomyModifiers ThinVeil = MakeMods(F1_0, F1_0, F1_0, true);
 			ThinVeil.MagicSchoolBonuses.Add(ECoMSpellRealm::Life, F2_0);
-			Cfg.SeasonModifiers.Add(ECoMSeason::Spring, ThinVeil);
+			Cfg.SeasonModifiers.Add(ECoMSeason::Season1, ThinVeil);
 		}
-		Cfg.SeasonModifiers.Add(ECoMSeason::Summer, MakeMods(F1_0, F1_0, F1_0, true)); // Thick Veil
-		Cfg.SeasonModifiers.Add(ECoMSeason::Autumn, MakeMods(F1_0, F1_0, F1_0, true)); // Crossing
-		Cfg.SeasonModifiers.Add(ECoMSeason::Winter, MakeMods(F1_0, F1_0, F1_0, true)); // Silence
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season2, MakeMods(F1_0, F1_0, F1_0, true)); // Thick Veil
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season3, MakeMods(F1_0, F1_0, F1_0, true)); // Crossing
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season4, MakeMods(F1_0, F1_0, F1_0, true)); // Silence
 
 		PlaneConfigs.Add(ECoMPlane::Ethereal, Cfg);
 	}
 
 	// -----------------------------------------------------------------
-	// Feywild — 32 turns/year (8/season)
+	// Feywild -- 32 turns/year (8/season)
 	// Revel / Hunt / Court / Dream
 	// Revel: Glamour magic x2.0. Hunt: (movement bonus handled elsewhere).
 	// -----------------------------------------------------------------
@@ -349,11 +349,11 @@ void UCoMSeasonSubsystem::BuildDefaultConfigs()
 		{
 			FCoMSeasonEconomyModifiers Revel = MakeMods(F1_0, F1_0, F1_0, true);
 			Revel.MagicSchoolBonuses.Add(ECoMSpellRealm::Glamour, F2_0);
-			Cfg.SeasonModifiers.Add(ECoMSeason::Spring, Revel);
+			Cfg.SeasonModifiers.Add(ECoMSeason::Season1, Revel);
 		}
-		Cfg.SeasonModifiers.Add(ECoMSeason::Summer, MakeMods(F1_0, F1_0, F1_0, true)); // Hunt
-		Cfg.SeasonModifiers.Add(ECoMSeason::Autumn, MakeMods(F1_0, F1_0, F1_0, true)); // Court
-		Cfg.SeasonModifiers.Add(ECoMSeason::Winter, MakeMods(F1_0, F1_0, F1_0, true)); // Dream
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season2, MakeMods(F1_0, F1_0, F1_0, true)); // Hunt
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season3, MakeMods(F1_0, F1_0, F1_0, true)); // Court
+		Cfg.SeasonModifiers.Add(ECoMSeason::Season4, MakeMods(F1_0, F1_0, F1_0, true)); // Dream
 
 		PlaneConfigs.Add(ECoMPlane::Feywild, Cfg);
 	}

@@ -1,4 +1,5 @@
-#include "CoMWeatherSubsystem.h"
+#include "CoMCore/World/CoMWeatherSubsystem.h"
+
 
 const TArray<FCoMWeatherZone> UCoMWeatherSubsystem::EmptyZones = {};
 
@@ -41,7 +42,7 @@ void UCoMWeatherSubsystem::InitializeWeather(int32 Seed)
 	{
 		FCoMWeatherState& State = WeatherStates.Add(Plane);
 		State.SeasonTurnCounter = 0;
-		State.CurrentSeason = ECoMSeason::Spring;
+		State.CurrentSeason = ECoMSeason::Season1;
 		State.ActiveZones.Empty();
 	}
 }
@@ -61,9 +62,13 @@ void UCoMWeatherSubsystem::ProcessWeatherTurn()
 		{
 			FCoMWeatherZone& Zone = State.ActiveZones[i];
 
-			// Move center
-			int32 NewX = Zone.Center.X + Zone.MovementDirection.X * Zone.MovementSpeed;
-			int32 NewY = Zone.Center.Y + Zone.MovementDirection.Y * Zone.MovementSpeed;
+			// Move center: convert FFixed64 speed and FVector2D direction to integer offset
+			const float DirX = Zone.MovementDirection.X;
+			const float DirY = Zone.MovementDirection.Y;
+			const int32 SpeedTiles = Zone.MovementSpeed.ToInt32();
+
+			int32 NewX = Zone.Center.X + FMath::RoundToInt(DirX * static_cast<float>(SpeedTiles));
+			int32 NewY = Zone.Center.Y + FMath::RoundToInt(DirY * static_cast<float>(SpeedTiles));
 
 			// WrapX
 			NewX = ((NewX % MAP_WIDTH) + MAP_WIDTH) % MAP_WIDTH;
@@ -153,112 +158,108 @@ FCoMWeatherEffects UCoMWeatherSubsystem::GetWeatherEffects(ECoMWeatherType Type,
 		break;
 
 	case ECoMWeatherType::Rain:
-		Fx.MovementCostDelta = 1;
-		Fx.RangedAttackDelta = -1;
-		Fx.SightRangeDelta   = -1;
-		Fx.SpecialFlags      = FCoMWeatherEffects::Flag_RoadWash;
+		Fx.MovementPenalty = 1;
+		Fx.RangedAttackPen = -1;
+		Fx.SightReduction  = -1;
 		break;
 
 	case ECoMWeatherType::HeavyRain:
-		Fx.MovementCostDelta = 1;
-		Fx.RangedAttackDelta = -2;
-		Fx.SightRangeDelta   = -2;
-		Fx.SpecialFlags      = FCoMWeatherEffects::Flag_RoadWash | FCoMWeatherEffects::Flag_RiversFlood;
+		Fx.MovementPenalty = 1;
+		Fx.RangedAttackPen = -2;
+		Fx.SightReduction  = -2;
 		break;
 
 	case ECoMWeatherType::Thunderstorm:
-		Fx.MovementCostDelta = 1;
-		Fx.bFlyingGrounded   = true;
-		Fx.RangedAttackDelta = -2;
-		Fx.SightRangeDelta   = -2;
-		Fx.SpecialFlags      = FCoMWeatherEffects::Flag_LightningStrike | FCoMWeatherEffects::Flag_RiversFlood;
+		Fx.MovementPenalty  = 1;
+		Fx.bFlyingGrounded  = true;
+		Fx.RangedAttackPen  = -2;
+		Fx.SightReduction   = -2;
 		break;
 
 	case ECoMWeatherType::Snow:
-		Fx.MovementCostDelta = 1;
-		Fx.RangedAttackDelta = -1;
-		Fx.SightRangeDelta   = -1;
-		Fx.AttritionDamagePerTurn = FFixed64(0) + (Intensity * FFixed64(1)) / FFixed64(2); // half intensity
+		Fx.MovementPenalty = 1;
+		Fx.RangedAttackPen = -1;
+		Fx.SightReduction  = -1;
+		Fx.AttritionDamage = (Intensity * FFixed64(1) / FFixed64(2)).ToInt32();
 		break;
 
 	case ECoMWeatherType::Blizzard:
-		Fx.MovementCostDelta = 2;
-		Fx.RangedAttackDelta = -2;
-		Fx.SightRangeDelta   = -3;
-		Fx.bFlyingGrounded   = true;
-		Fx.AttritionDamagePerTurn = FFixed64(1);
+		Fx.MovementPenalty  = 2;
+		Fx.RangedAttackPen  = -2;
+		Fx.SightReduction   = -3;
+		Fx.bFlyingGrounded  = true;
+		Fx.AttritionDamage  = 1;
 		break;
 
 	case ECoMWeatherType::Fog:
-		Fx.SightRangeDelta   = -2;
-		Fx.RangedAttackDelta = -1;
-		Fx.AmbushChanceMult  = FFixed64(2);
+		Fx.SightReduction   = -2;
+		Fx.RangedAttackPen  = -1;
+		Fx.AmbushChanceBonus = FFixed64(2);
 		break;
 
 	case ECoMWeatherType::DenseFog:
-		Fx.SightRangeDelta   = -4;
-		Fx.RangedAttackDelta = -2;
-		Fx.AmbushChanceMult  = FFixed64(3);
+		Fx.SightReduction    = -4;
+		Fx.RangedAttackPen   = -2;
+		Fx.AmbushChanceBonus = FFixed64(3);
 		break;
 
 	case ECoMWeatherType::Sandstorm:
-		Fx.MovementCostDelta = 1;
-		Fx.RangedAttackDelta = -2;
-		Fx.SightRangeDelta   = -3;
-		Fx.AttritionDamagePerTurn = Intensity / FFixed64(2);
+		Fx.MovementPenalty = 1;
+		Fx.RangedAttackPen = -2;
+		Fx.SightReduction  = -3;
+		Fx.AttritionDamage = (Intensity / FFixed64(2)).ToInt32();
 		break;
 
 	case ECoMWeatherType::AshStorm:
-		Fx.MovementCostDelta = 2;
-		Fx.RangedAttackDelta = -2;
-		Fx.SightRangeDelta   = -3;
-		Fx.AttritionDamagePerTurn = FFixed64(1);
+		Fx.MovementPenalty = 2;
+		Fx.RangedAttackPen = -2;
+		Fx.SightReduction  = -3;
+		Fx.AttritionDamage = 1;
 		break;
 
 	case ECoMWeatherType::ManaStorm:
-		Fx.MovementCostDelta = 1;
-		Fx.SightRangeDelta   = -2;
-		Fx.MeleeAttackDelta  = -1;
-		Fx.RangedAttackDelta = -1;
+		Fx.MovementPenalty = 1;
+		Fx.SightReduction  = -2;
+		Fx.MeleeAttackPen  = -1;
+		Fx.RangedAttackPen = -1;
 		break;
 
 	case ECoMWeatherType::SporeCloud:
-		Fx.MovementCostDelta = 1;
-		Fx.SightRangeDelta   = -2;
-		Fx.AttritionDamagePerTurn = Intensity / FFixed64(2);
-		Fx.AmbushChanceMult  = FFixed64(2); // FFixed64(1.5) if supported
+		Fx.MovementPenalty   = 1;
+		Fx.SightReduction    = -2;
+		Fx.AttritionDamage   = (Intensity / FFixed64(2)).ToInt32();
+		Fx.AmbushChanceBonus = FFixed64(2);
 		break;
 
 	case ECoMWeatherType::ShadowVeil:
-		Fx.SightRangeDelta   = -3;
-		Fx.AmbushChanceMult  = FFixed64(2);
-		Fx.MeleeAttackDelta  = -1;
+		Fx.SightReduction    = -3;
+		Fx.AmbushChanceBonus = FFixed64(2);
+		Fx.MeleeAttackPen    = -1;
 		break;
 
 	case ECoMWeatherType::FireRain:
-		Fx.bFlyingGrounded   = true;
-		Fx.RangedAttackDelta = -1;
-		Fx.AttritionDamagePerTurn = FFixed64(2);
+		Fx.bFlyingGrounded = true;
+		Fx.RangedAttackPen = -1;
+		Fx.AttritionDamage = 2;
 		break;
 
 	case ECoMWeatherType::EtherealWind:
-		Fx.MovementCostDelta = -1; // speeds movement
-		Fx.bFlyingGrounded   = true;
-		Fx.SightRangeDelta   = -1;
+		Fx.MovementPenalty  = -1; // speeds movement
+		Fx.bFlyingGrounded  = true;
+		Fx.SightReduction   = -1;
 		break;
 
 	case ECoMWeatherType::Drought:
-		Fx.AttritionDamagePerTurn = Intensity / FFixed64(2);
-		Fx.SightRangeDelta   = 1; // clear skies, better sight
+		Fx.AttritionDamage = (Intensity / FFixed64(2)).ToInt32();
+		Fx.SightReduction  = 1; // clear skies, better sight
 		break;
 
 	case ECoMWeatherType::VolcanicEruption:
-		Fx.MovementCostDelta = 3;
-		Fx.bFlyingGrounded   = true;
-		Fx.RangedAttackDelta = -3;
-		Fx.SightRangeDelta   = -4;
-		Fx.AttritionDamagePerTurn = FFixed64(3);
-		Fx.SpecialFlags      = FCoMWeatherEffects::Flag_VolcanicTileDestruction | FCoMWeatherEffects::Flag_LightningStrike;
+		Fx.MovementPenalty  = 3;
+		Fx.bFlyingGrounded  = true;
+		Fx.RangedAttackPen  = -3;
+		Fx.SightReduction   = -4;
+		Fx.AttritionDamage  = 3;
 		break;
 
 	default:
@@ -287,9 +288,10 @@ void UCoMWeatherSubsystem::GenerateWeatherFront(ECoMPlane Plane)
 	Zone.Intensity       = FFixed64(WeatherRng.RandRange(50, 100)) / FFixed64(100);
 
 	// Random drift direction: -1, 0, or 1 per axis
-	Zone.MovementDirection = FVector2D(WeatherRng.RandRange(-1, 1);
-	Zone.MovementDirection.Y = WeatherRng.RandRange(-1, 1);
-	Zone.MovementSpeed       = WeatherRng.RandRange(0, 2);
+	Zone.MovementDirection = FVector2D(
+		static_cast<float>(WeatherRng.RandRange(-1, 1)),
+		static_cast<float>(WeatherRng.RandRange(-1, 1)));
+	Zone.MovementSpeed = FFixed64(WeatherRng.RandRange(0, 2));
 
 	State->ActiveZones.Add(Zone);
 }
@@ -323,11 +325,11 @@ int32 UCoMWeatherSubsystem::GetBaseSpawnChancePercent(ECoMSeason Season) const
 {
 	switch (Season)
 	{
-	case ECoMSeason::Spring: return 30;
-	case ECoMSeason::Summer: return 20;
-	case ECoMSeason::Autumn: return 35;
-	case ECoMSeason::Winter: return 40;
-	default:                 return 25;
+	case ECoMSeason::Season1: return 30;
+	case ECoMSeason::Season2: return 20;
+	case ECoMSeason::Season3: return 35;
+	case ECoMSeason::Season4: return 40;
+	default:                  return 25;
 	}
 }
 
@@ -418,7 +420,7 @@ const TArray<UCoMWeatherSubsystem::FWeightedWeather>& UCoMWeatherSubsystem::GetP
 		{ ECoMWeatherType::ShadowVeil,     5 },
 	};
 
-	// Ethereal: industrial/construct
+	// Ethereal: spirit realm
 	static const TArray<FWeightedWeather> Ethereal = {
 		{ ECoMWeatherType::AshStorm,      25 },
 		{ ECoMWeatherType::Sandstorm,     20 },
@@ -441,14 +443,14 @@ const TArray<UCoMWeatherSubsystem::FWeightedWeather>& UCoMWeatherSubsystem::GetP
 
 	switch (Plane)
 	{
-	case ECoMPlane::Aurelith:    return Aurelith;
-	case ECoMPlane::Infernyx:    return Infernyx;
-	case ECoMPlane::Verdantis:   return Verdantis;
+	case ECoMPlane::Aurelith:   return Aurelith;
+	case ECoMPlane::Infernyx:   return Infernyx;
+	case ECoMPlane::Verdantis:  return Verdantis;
 	case ECoMPlane::Noctharion: return Noctharion;
-	case ECoMPlane::Aethermist:   return Aethermist;
+	case ECoMPlane::Aethermist: return Aethermist;
 	case ECoMPlane::Abyssal:    return Abyssal;
-	case ECoMPlane::Ethereal:    return Ethereal;
-	case ECoMPlane::Feywild:     return Feywild;
-	default:                     return Aurelith;
+	case ECoMPlane::Ethereal:   return Ethereal;
+	case ECoMPlane::Feywild:    return Feywild;
+	default:                    return Aurelith;
 	}
 }

@@ -6,6 +6,7 @@
 // Fixed-point constants
 // =====================================================================
 
+
 namespace CoMDragonConstants
 {
 	static const int32 DomainExpansionInterval = 10; // expand every 10 turns
@@ -54,20 +55,21 @@ int32 UCoMDragonSubsystem::SpawnDragon(int32 TypeID, ECoMPlane Plane, FIntPoint 
 
 	FCoMDragonInstance Dragon;
 	Dragon.DragonID     = ID;
-	Dragon.TypeID       = TypeID;
-	Dragon.PersonalName = FName(NAME_None); // to be named by caller or event
+	Dragon.DragonTypeID = FName(*FString::FromInt(TypeID));
+	Dragon.PersonalName = FText::GetEmpty(); // to be named by caller or event
 	Dragon.Role         = ECoMDragonRole::Wild;
-	Dragon.Age          = 0;
+	Dragon.Age          = ECoMDragonAge::Young;
+	Dragon.TurnsAlive   = 0;
 	Dragon.UnitID       = -1; // assigned when placed on map via UCoMUnitSubsystem
 	Dragon.DomainID     = -1;
-	Dragon.HoardGold    = FFixed64(0, 0);
-	Dragon.HoardMana    = FFixed64(0, 0);
+	Dragon.HoardGold    = 0;
+	Dragon.HoardMana    = 0;
 
 	// Store spawn position as lair position.
 	Dragon.LairPosition = LairPosition;
 
 	// Random personality values.
-	Dragon.TerritorialAggression = FFixed64(Rng.RandRange(20, 80), 0);
+	Dragon.TerritorialAggression = Rng.RandRange(20, 80);
 
 	Dragons.Add(ID, Dragon);
 	return ID;
@@ -138,11 +140,11 @@ int32 UCoMDragonSubsystem::LayDragonEgg(int32 ParentDragonID, int32 PossessorWiz
 
 	FCoMDragonEgg Egg;
 	Egg.EggID           = ID;
-	Egg.DragonTypeID    = Parent->TypeID;
+	Egg.DragonTypeID    = Parent->DragonTypeID;
 	Egg.ParentDragonID  = ParentDragonID;
-	Egg.PossessorWizard = PossessorWizard;
-	Egg.IncubationTurns = 0;
-	Egg.HatchingManaCost = FFixed64(50, 0); // base cost; type-specific overrides later
+	Egg.PossessorWizardIndex = PossessorWizard;
+	Egg.IncubationTurnsRemaining = 15;
+	Egg.HatchingManaCost = 50; // base cost; type-specific overrides later
 	Egg.bImprints       = false;
 
 	Eggs.Add(Egg);
@@ -158,14 +160,14 @@ int32 UCoMDragonSubsystem::HatchEgg(int32 EggID)
 			FCoMDragonEgg& Egg = Eggs[i];
 
 			// Require a minimum incubation period (10 turns).
-			if (Egg.IncubationTurns < 10)
+			if (Egg.IncubationTurnsRemaining > 0)
 			{
 				return -1;
 			}
 
 			// Spawn the hatchling.
 			FRandomStream HatchRng(EggID * 7919); // deterministic seed from egg ID
-			const int32 NewDragonID = SpawnDragon(Egg.DragonTypeID, Egg.HatchingRealm, FIntPoint(0, 0), HatchRng);
+			const int32 NewDragonID = SpawnDragon(0, ECoMPlane::Aurelith, FIntPoint(0, 0), HatchRng);
 
 			if (NewDragonID >= 0)
 			{
@@ -203,7 +205,7 @@ void UCoMDragonSubsystem::ProcessDragonTurn()
 	// 1. Age all dragons.
 	for (auto& Pair : Dragons)
 	{
-		Pair.Value.Age++;
+		Pair.Value.TurnsAlive++;
 	}
 
 	// 2. Expand domains periodically.
@@ -217,7 +219,7 @@ void UCoMDragonSubsystem::ProcessDragonTurn()
 		}
 
 		// Domain rulers expand influence every N turns based on age.
-		if (Ruler->Age > 0 && (Ruler->Age % CoMDragonConstants::DomainExpansionInterval) == 0)
+		if (Ruler->TurnsAlive > 0 && (Ruler->TurnsAlive % CoMDragonConstants::DomainExpansionInterval) == 0)
 		{
 			Domain.InfluenceRadius++;
 			Domain.ClaimedTiles = ComputeClaimedTiles(Domain.LairPosition, Domain.InfluenceRadius);
@@ -228,7 +230,7 @@ void UCoMDragonSubsystem::ProcessDragonTurn()
 	// 3. Tick egg incubation.
 	for (FCoMDragonEgg& Egg : Eggs)
 	{
-		Egg.IncubationTurns++;
+		if (Egg.IncubationTurnsRemaining > 0) Egg.IncubationTurnsRemaining--;
 	}
 }
 

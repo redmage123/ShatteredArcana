@@ -1,14 +1,15 @@
+// Copyright Shattered Arcana. All Rights Reserved.
+
 #include "CoMUnitSubsystem.h"
-#include "CoMUnitSubsystem.h"
-#include "CoMPathfinder.h"
-#include "CoMWorldMapSubsystem.h"
-#include "CoMWeatherSubsystem.h"
-#include "CoMUnitSpecDataAsset.h"
-#include "CoMConstants.h"
+#include "CoMCore/World/CoMPathfinder.h"
+#include "CoMCore/World/CoMWorldMapSubsystem.h"
+#include "CoMCore/World/CoMWeatherSubsystem.h"
+#include "CoMCore/Data/CoMUnitSpecDataAsset.h"
+#include "CoMCore/CoreTypes/CoMConstants.h"
 #include "Engine/AssetManager.h"
 
-static constexpr int32 MAP_WIDTH = 160;
-static constexpr int32 MAP_HEIGHT = 100;
+static constexpr int32 MAP_WIDTH  = CoM::MAP_WIDTH;
+static constexpr int32 MAP_HEIGHT = CoM::MAP_HEIGHT;
 
 void UCoMUnitSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -21,10 +22,7 @@ void UCoMUnitSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	}
 
 	WorldMapSubsystem = GI->GetSubsystem<UCoMWorldMapSubsystem>();
-	WeatherSubsystem = GI->GetSubsystem<UCoMWeatherSubsystem>();
-
-	// Pathfinder is expected to be created and registered externally or as a subsystem dependency.
-	// Acquire reference when first needed if not yet set.
+	WeatherSubsystem  = GI->GetSubsystem<UCoMWeatherSubsystem>();
 }
 
 void UCoMUnitSubsystem::Deinitialize()
@@ -43,23 +41,20 @@ int32 UCoMUnitSubsystem::SpawnUnit(int32 SpecID, ECoMPlane Plane, ECoMMapLayer L
 	const UCoMUnitSpecDataAsset* Spec = ResolveSpec(SpecID);
 	if (!Spec)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("UCoMUnitSubsystem::SpawnUnit — unknown SpecID %d"), SpecID);
+		UE_LOG(LogTemp, Warning, TEXT("UCoMUnitSubsystem::SpawnUnit - unknown SpecID %d"), SpecID);
 		return INDEX_NONE;
 	}
 
 	const int32 UnitID = NextUnitID++;
 
 	FCoMUnitInstance& Unit = AllUnits.Add(UnitID);
-	Unit.UnitID = UnitID;
-	Unit.SpecID = SpecID;
-	Unit.MaxHP = Spec->HPBase;
-	Unit.CurrentHP = Unit.MaxHP;
-	Unit.Experience = FFixed64(0);
-	Unit.Level = 1;
-	Unit.Position = FIntPoint(WrapX(Position.X), FMath::Clamp(Position.Y, 0, MAP_HEIGHT - 1));
-
-	// Store ownership context (Plane and Layer are tracked by the army group)
+	Unit.UnitID           = UnitID;
+	Unit.SpecID           = FName(*FString::FromInt(SpecID));
 	Unit.OwnerWizardIndex = OwnerWizard;
+	Unit.CurrentHP        = Spec->HitPoints;
+	Unit.Experience       = 0;
+	Unit.Level            = 1;
+	Unit.bFlying          = Spec->bFlying;
 
 	return UnitID;
 }
@@ -94,12 +89,12 @@ int32 UCoMUnitSubsystem::CreateArmy(int32 OwnerWizard, ECoMPlane Plane, ECoMMapL
 	const int32 ArmyID = NextArmyID++;
 
 	FCoMArmyGroup& Army = AllArmies.Add(ArmyID);
-	Army.ArmyID = ArmyID;
-	Army.OwnerWizardIndex = OwnerWizard;
-	Army.Plane = Plane;
-	Army.Layer = Layer;
-	Army.Position = FIntPoint(WrapX(Position.X), FMath::Clamp(Position.Y, 0, MAP_HEIGHT - 1));
-	Army.HeroUnitID = INDEX_NONE;
+	Army.ArmyGroupID      = ArmyID;
+	Army.OwnerWizardIndex  = OwnerWizard;
+	Army.Plane             = Plane;
+	Army.Layer             = Layer;
+	Army.Position          = FIntPoint(WrapX(Position.X), FMath::Clamp(Position.Y, 0, MAP_HEIGHT - 1));
+	Army.MovementRemaining = 0;
 
 	return ArmyID;
 }
@@ -109,19 +104,19 @@ bool UCoMUnitSubsystem::AddUnitToArmy(int32 UnitID, int32 ArmyID)
 	FCoMArmyGroup* Army = AllArmies.Find(ArmyID);
 	if (!Army)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AddUnitToArmy — invalid ArmyID %d"), ArmyID);
+		UE_LOG(LogTemp, Warning, TEXT("AddUnitToArmy - invalid ArmyID %d"), ArmyID);
 		return false;
 	}
 
 	if (!AllUnits.Contains(UnitID))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AddUnitToArmy — invalid UnitID %d"), UnitID);
+		UE_LOG(LogTemp, Warning, TEXT("AddUnitToArmy - invalid UnitID %d"), UnitID);
 		return false;
 	}
 
 	if (Army->UnitIDs.Num() >= CoM::MAX_ARMY_SIZE)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("AddUnitToArmy — army %d already at max size"), ArmyID);
+		UE_LOG(LogTemp, Warning, TEXT("AddUnitToArmy - army %d already at max size"), ArmyID);
 		return false;
 	}
 
@@ -154,36 +149,30 @@ bool UCoMUnitSubsystem::RemoveUnitFromArmy(int32 UnitID, int32 ArmyID)
 bool UCoMUnitSubsystem::MergeArmies(int32 SourceArmyID, int32 DestArmyID)
 {
 	FCoMArmyGroup* Source = AllArmies.Find(SourceArmyID);
-	FCoMArmyGroup* Dest = AllArmies.Find(DestArmyID);
+	FCoMArmyGroup* Dest   = AllArmies.Find(DestArmyID);
 
 	if (!Source || !Dest)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("MergeArmies — invalid army ID(s)"));
+		UE_LOG(LogTemp, Warning, TEXT("MergeArmies - invalid army ID(s)"));
 		return false;
 	}
 
 	if (Source->OwnerWizardIndex != Dest->OwnerWizardIndex)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("MergeArmies — armies belong to different wizards"));
+		UE_LOG(LogTemp, Warning, TEXT("MergeArmies - armies belong to different wizards"));
 		return false;
 	}
 
 	const int32 CombinedSize = Source->UnitIDs.Num() + Dest->UnitIDs.Num();
 	if (CombinedSize > CoM::MAX_ARMY_SIZE)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("MergeArmies — combined size %d exceeds MAX_ARMY_SIZE"), CombinedSize);
+		UE_LOG(LogTemp, Warning, TEXT("MergeArmies - combined size %d exceeds MAX_ARMY_SIZE"), CombinedSize);
 		return false;
 	}
 
 	for (int32 UID : Source->UnitIDs)
 	{
 		Dest->UnitIDs.Add(UID);
-	}
-
-	// Preserve hero from source if dest has none.
-	if (Dest->HeroUnitID == INDEX_NONE && Source->HeroUnitID != INDEX_NONE)
-	{
-		Dest->HeroUnitID = Source->HeroUnitID;
 	}
 
 	AllArmies.Remove(SourceArmyID);
@@ -200,7 +189,6 @@ int32 UCoMUnitSubsystem::SplitArmy(int32 ArmyID, const TArray<int32>& UnitIDsToS
 
 	if (UnitIDsToSplit.Num() == 0 || UnitIDsToSplit.Num() >= Army->UnitIDs.Num())
 	{
-		// Cannot split zero units or split all units (would leave original empty).
 		return INDEX_NONE;
 	}
 
@@ -209,14 +197,14 @@ int32 UCoMUnitSubsystem::SplitArmy(int32 ArmyID, const TArray<int32>& UnitIDsToS
 	{
 		if (!Army->UnitIDs.Contains(UID))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("SplitArmy — unit %d not in army %d"), UID, ArmyID);
+			UE_LOG(LogTemp, Warning, TEXT("SplitArmy - unit %d not in army %d"), UID, ArmyID);
 			return INDEX_NONE;
 		}
 	}
 
 	const int32 NewArmyID = CreateArmy(Army->OwnerWizardIndex, Army->Plane, Army->Layer, Army->Position);
 
-	// Re-fetch pointer; CreateArmy may have rehashed the map.
+	// Re-fetch pointers; CreateArmy may have rehashed the map.
 	Army = AllArmies.Find(ArmyID);
 	FCoMArmyGroup* NewArmy = AllArmies.Find(NewArmyID);
 
@@ -224,13 +212,6 @@ int32 UCoMUnitSubsystem::SplitArmy(int32 ArmyID, const TArray<int32>& UnitIDsToS
 	{
 		Army->UnitIDs.Remove(UID);
 		NewArmy->UnitIDs.Add(UID);
-
-		// Transfer hero designation if the hero moves to the new army.
-		if (Army->HeroUnitID == UID)
-		{
-			NewArmy->HeroUnitID = UID;
-			Army->HeroUnitID = INDEX_NONE;
-		}
 	}
 
 	return NewArmyID;
@@ -251,64 +232,65 @@ void UCoMUnitSubsystem::MoveArmy(int32 ArmyID, FIntPoint Destination)
 	Destination.X = WrapX(Destination.X);
 	Destination.Y = FMath::Clamp(Destination.Y, 0, MAP_HEIGHT - 1);
 
-	if (!Pathfinder)
+	if (!Pathfinder || !WorldMapSubsystem)
 	{
-		UE_LOG(LogTemp, Error, TEXT("MoveArmy — Pathfinder is null"));
+		UE_LOG(LogTemp, Error, TEXT("MoveArmy - Pathfinder or WorldMapSubsystem is null"));
 		return;
 	}
 
-	// Ask pathfinder for the tile sequence.
-	TArray<FIntPoint> Path;
-	const bool bFound = Pathfinder->FindPath(Army->Position, Destination, Army->Plane, Army->Layer, Path);
-	if (!bFound || Path.Num() == 0)
+	// Build a path request for the pathfinder.
+	FCoMPathRequest Request;
+	Request.StartPlane = Army->Plane;
+	Request.StartLayer = Army->Layer;
+	Request.StartPos   = Army->Position;
+	Request.GoalPlane  = Army->Plane;
+	Request.GoalLayer  = Army->Layer;
+	Request.GoalPos    = Destination;
+	Request.WizardIndex    = Army->OwnerWizardIndex;
+	Request.bAllowPortals  = false;
+	Request.bAllowUnexplored = false;
+
+	FCoMPathResult Result = Pathfinder->FindPath(WorldMapSubsystem.Get(), nullptr, Request);
+	if (!Result.bFound || Result.Segments.Num() == 0)
 	{
 		return;
 	}
 
 	FFixed64 MovementBudget = ComputeArmyMovementSpeed(*Army);
 
-	for (const FIntPoint& Tile : Path)
+	// Walk along path segments/tiles consuming movement budget.
+	for (const FCoMPathSegment& Segment : Result.Segments)
 	{
-		FFixed64 TileCost = ComputeMoveCost(*Army, Army->Plane, Army->Layer, Tile);
-
-		if (TileCost > MovementBudget)
+		for (const FIntPoint& Tile : Segment.Tiles)
 		{
-			break;
-		}
+			FFixed64 TileCost = ComputeMoveCost(*Army, Army->Plane, Army->Layer, Tile);
 
-		MovementBudget = MovementBudget - TileCost;
-		Army->Position = Tile;
-
-		// Sync individual unit positions.
-		for (int32 UID : Army->UnitIDs)
-		{
-			if (FCoMUnitInstance* Unit = AllUnits.Find(UID))
+			if (TileCost > MovementBudget)
 			{
-				Unit->Position = Tile;
+				return; // Out of movement.
 			}
+
+			MovementBudget = MovementBudget - TileCost;
+			Army->Position = Tile;
 		}
 	}
 }
 
 void UCoMUnitSubsystem::ProcessMovementTurn()
 {
-	// Restore movement budgets (no persistent budget field yet — movement speed is recomputed
-	// each move call). This hook is the place for future per-army budget tracking.
-
 	// Resolve encounters: detect armies of different wizards on the same tile.
-	TMap<uint64, TArray<int32>> TileArmies; // key = packed (Plane, Layer, X, Y)
+	TMap<uint64, TArray<int32>> TileArmies;
 
 	for (auto& Pair : AllArmies)
 	{
 		const FCoMArmyGroup& Army = Pair.Value;
-		// Pack: Plane(3 bits) | Layer(2 bits) | X(16 bits) | Y(16 bits) into 64 bits.
 		const uint64 Key =
 			(static_cast<uint64>(Army.Plane) << 34) |
 			(static_cast<uint64>(Army.Layer) << 32) |
 			(static_cast<uint64>(static_cast<uint32>(Army.Position.X)) << 16) |
 			static_cast<uint64>(static_cast<uint32>(Army.Position.Y));
 
-		TileArmies.FindOrAdd(Key).Add(Army.ArmyID);
+		TileArmies.FindOrAdd(Key).Add(Army.ArmyGroupID);
 	}
 
 	for (auto& Pair : TileArmies)
@@ -319,7 +301,6 @@ void UCoMUnitSubsystem::ProcessMovementTurn()
 			continue;
 		}
 
-		// Check for opposing wizards.
 		TSet<int32> Wizards;
 		for (int32 AID : ArmyIDs)
 		{
@@ -332,7 +313,8 @@ void UCoMUnitSubsystem::ProcessMovementTurn()
 		if (Wizards.Num() > 1)
 		{
 			// TODO: trigger combat encounter via combat subsystem.
-			UE_LOG(LogTemp, Log, TEXT("ProcessMovementTurn — encounter detected at tile, %d armies from %d wizards"), ArmyIDs.Num(), Wizards.Num());
+			UE_LOG(LogTemp, Log, TEXT("ProcessMovementTurn - encounter detected, %d armies from %d wizards"),
+				ArmyIDs.Num(), Wizards.Num());
 		}
 	}
 }
@@ -390,7 +372,6 @@ TArray<const FCoMArmyGroup*> UCoMUnitSubsystem::GetArmiesForWizard(int32 WizardI
 
 const UCoMUnitSpecDataAsset* UCoMUnitSubsystem::ResolveSpec(int32 SpecID) const
 {
-	// Look up from the asset manager by SpecID.
 	UAssetManager& AM = UAssetManager::Get();
 	const FPrimaryAssetType UnitSpecType(TEXT("CoMUnitSpec"));
 	TArray<FPrimaryAssetId> AssetList;
@@ -401,7 +382,9 @@ const UCoMUnitSpecDataAsset* UCoMUnitSubsystem::ResolveSpec(int32 SpecID) const
 		FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
 		if (const UCoMUnitSpecDataAsset* Spec = Cast<UCoMUnitSpecDataAsset>(Path.ResolveObject()))
 		{
-			if (Spec->SpecID == SpecID)
+			// Compare by converting the FName-based UnitSpecID to int.
+			const FString SpecStr = Spec->UnitSpecID.ToString();
+			if (FCString::Atoi(*SpecStr) == SpecID)
 			{
 				return Spec;
 			}
@@ -423,15 +406,18 @@ FFixed64 UCoMUnitSubsystem::ComputeArmyMovementSpeed(const FCoMArmyGroup& Army) 
 			continue;
 		}
 
-		const UCoMUnitSpecDataAsset* Spec = ResolveSpec(Unit->SpecID);
+		// Parse SpecID back to int for asset lookup.
+		const int32 ParsedSpecID = FCString::Atoi(*Unit->SpecID.ToString());
+		const UCoMUnitSpecDataAsset* Spec = ResolveSpec(ParsedSpecID);
 		if (!Spec)
 		{
 			continue;
 		}
 
-		if (Spec->Movement < Slowest)
+		const FFixed64 UnitMove = FFixed64(Spec->MovePoints);
+		if (UnitMove < Slowest)
 		{
-			Slowest = Spec->Movement;
+			Slowest = UnitMove;
 		}
 	}
 
@@ -442,33 +428,48 @@ FFixed64 UCoMUnitSubsystem::ComputeMoveCost(const FCoMArmyGroup& Army, ECoMPlane
 {
 	FFixed64 BaseCost = FFixed64(1);
 
-	// Query terrain cost from world map.
+	// Query terrain cost from world map tile data.
 	if (WorldMapSubsystem)
 	{
-		BaseCost = WorldMapSubsystem->GetTerrainMovementCost(Plane, Layer, Tile);
+		const FCoMTileData* TileData = WorldMapSubsystem->GetTileAtPos(Plane, Layer, Tile);
+		if (TileData)
+		{
+			BaseCost = TileData->MoveCostModifier;
+		}
 	}
 
 	// Flying armies pay half terrain cost.
 	if (IsArmyFullyFlying(Army))
 	{
-		BaseCost = BaseCost * FFixed64(0.5);
+		BaseCost = BaseCost * FFixed64::Half();
 	}
 
 	// Ley line tiles give 0.5x cost.
-	if (WorldMapSubsystem && WorldMapSubsystem->IsLeyLineTile(Plane, Layer, Tile))
+	if (WorldMapSubsystem)
 	{
-		BaseCost = BaseCost * FFixed64(0.5);
+		const FCoMTileData* TileData = WorldMapSubsystem->GetTileAtPos(Plane, Layer, Tile);
+		if (TileData && TileData->LeyLineIDs.Num() > 0)
+		{
+			BaseCost = BaseCost * FFixed64::Half();
+		}
 	}
 
-	// Weather modifier.
+	// Weather modifier: look up weather effects and apply movement penalty.
 	if (WeatherSubsystem)
 	{
-		FFixed64 WeatherMod = WeatherSubsystem->GetMovementModifier(Plane, Tile);
-		BaseCost = BaseCost * WeatherMod;
+		const ECoMWeatherType Weather = WeatherSubsystem->GetWeatherAtTile(Plane, Tile.X, Tile.Y);
+		const FFixed64 Intensity = WeatherSubsystem->GetWeatherIntensity(Plane, Tile.X, Tile.Y);
+		const FCoMWeatherEffects Effects = UCoMWeatherSubsystem::GetWeatherEffects(Weather, Intensity);
+
+		if (Effects.MovementPenalty > 0)
+		{
+			// Add movement penalty as fraction of base cost.
+			BaseCost = BaseCost + FFixed64(Effects.MovementPenalty) * FFixed64::Tenth();
+		}
 	}
 
-	// Minimum cost of a small positive value to prevent zero-cost movement.
-	const FFixed64 MinCost = FFixed64(0.25);
+	// Minimum cost to prevent zero-cost movement.
+	const FFixed64 MinCost = FFixed64::Quarter();
 	if (BaseCost < MinCost)
 	{
 		BaseCost = MinCost;
@@ -487,13 +488,7 @@ bool UCoMUnitSubsystem::IsArmyFullyFlying(const FCoMArmyGroup& Army) const
 	for (int32 UID : Army.UnitIDs)
 	{
 		const FCoMUnitInstance* Unit = AllUnits.Find(UID);
-		if (!Unit)
-		{
-			return false;
-		}
-
-		const UCoMUnitSpecDataAsset* Spec = ResolveSpec(Unit->SpecID);
-		if (!Spec || !Spec->bFlying)
+		if (!Unit || !Unit->bFlying)
 		{
 			return false;
 		}
@@ -507,13 +502,7 @@ bool UCoMUnitSubsystem::ArmyHasBurrower(const FCoMArmyGroup& Army) const
 	for (int32 UID : Army.UnitIDs)
 	{
 		const FCoMUnitInstance* Unit = AllUnits.Find(UID);
-		if (!Unit)
-		{
-			continue;
-		}
-
-		const UCoMUnitSpecDataAsset* Spec = ResolveSpec(Unit->SpecID);
-		if (Spec && Spec->bBurrowing)
+		if (Unit && Unit->MovementType == ECoMMovementType::Burrowing)
 		{
 			return true;
 		}
@@ -525,15 +514,9 @@ bool UCoMUnitSubsystem::ArmyHasBurrower(const FCoMArmyGroup& Army) const
 void UCoMUnitSubsystem::Internal_RemoveUnitFromArmy(int32 UnitID, FCoMArmyGroup& Army)
 {
 	Army.UnitIDs.Remove(UnitID);
-
-	if (Army.HeroUnitID == UnitID)
-	{
-		Army.HeroUnitID = INDEX_NONE;
-	}
 }
 
 int32 UCoMUnitSubsystem::WrapX(int32 X)
 {
 	return ((X % MAP_WIDTH) + MAP_WIDTH) % MAP_WIDTH;
 }
-```

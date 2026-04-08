@@ -6,7 +6,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
-#include "FixedPoint/Fixed64.h"
+#include "CoMCore/CoreTypes/CoMFixedPoint.h"
 #include "CoMNavalSubsystem.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnFleetCreated, int32, FleetID, int32, OwnerWizard);
@@ -54,7 +54,7 @@ struct COMCORE_API FCoMSeaMonster
 
 	/** Combat power of this monster group. */
 	UPROPERTY(BlueprintReadOnly)
-	FFixed64 CombatPower = FFixed64(0, 0);
+	FFixed64 CombatPower = FFixed64(0);
 
 	/** Speed in tiles per turn. */
 	UPROPERTY(BlueprintReadOnly)

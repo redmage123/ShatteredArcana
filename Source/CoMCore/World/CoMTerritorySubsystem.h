@@ -4,9 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
-#include "CoMEnums.h"
-#include "CoMStructs.h"
-#include "CoMConstants.h"
+#include "CoMCore/CoreTypes/CoMEnums.h"
+#include "CoMCore/CoreTypes/CoMStructs.h"
+#include "CoMCore/CoreTypes/CoMConstants.h"
 #include "CoMTerritorySubsystem.generated.h"
 
 /**

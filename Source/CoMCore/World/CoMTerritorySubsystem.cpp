@@ -1,7 +1,7 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "CoMTerritorySubsystem.h"
-#include "CoMWorldMapSubsystem.h"
+#include "CoMCore/World/CoMWorldMapSubsystem.h"
 #include "Containers/Queue.h"
 
 // ============================================================================
@@ -364,7 +364,7 @@ void UCoMTerritorySubsystem::RecalculatePlane(UCoMWorldMapSubsystem* Map, ECoMPl
 int32 UCoMTerritorySubsystem::GetTileOwner(ECoMPlane Plane, ECoMMapLayer Layer, int32 X,
                                             int32 Y) const
 {
-	Position.X = ((Position.X % CoM::MAP_WIDTH) + CoM::MAP_WIDTH) % CoM::MAP_WIDTH;
+	// WrapX applied in caller % CoM::MAP_WIDTH) + CoM::MAP_WIDTH) % CoM::MAP_WIDTH;
 	if (X < 0 || X >= MAP_WIDTH || Y < 0 || Y >= MAP_HEIGHT)
 	{
 		return CoM::WIZARD_INDEX_NONE;

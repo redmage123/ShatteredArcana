@@ -3,7 +3,7 @@
 // Phase 8 -- Shattered Arcana
 
 #include "CoMQuestSubsystem.h"
-#include "CoMConstants.h"
+#include "CoMCore/CoreTypes/CoMConstants.h"
 
 // =====================================================================
 // Thematic word tables for procedural quest text
@@ -1145,7 +1145,7 @@ TArray<FCoMQuestReward> UCoMQuestSubsystem::GenerateRewards(ECoMQuestType Type, 
     {
         FCoMQuestReward GoldReward;
         GoldReward.Category = ECoMRewardCategory::Resources;
-        GoldReward.ResourceType = ECoMResource::Gold;
+        GoldReward.ResourceType = ECoMResource::GoldOre;
         GoldReward.Amount = CoMQuestConstants::GOLD_PER_DIFFICULTY * Difficulty;
         GoldReward.Description = FString::Printf(TEXT("%d Gold"), GoldReward.Amount);
         Rewards.Add(GoldReward);
@@ -1156,7 +1156,7 @@ TArray<FCoMQuestReward> UCoMQuestSubsystem::GenerateRewards(ECoMQuestType Type, 
     {
         FCoMQuestReward ManaReward;
         ManaReward.Category = ECoMRewardCategory::Resources;
-        ManaReward.ResourceType = ECoMResource::Mana;
+        ManaReward.ResourceType = ECoMResource::Aetherium;
         ManaReward.Amount = CoMQuestConstants::MANA_PER_DIFFICULTY * Difficulty;
         ManaReward.Description = FString::Printf(TEXT("%d Mana"), ManaReward.Amount);
         Rewards.Add(ManaReward);
@@ -1446,7 +1446,7 @@ void UCoMQuestSubsystem::GrantRewards(int32 WizardId, const FCoMQuest& Quest)
             // For now, broadcast the reward event with the amount.
             UE_LOG(LogTemp, Log, TEXT("Quest %d: Granting %d %s to wizard %d"),
                 Quest.QuestId, Reward.Amount,
-                Reward.ResourceType == ECoMResource::Gold ? TEXT("Gold") : TEXT("Mana"),
+                Reward.ResourceType == ECoMResource::GoldOre ? TEXT("Gold") : TEXT("Mana"),
                 WizardId);
             break;
 

@@ -1,13 +1,14 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "CoMConsoleCommands.h"
-#include "CoMTurnManager.h"
-#include "CoMFogOfWarSubsystem.h"
+#include "CoMCore/Turn/CoMTurnManager.h"
+#include "CoMCore/World/CoMFogOfWarSubsystem.h"
 #include "HAL/IConsoleManager.h"
 
 // =====================================================================
 // Subsystem lifecycle
 // =====================================================================
+
 
 void UCoMConsoleCommands::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -311,3 +312,4 @@ void UCoMConsoleCommands::Cmd_DeclareWar(const TArray<FString>& Args)
 		TEXT("Wizard %d declares war on Wizard %d!  [placeholder — no diplomacy subsystem yet]"),
 		WizardId, TargetId);
 }
+
