@@ -14,6 +14,7 @@
 #include "Panels/CoMWizardCreationWidget.h"
 #include "HUD/CoMMainMenuWidget.h"
 #include "HUD/CoMLoadScreenWidget.h"
+#include "Panels/CoMVictoryScreenWidget.h"
 #include "Framework/CoMGameInstance.h"
 
 void UCoMUISubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -270,6 +271,41 @@ void UCoMUISubsystem::HideCredits()
 }
 
 // =============================================================================
+// Victory / Defeat Screen
+// =============================================================================
+
+void UCoMUISubsystem::ShowVictoryScreen(int32 WinnerWizardId, ECoMVictoryType VictoryType)
+{
+	HideAllPanels();
+
+	UCoMVictoryScreenWidget* Widget = CreateAndShowWidget<UCoMVictoryScreenWidget>(
+		VictoryScreenWidgetClass, VictoryScreenInstance, 50);
+
+	if (Widget)
+	{
+		Widget->ShowVictory(WinnerWizardId, VictoryType);
+	}
+}
+
+void UCoMUISubsystem::ShowDefeatScreen(int32 ConquerorWizardId)
+{
+	HideAllPanels();
+
+	UCoMVictoryScreenWidget* Widget = CreateAndShowWidget<UCoMVictoryScreenWidget>(
+		VictoryScreenWidgetClass, VictoryScreenInstance, 50);
+
+	if (Widget)
+	{
+		Widget->ShowDefeat(ConquerorWizardId);
+	}
+}
+
+void UCoMUISubsystem::HideVictoryScreen()
+{
+	RemoveWidget(VictoryScreenInstance);
+}
+
+// =============================================================================
 // Bulk operations
 // =============================================================================
 
@@ -282,6 +318,7 @@ void UCoMUISubsystem::HideAllPanels()
 	HideCredits();
 	HideWizardCreation();
 	HideLoadScreen();
+	HideVictoryScreen();
 }
 
 void UCoMUISubsystem::HideAll()

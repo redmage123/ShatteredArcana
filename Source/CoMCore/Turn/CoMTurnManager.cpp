@@ -3,6 +3,7 @@
 #include "CoMCore/Turn/CoMTurnManager.h"
 #include "CoMCore/Turn/CoMTurnSubsystem.h"
 #include "Audio/CoMAudioSubsystem.h"
+#include "Victory/CoMVictorySubsystem.h"
 
 // =====================================================================
 // Subsystem lifecycle
@@ -242,7 +243,16 @@ void UCoMTurnManager::CheckForEliminations()
 
 bool UCoMTurnManager::CheckVictory() const
 {
-	// Placeholder: victory if only one wizard remains.
-	// Full implementation will check spell of mastery, conquest, etc.
+	// Delegate to UCoMVictorySubsystem for full victory evaluation.
+	UGameInstance* GI = GetGameInstance();
+	if (GI)
+	{
+		if (const UCoMVictorySubsystem* VictorySub = GI->GetSubsystem<UCoMVictorySubsystem>())
+		{
+			return VictorySub->IsGameOver();
+		}
+	}
+
+	// Fallback: victory if only one wizard remains.
 	return GetActiveWizardCount() <= 1 && TurnOrder.Num() > 1;
 }

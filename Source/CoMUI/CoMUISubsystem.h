@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Blueprint/UserWidget.h"
+#include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMUISubsystem.generated.h"
 
 class UCoMHUDWidget;
@@ -17,6 +18,7 @@ class UCoMCreditsWidget;
 class UCoMMainMenuWidget;
 class UCoMWizardCreationWidget;
 class UCoMLoadScreenWidget;
+class UCoMVictoryScreenWidget;
 
 /**
  * UCoMUISubsystem
@@ -120,6 +122,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HideLoadScreen();
 
+	// -- Victory / Defeat Screen -----------------------------------------------
+
+	/** Show the full-screen victory overlay for the winning wizard. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowVictoryScreen(int32 WinnerWizardId, ECoMVictoryType VictoryType);
+
+	/** Show the full-screen defeat overlay. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowDefeatScreen(int32 ConquerorWizardId);
+
+	/** Close the victory/defeat screen. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideVictoryScreen();
+
 	// -- Credits ---------------------------------------------------------------
 
 	/** Create and show the credits screen. */
@@ -132,7 +148,7 @@ public:
 
 	// -- Bulk Operations -------------------------------------------------------
 
-	/** Close all panels except the HUD. */
+	/** Close all panels except the HUD (includes victory screen). */
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HideAllPanels();
 
@@ -168,6 +184,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<UCoMLoadScreenWidget> LoadScreenWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<UCoMVictoryScreenWidget> VictoryScreenWidgetClass;
 
 private:
 	/** Helper: create a widget of the given class and add it to the viewport. */
@@ -206,4 +225,7 @@ private:
 
 	UPROPERTY()
 	UCoMLoadScreenWidget* LoadScreenInstance = nullptr;
+
+	UPROPERTY()
+	UCoMVictoryScreenWidget* VictoryScreenInstance = nullptr;
 };

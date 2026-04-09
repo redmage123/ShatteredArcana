@@ -1013,9 +1013,11 @@ UENUM(BlueprintType)
 enum class ECoMVictoryType : uint8
 {
 	None        UMETA(DisplayName = "None"),              // No win yet
-	Conquest    UMETA(DisplayName = "Conquest"),          // Eliminate all other wizards
+	Conquest    UMETA(DisplayName = "Conquest"),          // Eliminate all other wizards (last man standing)
+	Domination  UMETA(DisplayName = "Domination"),       // Control all capital cities
 	Magical     UMETA(DisplayName = "Magical Supremacy"), // Research and cast the Spell of Mastery
-	Economic    UMETA(DisplayName = "Economic Domination"), // Control ≥70% of world gold income for 20 turns
+	Diplomatic  UMETA(DisplayName = "Diplomatic Victory"), // Alliance with all surviving wizards (min 4)
+	Economic    UMETA(DisplayName = "Economic Domination"), // Control >=70% of world gold income for 20 turns
 	Cultural    UMETA(DisplayName = "Cultural Hegemony"), // All cities choose your culture voluntarily
 	Pact        UMETA(DisplayName = "Pact Victory"),      // COM-056c: hold contracts with all 3 Archdevils simultaneously
 	Dissolution UMETA(DisplayName = "Dissolution Victory"), // COM-056c: destabilize 3 planes + slay Sael-Thrix

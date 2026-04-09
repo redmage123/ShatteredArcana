@@ -24,6 +24,8 @@
 #include "Units/CoMDragonSubsystem.h"
 #include "Economy/CoMCitySubsystem.h"
 #include "Audio/CoMAudioSubsystem.h"
+#include "Victory/CoMVictorySubsystem.h"
+#include "Events/CoMWorldEventSubsystem.h"
 #include "Save/CoMSaveSubsystem.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -142,6 +144,20 @@ void UCoMTurnSubsystem::AdvanceGlobalPhase()
 
 void UCoMTurnSubsystem::ProcessFullTurn()
 {
+	// If the game is already over (victory declared), do not process further turns.
+	if (UGameInstance* CheckGI = GetGameInstance())
+	{
+		if (UCoMVictorySubsystem* VictorySub = CheckGI->GetSubsystem<UCoMVictorySubsystem>())
+		{
+			if (VictorySub->IsGameOver())
+			{
+				UE_LOG(LogTemp, Log,
+				       TEXT("UCoMTurnSubsystem: Game is over — skipping turn processing."));
+				return;
+			}
+		}
+	}
+
 	UE_LOG(LogTemp, Log,
 	       TEXT("UCoMTurnSubsystem: ═══ Processing full turn %d ═══"), CurrentTurn);
 
@@ -248,6 +264,13 @@ void UCoMTurnSubsystem::ProcessAllSubsystemTurns()
 		UE_LOG(LogTemp, Log, TEXT("  [Weather] Weather subsystem ticked."));
 	}
 
+	// ── World Events ────────────────────────────────────────────────
+	if (UCoMWorldEventSubsystem* WorldEvents = GI->GetSubsystem<UCoMWorldEventSubsystem>())
+	{
+		WorldEvents->ProcessEventTurn(CurrentTurn);
+		UE_LOG(LogTemp, Log, TEXT("  [WorldEvents] World events subsystem ticked."));
+	}
+
 	// ── Movement ─────────────────────────────────────────────────────
 	if (UCoMUnitSubsystem* Units = GI->GetSubsystem<UCoMUnitSubsystem>())
 	{
@@ -346,6 +369,21 @@ void UCoMTurnSubsystem::ProcessAllSubsystemTurns()
 	{
 		FoW->UpdateAllVision();
 		UE_LOG(LogTemp, Log, TEXT("  [FogOfWar] Vision updated for all wizards."));
+	}
+
+	// ── Victory Conditions ───────────────────────────────────────────
+	if (UCoMVictorySubsystem* VictorySub = GI->GetSubsystem<UCoMVictorySubsystem>())
+	{
+		VictorySub->CheckVictoryConditions(CurrentTurn);
+		UE_LOG(LogTemp, Log, TEXT("  [Victory] Victory conditions evaluated."));
+
+		if (VictorySub->IsGameOver())
+		{
+			UE_LOG(LogTemp, Log,
+			       TEXT("  [Victory] GAME OVER — Wizard %d wins via %s."),
+			       VictorySub->GetWinningWizard(),
+			       *UEnum::GetValueAsString(VictorySub->GetWinningCondition()));
+		}
 	}
 }
 
