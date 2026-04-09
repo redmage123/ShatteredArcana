@@ -12,6 +12,8 @@ import * as weapons from './weapon-system.js';
 import * as camAnim from './camera-animator.js';
 import * as bg from './background.js';
 import { repaintTextureAtlas } from './materials.js';
+import { replaceWithProceduralKnight } from './knight-model.js';
+import { replaceWithSDFKnight } from './sdf-knight.js';
 import * as poseLib from './pose-library.js';
 import * as undoMgr from './undo-manager.js';
 import * as onionSkin from './onion-skin.js';
@@ -45,6 +47,18 @@ window.autoCenterCamera = (baseTarget, basePos, fov) => {
   camAnim.setCameraTarget(tx, ty, tz);
   camAnim.setCameraFOV(fov);
 };
+window.useProceduralKnight = () => {
+  const boneMap = rig.boneMap;
+  replaceWithProceduralKnight(boneMap);
+  return Object.keys(boneMap).length;
+};
+
+window.useSDFKnight = (opts) => {
+  const boneMap = rig.boneMap;
+  replaceWithSDFKnight(boneMap, opts || {});
+  return Object.keys(boneMap).length;
+};
+
 window.repaintArmor = () => {
   let count = 0;
   let root = rig.getBones()[0];

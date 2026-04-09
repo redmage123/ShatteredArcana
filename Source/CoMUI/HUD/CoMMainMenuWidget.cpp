@@ -94,7 +94,17 @@ void UCoMMainMenuWidget::OnLoadGameClicked()
 
 void UCoMMainMenuWidget::OnSettingsClicked()
 {
-	ShowNotification(TEXT("Settings coming in a future update"));
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMUISubsystem* UISS = GI->GetSubsystem<UCoMUISubsystem>())
+		{
+			SetVisibility(ESlateVisibility::Collapsed);
+			UISS->ShowSettings();
+			return;
+		}
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("CoMMainMenuWidget: Could not get CoMUISubsystem for settings."));
 }
 
 void UCoMMainMenuWidget::OnCreditsClicked()

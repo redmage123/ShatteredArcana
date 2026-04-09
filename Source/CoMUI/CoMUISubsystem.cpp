@@ -11,6 +11,7 @@
 #include "Panels/CoMDiplomacyWidget.h"
 #include "Panels/CoMArmyPanelWidget.h"
 #include "Panels/CoMCreditsWidget.h"
+#include "Panels/CoMSettingsWidget.h"
 #include "Panels/CoMWizardCreationWidget.h"
 #include "HUD/CoMMainMenuWidget.h"
 #include "HUD/CoMLoadScreenWidget.h"
@@ -249,6 +250,29 @@ void UCoMUISubsystem::HideLoadScreen()
 }
 
 // =============================================================================
+// Settings
+// =============================================================================
+
+void UCoMUISubsystem::ShowSettings()
+{
+	HideAllPanels();
+	CreateAndShowWidget<UCoMSettingsWidget>(SettingsWidgetClass, SettingsInstance, 20);
+}
+
+void UCoMUISubsystem::HideSettings()
+{
+	const bool bWasShowing = (SettingsInstance != nullptr && SettingsInstance->IsInViewport());
+
+	RemoveWidget(SettingsInstance);
+
+	// Re-show the main menu if it was collapsed when we opened settings.
+	if (bWasShowing && MainMenuInstance && MainMenuInstance->IsInViewport())
+	{
+		MainMenuInstance->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+// =============================================================================
 // Credits
 // =============================================================================
 
@@ -315,6 +339,7 @@ void UCoMUISubsystem::HideAllPanels()
 	HideSpellBook();
 	HideDiplomacy();
 	HideArmyPanel();
+	HideSettings();
 	HideCredits();
 	HideWizardCreation();
 	HideLoadScreen();

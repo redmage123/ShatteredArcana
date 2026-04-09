@@ -2,6 +2,7 @@
 // CoMHUDWidget.cpp -- Main HUD overlay implementation.
 
 #include "CoMHUDWidget.h"
+#include "CoMMinimapWidget.h"
 
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
@@ -135,4 +136,33 @@ void UCoMHUDWidget::OnArmyManagerClicked()
 void UCoMHUDWidget::OnDiplomacyClicked()
 {
 	OnDiplomacyRequested.Broadcast();
+}
+
+void UCoMHUDWidget::InitializeMinimap(int32 WizardId, ECoMPlane StartingPlane)
+{
+	if (!MinimapFrame)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UCoMHUDWidget::InitializeMinimap -- MinimapFrame is null, cannot embed minimap."));
+		return;
+	}
+
+	// Create the minimap widget and add it to the MinimapFrame border.
+	MinimapWidget = CreateWidget<UCoMMinimapWidget>(GetOwningPlayer(), UCoMMinimapWidget::StaticClass());
+	if (MinimapWidget)
+	{
+		MinimapFrame->SetContent(MinimapWidget);
+		MinimapWidget->InitializeMinimap(WizardId, StartingPlane);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("UCoMHUDWidget::InitializeMinimap -- Failed to create UCoMMinimapWidget."));
+	}
+}
+
+void UCoMHUDWidget::RefreshMinimap()
+{
+	if (MinimapWidget)
+	{
+		MinimapWidget->RefreshMinimap();
+	}
 }

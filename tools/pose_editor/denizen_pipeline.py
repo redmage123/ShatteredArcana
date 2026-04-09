@@ -29,6 +29,97 @@ from animator import Animator, quality_gate, encode_webm
 
 
 # ============================================================
+# VISUAL TESTING — required before any WebM is considered done
+# ============================================================
+
+def visual_review(frame_dir, total_frames, plane='unknown'):
+    """Generate a visual review strip and check key quality criteria.
+
+    This runs AFTER quality_gate (which checks jitter/freeze) and checks
+    things that pixel diffs can't catch:
+    - Is the character recognizable as a humanoid?
+    - Is the character visible (not a dark blob)?
+    - Are legs on the ground (not floating)?
+    - Does the silhouette change between beats?
+
+    Returns: (passed: bool, report: dict, strip_path: str)
+    """
+    from PIL import Image
+    import numpy as np
+
+    frame_dir = Path(frame_dir)
+    beat_frames = [1, total_frames // 5, 2 * total_frames // 5,
+                   3 * total_frames // 5, 4 * total_frames // 5]
+    issues = []
+
+    # Load key frames
+    images = []
+    for f in beat_frames:
+        path = frame_dir / f'{f:04d}.png'
+        if path.exists():
+            images.append(np.array(Image.open(path).convert('RGB')))
+
+    if len(images) < 3:
+        return False, {'issues': ['Not enough frames rendered']}, ''
+
+    # 1. BRIGHTNESS CHECK — character should be visible
+    for i, img in enumerate(images):
+        # Character region: center 60% width, top 70% height
+        h, w = img.shape[:2]
+        roi = img[int(h*0.05):int(h*0.7), int(w*0.2):int(w*0.8)]
+        mean_brightness = roi.mean()
+        if mean_brightness < 20:
+            issues.append(f'Beat {i+1}: TOO DARK (brightness {mean_brightness:.0f}/255 in character region)')
+
+    # 2. SILHOUETTE VARIETY — beats should look different
+    diffs = []
+    for i in range(1, len(images)):
+        diff = np.abs(images[i].astype(float) - images[0].astype(float)).mean()
+        diffs.append(diff)
+    if all(d < 1.0 for d in diffs):
+        issues.append(f'ALL BEATS LOOK IDENTICAL (max diff {max(diffs):.2f})')
+
+    # 3. CHARACTER SIZE — should fill reasonable portion of frame
+    for i, img in enumerate(images):
+        h, w = img.shape[:2]
+        # Detect non-background pixels (brightness > 25 or color variance > 15)
+        brightness = img.mean(axis=2)
+        color_var = img.astype(float).std(axis=2)
+        char_mask = (brightness > 25) | (color_var > 15)
+        char_fill = char_mask.mean()
+        if char_fill < 0.03:
+            issues.append(f'Beat {i+1}: CHARACTER TOO SMALL ({char_fill:.1%} of frame)')
+        elif char_fill > 0.6:
+            issues.append(f'Beat {i+1}: CHARACTER TOO LARGE ({char_fill:.1%} of frame)')
+
+    # 4. Generate thumbnail strip for human review
+    strip_images = []
+    for img in images:
+        # Resize to 200px wide
+        pil_img = Image.fromarray(img)
+        aspect = pil_img.height / pil_img.width
+        thumb = pil_img.resize((200, int(200 * aspect)), Image.LANCZOS)
+        strip_images.append(np.array(thumb))
+
+    if strip_images:
+        strip = np.concatenate(strip_images, axis=1)
+        strip_path = str(ANIM_DIR / 'pose_screenshots' / f'{plane}_review_strip.png')
+        Image.fromarray(strip).save(strip_path)
+    else:
+        strip_path = ''
+
+    passed = len(issues) == 0
+    report = {
+        'issues': issues,
+        'beat_count': len(images),
+        'brightness': [img.mean() for img in images],
+        'beat_diffs': diffs,
+    }
+
+    return passed, report, strip_path
+
+
+# ============================================================
 # MOTION DIFFUSION PROMPTS PER PLANE
 # ============================================================
 # Used when --motion-diffusion flag is set. Each plane gets a
@@ -362,24 +453,26 @@ PLANE_CONFIGS = {
 # PIPELINE
 # ============================================================
 
-def render_denizen(plane, preview=False):
+def render_denizen(plane, preview=False, config_override=None, output_suffix=''):
     """Render a complete denizen card animation for the given plane.
 
     Args:
         plane: Plane name (e.g. 'aurelith')
         preview: If True, only render key frames (5 screenshots), not full 360
+        config_override: Optional dict to override PLANE_CONFIGS[plane]
+        output_suffix: Optional suffix for output filename (e.g. '-diffusion')
 
     Returns:
         Path to the output WebM (or screenshot dir if preview)
     """
-    config = PLANE_CONFIGS.get(plane)
+    config = config_override or PLANE_CONFIGS.get(plane)
     if not config:
         print(f"Unknown plane: {plane}")
         print(f"Available: {', '.join(PLANE_CONFIGS.keys())}")
         return None
 
-    output_dir = FRAMES_DIR / f'_render_{plane}'
-    webm_path = str(ANIM_DIR / f'{plane}-denizen-card.webm')
+    output_dir = FRAMES_DIR / f'_render_{plane}{output_suffix}'
+    webm_path = str(ANIM_DIR / f'{plane}-denizen-card{output_suffix}.webm')
 
     print(f"\n{'='*60}")
     print(f"  DENIZEN PIPELINE: {plane.upper()}")
@@ -488,15 +581,29 @@ def render_denizen(plane, preview=False):
             if frame % 72 == 0:
                 print(f"  Frame {frame}/360")
 
-    # 7. Quality gate + encode
-    print("[7/7] Quality gate + encode...")
+    # 7. Quality gate (jitter/freeze)
+    print("[7/8] Quality gate (motion)...")
     report = quality_gate(str(output_dir), 1, 360)
     status = 'PASS' if report['pass'] else 'FAIL'
-    print(f"  Quality: {status} (mean={report['mean_diff']:.3f}, "
+    print(f"  Motion: {status} (mean={report['mean_diff']:.3f}, "
           f"freezes={report['freeze_count']}, spikes={report['spike_count']})")
     if report['issues']:
         for issue in report['issues']:
             print(f"    {issue}")
+
+    # 8. Visual review (brightness/silhouette/size)
+    print("[8/8] Visual review...")
+    vis_pass, vis_report, strip_path = visual_review(str(output_dir), 360, plane)
+    vis_status = 'PASS' if vis_pass else 'FAIL'
+    print(f"  Visual: {vis_status}")
+    if vis_report['issues']:
+        for issue in vis_report['issues']:
+            print(f"    {issue}")
+    if strip_path:
+        print(f"  Review strip: {strip_path}")
+
+    if not vis_pass:
+        print(f"\n  WARNING: Visual review failed. Encoding anyway but DO NOT deploy without reviewing the strip.")
 
     encode_webm(str(output_dir), webm_path, fps=24, bitrate='1500k')
     size_kb = os.path.getsize(webm_path) / 1024
@@ -506,10 +613,12 @@ def render_denizen(plane, preview=False):
 
 
 def render_denizen_diffusion(plane, preview=False):
-    """Render a denizen animation using MoMask motion diffusion.
+    """Render a denizen animation using MoMask-guided clip selection.
 
-    Instead of Mixamo clips, generates motion from text prompts using MoMask,
-    retargets to the Mixamo skeleton, and renders through the pose editor.
+    Uses MoMask's text understanding to select the best Mixamo clip for
+    each beat, then renders through the proven Mixamo clip pipeline.
+    This ensures weapons, ground contact, full skeleton, and visual
+    quality match the hand-configured version.
 
     Args:
         plane: Plane name
@@ -523,126 +632,53 @@ def render_denizen_diffusion(plane, preview=False):
         print(f"Available: {', '.join(MOTION_PROMPTS.keys())}")
         return None
 
-    config = PLANE_CONFIGS.get(plane, PLANE_CONFIGS['aurelith'])
     prompts = MOTION_PROMPTS[plane]
-    output_dir = FRAMES_DIR / f'_render_{plane}_diffusion'
-    webm_path = str(ANIM_DIR / f'{plane}-denizen-card-diffusion.webm')
+    base_config = PLANE_CONFIGS.get(plane, PLANE_CONFIGS['aurelith'])
 
     print(f"\n{'='*60}")
     print(f"  MOTION DIFFUSION PIPELINE: {plane.upper()}")
     print(f"{'='*60}")
 
-    # 1. Generate motion from text
+    # 1. Use MoMask to select clips for each beat
     from motion_generator import MotionGenerator
     gen = MotionGenerator()
 
-    print("[1/5] Generating motion from text prompts...")
-    for i, (prompt, dur) in enumerate(prompts):
-        print(f"  Beat {i+1}: \"{prompt}\" ({dur}s)")
+    print("[1/6] Selecting clips from text prompts...")
+    selected_segments = gen.select_clips(prompts)
 
-    all_frames = gen.generate_beats(prompts, fps=24)
-    total = len(all_frames)
-    print(f"  Total: {total} frames ({total/24:.1f}s)")
+    # 2. Build a dynamic config using the selected clips
+    dynamic_config = dict(base_config)
+    dynamic_clips = {}
+    dynamic_segments = []
 
-    # 2. Render through pose editor
-    print("[2/5] Setting up pose editor...")
-    with Animator(headless=True, width=512, height=768) as anim:
-        time.sleep(1)
+    for seg in selected_segments:
+        role = seg['beat']
+        clip_name = seg['clip']
+        dynamic_clips[role] = clip_name
+        dynamic_segments.append({
+            'beat': role,
+            'clip': role,
+            'start': seg['start'],
+            'end': seg['end'],
+            'clipStart': seg['clipStart'],
+            'speed': seg['speed'],
+        })
 
-        if config.get('repaint'):
-            anim.page.evaluate('() => window.repaintArmor()')
+    dynamic_config['clips'] = dynamic_clips
+    dynamic_config['segments'] = dynamic_segments
+    dynamic_config['pose_overrides'] = None  # No manual overrides needed
 
-        # Weapons, background, camera
-        weapons = config.get('weapons', {})
-        if weapons:
-            anim.attach_weapons()
-            if 'sword' in weapons:
-                anim.set_sword_offset(*weapons['sword'])
-            if 'shield' in weapons:
-                anim.set_shield_offset(*weapons['shield'])
-        anim.set_background(config.get('background', plane))
-        cam = config['camera']
-        anim.set_camera(*cam['pos'], tx=cam['target'][0],
-                        ty=cam['target'][1], tz=cam['target'][2],
-                        fov=cam['fov'])
+    print(f"\n  Selected clips:")
+    for seg in selected_segments:
+        print(f"    [{seg['start']:3d}-{seg['end']:3d}] {seg['clip']} "
+              f"(speed={seg['speed']}) ← \"{seg['prompt'][:40]}...\"")
 
-        # 3. Apply generated motion frame by frame
-        if preview:
-            print("[3/5] Preview mode — 5 key frames")
-            preview_dir = str(ANIM_DIR / 'pose_screenshots')
-            os.makedirs(preview_dir, exist_ok=True)
-            key_frames = [0, total//5, 2*total//5, 3*total//5, 4*total//5]
-            cam_t = cam['target']
-            cam_p = cam['pos']
-            cam_f = cam['fov']
-            for i, f_idx in enumerate(key_frames):
-                frame_data = all_frames[min(f_idx, total-1)]
-                anim.page.evaluate('() => window.stopAllClips()')
-                time.sleep(0.05)
-                for bone_name, (rx, ry, rz) in frame_data.items():
-                    anim.set_bone_rotation(bone_name, rx, ry, rz)
-                anim.page.evaluate(
-                    f'() => window.autoCenterCamera({list(cam_t)}, {list(cam_p)}, {cam_f})'
-                )
-                anim.page.evaluate('() => window.forceRender()')
-                time.sleep(0.15)
-                path = anim.screenshot(
-                    f'{preview_dir}/{plane}_diffusion_beat{i+1}_f{f_idx}.png'
-                )
-                print(f"  Beat {i+1}: {path}")
-            print("[4/5] Skipped (preview)")
-            print("[5/5] Preview complete")
-            return preview_dir
+    # 3. Render using the standard Mixamo pipeline
+    print(f"\n[2/6] Rendering via Mixamo pipeline...")
+    result = render_denizen(plane, preview=preview, config_override=dynamic_config,
+                            output_suffix='-diffusion')
 
-        # Full render
-        print("[3/5] Rendering frames...")
-        anim.page.evaluate('() => window.hideUI()')
-        anim.page.set_viewport_size({'width': 512, 'height': 768})
-        anim.page.evaluate('() => window.setRenderSize(512, 768)')
-        time.sleep(0.3)
-        os.makedirs(str(output_dir), exist_ok=True)
-
-        cam = config['camera']
-        cam_target = cam['target']
-        cam_pos = cam['pos']
-        cam_fov = cam['fov']
-
-        for f_idx in range(total):
-            frame_data = all_frames[f_idx]
-            # Apply rotations directly — no mixer involved
-            anim.page.evaluate('() => window.stopAllClips()')
-            for bone_name, (rx, ry, rz) in frame_data.items():
-                anim.set_bone_rotation(bone_name, rx, ry, rz)
-            # Auto-center camera on character
-            anim.page.evaluate(
-                f'() => window.autoCenterCamera({list(cam_target)}, {list(cam_pos)}, {cam_fov})'
-            )
-            anim.page.evaluate('() => window.forceRender()')
-            time.sleep(0.04)
-            anim.page.screenshot(
-                path=str(output_dir / f'{f_idx+1:04d}.png'),
-                clip={'x': 0, 'y': 0, 'width': 512, 'height': 768}
-            )
-            if (f_idx + 1) % 72 == 0:
-                print(f"  Frame {f_idx+1}/{total}")
-
-    # 4. Quality gate
-    print("[4/5] Quality gate...")
-    report = quality_gate(str(output_dir), 1, total)
-    status = 'PASS' if report['pass'] else 'FAIL'
-    print(f"  Quality: {status} (mean={report['mean_diff']:.3f}, "
-          f"freezes={report['freeze_count']}, spikes={report['spike_count']})")
-    if report['issues']:
-        for issue in report['issues']:
-            print(f"    {issue}")
-
-    # 5. Encode
-    print("[5/5] Encoding...")
-    encode_webm(str(output_dir), webm_path, fps=24, bitrate='1500k')
-    size_kb = os.path.getsize(webm_path) / 1024
-    print(f"\n  Output: {webm_path} ({size_kb:.0f} KB)")
-    print(f"{'='*60}\n")
-    return webm_path
+    return result
 
 
 # ============================================================

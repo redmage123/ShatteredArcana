@@ -20,6 +20,8 @@ public class CoMUI : ModuleRules
 			"SlateCore",
 			"InputCore",
 			"GameplayTags",
+			"RenderCore",   // Minimap texture BulkData lock/unlock
+			"RHI",          // PF_B8G8R8A8 pixel format, FTexture2DMipMap
 		});
 	}
 }

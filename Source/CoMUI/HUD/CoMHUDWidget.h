@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMHUDWidget.generated.h"
 
 class UTextBlock;
@@ -13,6 +14,7 @@ class UVerticalBox;
 class UHorizontalBox;
 class UScrollBox;
 class UBorder;
+class UCoMMinimapWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEndTurnRequested);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSpellBookRequested);
@@ -48,6 +50,23 @@ public:
 	/** Update the turn indicator text. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|HUD")
 	void UpdateTurnInfo(int32 TurnNumber, const FString& WizardName);
+
+	// -- Minimap ---------------------------------------------------------------
+
+	/**
+	 * Initialize the embedded minimap for a given wizard and starting plane.
+	 * Call after NativeConstruct, once game state is ready.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CoM|HUD")
+	void InitializeMinimap(int32 WizardId, ECoMPlane StartingPlane);
+
+	/** Access the minimap widget (e.g. to bind OnMinimapNavigate). */
+	UFUNCTION(BlueprintPure, Category = "CoM|HUD")
+	UCoMMinimapWidget* GetMinimapWidget() const { return MinimapWidget; }
+
+	/** Trigger a full minimap refresh (e.g. on turn end). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|HUD")
+	void RefreshMinimap();
 
 	// -- Notifications ---------------------------------------------------------
 
@@ -131,6 +150,10 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> MinimapFrame;
+
+	/** The actual minimap widget, created in C++ and added to MinimapFrame. */
+	UPROPERTY()
+	TObjectPtr<UCoMMinimapWidget> MinimapWidget;
 
 private:
 	/** Maximum notifications to keep in the scroll list before trimming oldest. */

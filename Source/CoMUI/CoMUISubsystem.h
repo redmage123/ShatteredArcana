@@ -15,6 +15,7 @@ class UCoMSpellBookWidget;
 class UCoMDiplomacyWidget;
 class UCoMArmyPanelWidget;
 class UCoMCreditsWidget;
+class UCoMSettingsWidget;
 class UCoMMainMenuWidget;
 class UCoMWizardCreationWidget;
 class UCoMLoadScreenWidget;
@@ -136,6 +137,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HideVictoryScreen();
 
+	// -- Settings --------------------------------------------------------------
+
+	/** Create and show the settings screen. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowSettings();
+
+	/** Close the settings screen. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideSettings();
+
 	// -- Credits ---------------------------------------------------------------
 
 	/** Create and show the credits screen. */
@@ -177,6 +188,9 @@ public:
 	TSubclassOf<UCoMArmyPanelWidget> ArmyPanelWidgetClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<UCoMSettingsWidget> SettingsWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<UCoMCreditsWidget> CreditsWidgetClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
@@ -216,6 +230,9 @@ private:
 
 	UPROPERTY()
 	UCoMArmyPanelWidget* ArmyPanelInstance = nullptr;
+
+	UPROPERTY()
+	UCoMSettingsWidget* SettingsInstance = nullptr;
 
 	UPROPERTY()
 	UCoMCreditsWidget* CreditsInstance = nullptr;
