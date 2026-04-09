@@ -241,7 +241,9 @@ window.evaluateFullFrame = (frame) => {
   applyQuatOverrides(frame);
   // 3. Camera
   camAnim.evaluateAtFrame(frame);
-  // 4. Render
+  // 4. Sync particles to this exact frame (deterministic — no jitter)
+  bg.setParticleFrame(frame);
+  // 5. Render
   forceRender();
 };
 
@@ -272,6 +274,7 @@ window.importCameraKeyframes = (json) => camAnim.importJSON(json);
 // ── Background ─────────────────────────────────────────────
 window.setBackground = (preset) => bg.setBackground(preset);
 window.setParticleIntensity = (v) => bg.setParticleIntensity(v);
+window.setParticleFrame = (frame) => bg.setParticleFrame(frame);
 
 // ── Pose Library ───────────────────────────────────────────
 window.savePose = (name) => poseLib.savePose(name);

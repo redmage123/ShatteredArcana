@@ -163,23 +163,53 @@ function setParticleIntensity(v) {
   }
 }
 
+// Frame counter for deterministic particle positioning during batch render.
+let particleFrame = 0;
+
+/**
+ * Update particles deterministically by frame count (not real-time dt).
+ * This prevents jitter/oscillation during batch frame-by-frame rendering.
+ * Each particle follows a smooth sine-wave path — no random respawn jumps.
+ */
 function updateParticles(dt) {
   if (!particles) return;
+  particleFrame++;
+
   const pos = particles.geometry.attributes.position;
-  const vel = particles.geometry.userData.velocities;
-  for (let i = 0; i < pos.count; i++) {
-    pos.array[i * 3] += vel[i * 3];
-    pos.array[i * 3 + 1] += vel[i * 3 + 1];
-    pos.array[i * 3 + 2] += vel[i * 3 + 2];
-    if (pos.array[i * 3 + 1] > 4) {
-      pos.array[i * 3 + 1] = 0;
-      pos.array[i * 3] = (Math.random() - 0.5) * 6;
-      pos.array[i * 3 + 2] = (Math.random() - 0.5) * 6;
-    }
+  const seeds = particles.geometry.userData.velocities; // reuse as per-particle seeds
+  const count = pos.count;
+  const t = particleFrame * 0.005; // slow time progression
+
+  for (let i = 0; i < count; i++) {
+    // Each particle has a unique seed from the velocity array
+    const sx = seeds[i * 3];      // horizontal seed
+    const sy = seeds[i * 3 + 1];  // vertical seed (always positive)
+    const sz = seeds[i * 3 + 2];  // depth seed
+
+    // Smooth vertical rise (loops via modulo, no sudden respawn)
+    const yPhase = (t * sy * 500 + i * 0.137) % 1.0; // 0..1 cycling
+    const y = yPhase * 4.0;
+
+    // Gentle horizontal drift via sine — no random direction changes
+    const x = Math.sin(t * 0.3 + i * 0.97) * 3.0 + sx * 1000;
+    const z = Math.cos(t * 0.2 + i * 1.31) * 3.0 + sz * 1000;
+
+    pos.array[i * 3]     = x;
+    pos.array[i * 3 + 1] = y;
+    pos.array[i * 3 + 2] = z;
   }
   pos.needsUpdate = true;
 }
 
+/**
+ * Set the particle frame counter (for deterministic batch rendering).
+ * Call this before forceRender() to ensure particles are at the correct frame position.
+ */
+function setParticleFrame(frame) {
+  particleFrame = frame;
+  updateParticles(0);
+}
+
 registerUpdatable(updateParticles);
 
-export { setBackground, setParticleIntensity, presets };
+export { setBackground, setParticleIntensity, setParticleFrame, presets };
