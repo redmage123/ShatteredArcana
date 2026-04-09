@@ -81,8 +81,18 @@
 
 ### What Would Fix the Remaining Quality Issues
 
-1. Use a pre-rigged knight model from Mixamo/Sketchfab as the base mesh
+1. ~~Use a pre-rigged knight model from Mixamo/Sketchfab~~ → **DONE (Attempt 7): Knight D Pelegrini from Mixamo**
 2. Or use MakeHuman (open source) for a proper humanoid with topology/UVs
 3. Or commission a game-ready model ($200-500) with exact specs
 4. Use Cycles renderer instead of EEVEE for better metallic reflections
-5. Use motion capture data (FreeMoCap or Mixamo animations) instead of manual keyframes
+5. ~~Use motion capture data instead of manual keyframes~~ → **DONE (Attempt 8): MoMask motion diffusion from text**
+
+---
+
+## Attempt 7: Playwright + Three.js Pose Editor (2026-04-09) — SUCCESS
+
+Abandoned Blender. Built browser-based pose editor (Three.js + Playwright). Used Knight D Pelegrini Mixamo model (198 bones) with 51 FBX clips. Runtime texture repaint: red tabard → steel plate + gold inlay. Quaternion-space keyframe overrides to fix AnimationMixer/Euler corruption. Quality gate (freeze/jitter/static detection). **Result: Aurelith Knight v4 — 15s WebM, steel plate armor, 5-beat sequence.**
+
+## Attempt 8: MoMask Motion Diffusion (2026-04-09) — SUCCESS
+
+Integrated MoMask (CVPR 2024) text-to-motion. SMPL→Mixamo retargeting via IK. Fine-tuned on 25 knight combat samples. Batch pipeline: `denizen_pipeline.py --all --motion-diffusion` renders all 8 planes. **Result: ~45s per plane, text-driven animation generation.**

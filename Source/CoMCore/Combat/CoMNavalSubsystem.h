@@ -163,6 +163,18 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Naval")
 	FOnSeaMonsterEncounter OnSeaMonsterEncounter;
 
+	// ── Save/Load Export/Import ───────────────────────────────────────────
+
+	/** Export all naval state for save serialization. */
+	void ExportAll(TArray<FCoMFleet>& OutFleets,
+	               TArray<FCoMBlockade>& OutBlockades,
+	               TArray<FCoMSeaMonster>& OutMonsters) const;
+
+	/** Import naval state from save data (clears existing state). */
+	void ImportAll(const TArray<FCoMFleet>& InFleets,
+	               const TArray<FCoMBlockade>& InBlockades,
+	               const TArray<FCoMSeaMonster>& InMonsters);
+
 private:
 	// -----------------------------------------------------------------
 	// Internal helpers

@@ -1,6 +1,9 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "CoMCombatSubsystem.h"
+#include "CoMCore/Units/CoMUnitSubsystem.h"
+#include "CoMCore/Framework/CoMGameInstance.h"
+#include "Kismet/GameplayStatics.h"
 
 // =====================================================================
 // Fixed-point constants
@@ -234,9 +237,80 @@ void UCoMCombatSubsystem::ResolveAllEncounters(int32 CurrentTurn)
 
 	for (const FIntPoint& Pair : Encounters)
 	{
-		FCoMCombatResult Result = ResolveAutoCombat(Pair.X, Pair.Y, CurrentTurn);
+		const int32 AttackerArmyID = Pair.X;
+		const int32 DefenderArmyID = Pair.Y;
+
+		// Determine wizard ownership of each army.
+		int32 AttackerWizard = CoM::WIZARD_INDEX_NONE;
+		int32 DefenderWizard = CoM::WIZARD_INDEX_NONE;
+
+		if (UCoMUnitSubsystem* UnitSub = GetGameInstance()->GetSubsystem<UCoMUnitSubsystem>())
+		{
+			if (const FCoMArmyGroup* AtkArmy = UnitSub->GetArmy(AttackerArmyID))
+			{
+				AttackerWizard = AtkArmy->OwnerWizardIndex;
+			}
+			if (const FCoMArmyGroup* DefArmy = UnitSub->GetArmy(DefenderArmyID))
+			{
+				DefenderWizard = DefArmy->OwnerWizardIndex;
+			}
+		}
+
+		// If the human player is involved, open the tactical combat map.
+		const bool bPlayerInvolved =
+			(HumanPlayerWizardIndex >= 0) &&
+			(AttackerWizard == HumanPlayerWizardIndex || DefenderWizard == HumanPlayerWizardIndex);
+
+		if (bPlayerInvolved)
+		{
+			StartTacticalBattle(AttackerArmyID, DefenderArmyID, AttackerWizard, DefenderWizard);
+			// Only one tactical battle at a time — remaining encounters auto-resolve next turn.
+			return;
+		}
+
+		// AI-vs-AI: auto-resolve.
+		FCoMCombatResult Result = ResolveAutoCombat(AttackerArmyID, DefenderArmyID, CurrentTurn);
 		OnCombatResolved.Broadcast(Result);
 	}
+}
+
+void UCoMCombatSubsystem::StartTacticalBattle(
+	int32 AttackerArmyID, int32 DefenderArmyID,
+	int32 AttackerWizard, int32 DefenderWizard)
+{
+	UCoMGameInstance* GI = Cast<UCoMGameInstance>(GetGameInstance());
+	if (!GI)
+	{
+		UE_LOG(LogTemp, Error, TEXT("StartTacticalBattle: No UCoMGameInstance."));
+		return;
+	}
+
+	// Populate CombatContext.
+	FCoMCombatContext& Ctx = GI->CombatContext;
+	Ctx.Reset();
+	Ctx.ParticipatingArmyGroupIDs.Add(AttackerArmyID);
+	Ctx.ParticipatingArmyGroupIDs.Add(DefenderArmyID);
+	Ctx.AttackerWizardIndex = AttackerWizard;
+	Ctx.DefenderWizardIndex = DefenderWizard;
+
+	// Look up the army's position for OriginTile.
+	if (UCoMUnitSubsystem* UnitSub = GetGameInstance()->GetSubsystem<UCoMUnitSubsystem>())
+	{
+		if (const FCoMArmyGroup* AtkArmy = UnitSub->GetArmy(AttackerArmyID))
+		{
+			Ctx.OriginTile = AtkArmy->Position;
+			Ctx.OriginPlane = AtkArmy->Plane;
+		}
+	}
+
+	// Return map: the currently loaded level.
+	Ctx.ReturnMapName = FName(*GI->GetWorld()->GetMapName());
+
+	// Open the tactical combat map.
+	UE_LOG(LogTemp, Log, TEXT("Transitioning to tactical combat: %s (Atk wizard %d vs Def wizard %d)"),
+	       *TacticalCombatMapName.ToString(), AttackerWizard, DefenderWizard);
+
+	UGameplayStatics::OpenLevel(GI->GetWorld(), TacticalCombatMapName);
 }
 
 // =====================================================================

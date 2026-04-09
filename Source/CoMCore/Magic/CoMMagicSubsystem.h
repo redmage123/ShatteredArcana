@@ -310,6 +310,22 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Magic")
     void ProcessTurn(int32 CurrentTurn);
 
+    // ── Save/Load Export/Import ─────────────────────────────────────────────
+
+    /** Export all magic state for save serialization. */
+    void ExportAll(TArray<FCoMWizardMagicState>& OutMagicStates,
+                   TArray<FCoMSpellCast>& OutCastings,
+                   TArray<int32>& OutCastingWizardIDs,
+                   TArray<FCoMActiveRitual>& OutRituals,
+                   TArray<FCoMActiveRune>& OutRunes) const;
+
+    /** Import magic state from save data (clears existing state). */
+    void ImportAll(const TArray<FCoMWizardMagicState>& InMagicStates,
+                   const TArray<FCoMSpellCast>& InCastings,
+                   const TArray<int32>& InCastingWizardIDs,
+                   const TArray<FCoMActiveRitual>& InRituals,
+                   const TArray<FCoMActiveRune>& InRunes);
+
 private:
     /** Calculate total mana income for a wizard. */
     int32 CalculateManaIncome(int32 WizardId) const;

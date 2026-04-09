@@ -561,3 +561,63 @@ FIntPoint UCoMNavalSubsystem::FindRandomOceanTile(ECoMPlane Plane) const
 
 	return FIntPoint(-1, -1);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save/Load Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UCoMNavalSubsystem::ExportAll(TArray<FCoMFleet>& OutFleets,
+                                    TArray<FCoMBlockade>& OutBlockades,
+                                    TArray<FCoMSeaMonster>& OutMonsters) const
+{
+	OutFleets.Empty();
+	OutFleets.Reserve(AllFleets.Num());
+	for (const auto& Pair : AllFleets)
+	{
+		OutFleets.Add(Pair.Value);
+	}
+
+	OutBlockades = AllBlockades;
+	OutMonsters  = SeaMonsters;
+}
+
+void UCoMNavalSubsystem::ImportAll(const TArray<FCoMFleet>& InFleets,
+                                    const TArray<FCoMBlockade>& InBlockades,
+                                    const TArray<FCoMSeaMonster>& InMonsters)
+{
+	AllFleets.Empty();
+	NextFleetID = 1;
+	for (const FCoMFleet& Fleet : InFleets)
+	{
+		AllFleets.Add(Fleet.FleetID, Fleet);
+		if (Fleet.FleetID >= NextFleetID)
+		{
+			NextFleetID = Fleet.FleetID + 1;
+		}
+	}
+
+	AllBlockades = InBlockades;
+	NextBlockadeID = 1;
+	for (const FCoMBlockade& B : AllBlockades)
+	{
+		if (B.BlockadeID >= NextBlockadeID)
+		{
+			NextBlockadeID = B.BlockadeID + 1;
+		}
+	}
+
+	SeaMonsters = InMonsters;
+	NextMonsterID = 1;
+	for (const FCoMSeaMonster& M : SeaMonsters)
+	{
+		if (M.MonsterID >= NextMonsterID)
+		{
+			NextMonsterID = M.MonsterID + 1;
+		}
+	}
+
+	bMonstersSpawned = SeaMonsters.Num() > 0;
+
+	UE_LOG(LogTemp, Log, TEXT("[NavalSubsystem] ImportAll: %d fleets, %d blockades, %d monsters imported."),
+	       AllFleets.Num(), AllBlockades.Num(), SeaMonsters.Num());
+}

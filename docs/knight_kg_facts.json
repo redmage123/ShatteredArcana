@@ -70,5 +70,47 @@
     "predicate": "because",
     "object": "No real-time visual feedback, must iterate via blind code->render->inspect cycle, and tends to make 20 changes at once instead of one-at-a-time debugging",
     "org": "mythforge"
+  },
+  {
+    "subject": "Knight Animation Attempt 7",
+    "predicate": "succeeded_with",
+    "object": "Playwright + Three.js pose editor. Knight D Pelegrini Mixamo model (198 bones), 51 FBX clips, runtime texture repaint (steel plate + gold inlay), quaternion-space keyframe overrides. Result: Aurelith v4 WebM.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Knight Animation Attempt 8",
+    "predicate": "succeeded_with",
+    "object": "MoMask (CVPR 2024) text-to-motion diffusion. SMPL→Mixamo retarget. Fine-tuned on 25 knight combat samples. Batch pipeline for all 8 planes. ~45s per plane on RTX 4000.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Knight Texture Repaint",
+    "predicate": "implemented_as",
+    "object": "Runtime canvas pixel manipulation in materials.js repaintTextureAtlas(). Detects red/brown/skin by RGB thresholds, replaces with steel plate colors. Adds gold inlay filigree lines at specific UV coordinates.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Three.js Mixer Quaternion Bug",
+    "predicate": "root_cause",
+    "object": "AnimationMixer's PropertyBinding writes directly to bone.quaternion._x/_y/_z/_w, bypassing the Euler↔Quaternion onChange sync. After mixer runs, bone.rotation reads stale values. bone.rotation.set() appears to work but reads back garbage.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Three.js Mixer Quaternion Bug",
+    "predicate": "solution",
+    "object": "Quaternion-space overrides: capture bone.quaternion after Euler set (while mixer stopped), store as keyframes, then apply via bone.quaternion.copy(slerp(...)) while mixer runs. Never use Euler after mixer.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "MoMask Fine-tuning",
+    "predicate": "results",
+    "object": "VQ-VAE: 50 epochs, loss 1.32→0.007. Transformer: 30 epochs, loss 9.63→4.39. Dataset: 25 samples (5 beats × 5 HumanML3D-style captions). Checkpoints at tools/momask/checkpoints/t2m_finetuned/.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "HumanML3D Prompt Engineering",
+    "predicate": "best_practice",
+    "object": "Use body-part-specific physical descriptions matching mocap annotation style. 'a person swings their right arm in a wide arc from right to left' NOT 'a knight slashes'. Subject always 'a person'.",
+    "org": "mythforge"
   }
 ]

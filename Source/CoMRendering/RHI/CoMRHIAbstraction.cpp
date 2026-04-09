@@ -190,13 +190,16 @@ void UCoMRHIAbstraction::SetPreferredUpscaler(ECoMUpscalerType Preferred)
 ECoMScalabilityTier UCoMRHIAbstraction::AutoDetectScalabilityTier() const
 {
 	// Query dedicated VRAM via RHI globals (populated after RHI init).
-	// Try FPlatformMemory::GetGPUMemoryInfo first, fall back to 0 if unavailable.
+	// Query VRAM via RHI globals. Falls back to 0 if unavailable.
 	int32 DedicatedVRAM = 0;
 	{
-		FPlatformMemory::FGPUMemoryInfo GPUMemInfo = FPlatformMemory::GetGPUMemoryInfo();
-		if (GPUMemInfo.DedicatedVideoMemory > 0)
+		// GRHIAdapterInternalDriverVersion is not reliable for VRAM; use texture memory budget if available.
+		// On platforms where VRAM query isn't supported, default to Medium tier.
+		FTextureMemoryStats TexMemStats;
+		RHIGetTextureMemoryStats(TexMemStats);
+		if (TexMemStats.DedicatedVideoMemory > 0)
 		{
-			DedicatedVRAM = static_cast<int32>(GPUMemInfo.DedicatedVideoMemory / (1024 * 1024));
+			DedicatedVRAM = static_cast<int32>(TexMemStats.DedicatedVideoMemory / (1024 * 1024));
 		}
 	}
 

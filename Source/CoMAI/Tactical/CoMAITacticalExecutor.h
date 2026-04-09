@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 #include "CoMAITypes.h"
+#include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMAITacticalExecutor.generated.h"
 
 class UCoMCitySubsystem;

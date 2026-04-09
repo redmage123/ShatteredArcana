@@ -1617,3 +1617,40 @@ int32 UCoMQuestSubsystem::FindRivalWizardTarget(int32 WizardId) const
     }
     return Rival;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save/Load Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UCoMQuestSubsystem::ExportAll(TArray<FCoMQuest>& OutQuests, FCoMQuestGenConfig& OutConfig) const
+{
+    OutQuests.Empty();
+    OutQuests.Reserve(AllQuests.Num());
+    for (const auto& Pair : AllQuests)
+    {
+        OutQuests.Add(Pair.Value);
+    }
+    OutConfig = GenConfig;
+}
+
+void UCoMQuestSubsystem::ImportAll(const TArray<FCoMQuest>& InQuests, const FCoMQuestGenConfig& InConfig)
+{
+    AllQuests.Empty();
+    NextQuestId = 1;
+    NextChainId = 1;
+    for (const FCoMQuest& Quest : InQuests)
+    {
+        AllQuests.Add(Quest.QuestId, Quest);
+        if (Quest.QuestId >= NextQuestId)
+        {
+            NextQuestId = Quest.QuestId + 1;
+        }
+        if (Quest.ChainId >= NextChainId)
+        {
+            NextChainId = Quest.ChainId + 1;
+        }
+    }
+    GenConfig = InConfig;
+
+    UE_LOG(LogTemp, Log, TEXT("[QuestSubsystem] ImportAll: %d quests imported."), AllQuests.Num());
+}

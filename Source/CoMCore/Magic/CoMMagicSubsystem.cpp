@@ -493,3 +493,69 @@ void UCoMMagicSubsystem::TickRunes()
         // ChargesLeft == -1 means permanent, don't decrement
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save/Load Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UCoMMagicSubsystem::ExportAll(TArray<FCoMWizardMagicState>& OutMagicStates,
+                                    TArray<FCoMSpellCast>& OutCastings,
+                                    TArray<int32>& OutCastingWizardIDs,
+                                    TArray<FCoMActiveRitual>& OutRituals,
+                                    TArray<FCoMActiveRune>& OutRunes) const
+{
+    OutMagicStates.Empty();
+    OutMagicStates.Reserve(WizardMagicStates.Num());
+    for (const auto& Pair : WizardMagicStates)
+    {
+        OutMagicStates.Add(Pair.Value);
+    }
+
+    OutCastings.Empty();
+    OutCastingWizardIDs.Empty();
+    OutCastings.Reserve(ActiveCastings.Num());
+    OutCastingWizardIDs.Reserve(ActiveCastings.Num());
+    for (const auto& Pair : ActiveCastings)
+    {
+        OutCastingWizardIDs.Add(Pair.Key);
+        OutCastings.Add(Pair.Value);
+    }
+
+    OutRituals = ActiveRituals;
+    OutRunes   = ActiveRunes;
+}
+
+void UCoMMagicSubsystem::ImportAll(const TArray<FCoMWizardMagicState>& InMagicStates,
+                                    const TArray<FCoMSpellCast>& InCastings,
+                                    const TArray<int32>& InCastingWizardIDs,
+                                    const TArray<FCoMActiveRitual>& InRituals,
+                                    const TArray<FCoMActiveRune>& InRunes)
+{
+    WizardMagicStates.Empty();
+    for (const FCoMWizardMagicState& State : InMagicStates)
+    {
+        WizardMagicStates.Add(State.WizardId, State);
+    }
+
+    ActiveCastings.Empty();
+    for (int32 i = 0; i < InCastings.Num() && i < InCastingWizardIDs.Num(); ++i)
+    {
+        ActiveCastings.Add(InCastingWizardIDs[i], InCastings[i]);
+    }
+
+    ActiveRituals = InRituals;
+    ActiveRunes   = InRunes;
+
+    // Restore next rune instance ID
+    NextRuneInstanceId = 1;
+    for (const FCoMActiveRune& Rune : ActiveRunes)
+    {
+        if (Rune.InstanceId >= NextRuneInstanceId)
+        {
+            NextRuneInstanceId = Rune.InstanceId + 1;
+        }
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("[MagicSubsystem] ImportAll: %d wizard states, %d castings, %d rituals, %d runes imported."),
+           WizardMagicStates.Num(), ActiveCastings.Num(), ActiveRituals.Num(), ActiveRunes.Num());
+}

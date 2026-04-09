@@ -7,16 +7,19 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "CoMCore/TacticalCombat/TacticalTypes.h"
 #include "CoMGameMode.generated.h"
 
 class ACoMHumanPlayerController;
+class UCoMTacticalCombatSubsystem;
 
 /**
  * ACoMCombatGameMode
  *
- * Tactical combat map game mode.  Validates that UCoMGameInstance::CombatContext
- * is populated before play begins; logs an error and returns to the overworld if not.
- * Full UCoMCombatSubsystem wiring is deferred to Phase 5 (Sprint 3–4).
+ * Tactical combat map game mode.  On BeginPlay, reads FCoMCombatContext from
+ * UCoMGameInstance and passes it to UCoMTacticalCombatSubsystem to start
+ * the grid-based battle.  Binds to OnBattleEnded to finalize results and
+ * transition back to the overworld.
  *
  * Callers must populate UCoMGameInstance::CombatContext before the level transition.
  */
@@ -31,7 +34,14 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	// TODO (Phase 5): Bind UCoMCombatSubsystem and resolve CombatContext.
+private:
+	/** Callback when the tactical battle ends. Finalizes results and returns to overworld. */
+	UFUNCTION()
+	void OnBattleEnded(ECoMCombatResult Result);
+
+	/** Cached reference to the tactical combat subsystem. */
+	UPROPERTY()
+	TObjectPtr<UCoMTacticalCombatSubsystem> TacticalCombatSubsystem;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

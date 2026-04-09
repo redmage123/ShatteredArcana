@@ -240,6 +240,24 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Heroes")
 	FOnHeroDeserted OnHeroDeserted;
 
+	// ── Save/Load Export/Import ───────────────────────────────────────────
+
+	/** Export all hero state for save serialization. */
+	void ExportAll(TArray<FCoMHeroPersonality>& OutPersonalities,
+	               TArray<int32>& OutPersonalityUnitIDs,
+	               TArray<FCoMHeroRelationship>& OutRelationships,
+	               TArray<int32>& OutTierUnitIDs, TArray<uint8>& OutTierValues,
+	               TArray<int32>& OutClassUnitIDs, TArray<uint8>& OutClassValues,
+	               TArray<int32>& OutOwnerUnitIDs, TArray<int32>& OutOwnerWizardIDs) const;
+
+	/** Import hero state from save data (clears existing state). */
+	void ImportAll(const TArray<FCoMHeroPersonality>& InPersonalities,
+	               const TArray<int32>& InPersonalityUnitIDs,
+	               const TArray<FCoMHeroRelationship>& InRelationships,
+	               const TArray<int32>& InTierUnitIDs, const TArray<uint8>& InTierValues,
+	               const TArray<int32>& InClassUnitIDs, const TArray<uint8>& InClassValues,
+	               const TArray<int32>& InOwnerUnitIDs, const TArray<int32>& InOwnerWizardIDs);
+
 private:
 	// -----------------------------------------------------------------
 	// Internal helpers

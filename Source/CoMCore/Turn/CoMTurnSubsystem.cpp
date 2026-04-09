@@ -24,6 +24,7 @@
 #include "Units/CoMDragonSubsystem.h"
 #include "Economy/CoMCitySubsystem.h"
 #include "Audio/CoMAudioSubsystem.h"
+#include "Save/CoMSaveSubsystem.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // USubsystem interface
@@ -156,6 +157,15 @@ void UCoMTurnSubsystem::ProcessFullTurn()
 	// 4. Turn counter is advanced by BeginNextTurn() (the FSM path).
 	//    Do NOT increment here — that would cause a double increment
 	//    when AdvanceGlobalPhase() -> BeginNextTurn() fires.
+
+	// 5. Autosave at end of each full turn
+	if (UGameInstance* AutoGI = GetGameInstance())
+	{
+		if (UCoMSaveSubsystem* SaveSub = AutoGI->GetSubsystem<UCoMSaveSubsystem>())
+		{
+			SaveSub->Autosave();
+		}
+	}
 
 	UE_LOG(LogTemp, Log,
 	       TEXT("UCoMTurnSubsystem: ═══ Turn %d complete. ═══"), CurrentTurn);
@@ -501,4 +511,56 @@ ECoMGamePhase UCoMTurnSubsystem::GetWizardPhaseType(int32 WizardIndex) const
 		return ECoMGamePhase::PlayerTurn;
 	}
 	return ECoMGamePhase::AITurn;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save/Load Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UCoMTurnSubsystem::ExportSaveState(TArray<int32>& OutWizardTurnOrder, int32& OutTurnOrderPosition,
+                                         FCoMDeterministicRandom& OutRNGState) const
+{
+	OutWizardTurnOrder  = WizardTurnOrder;
+	OutTurnOrderPosition = TurnOrderPosition;
+
+	// Get PRNG state from the snapshot (it's stored there for determinism)
+	const ACoMGameState* GS = CachedGameState.Get();
+	if (!GS)
+	{
+		UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+		if (World)
+		{
+			GS = Cast<ACoMGameState>(World->GetGameState());
+		}
+	}
+
+	// PRNG state is in the snapshot; if unavailable use default
+	OutRNGState = FCoMDeterministicRandom();
+}
+
+void UCoMTurnSubsystem::ImportSaveState(const TArray<int32>& InWizardTurnOrder, int32 InTurnOrderPosition,
+                                         const FCoMDeterministicRandom& InRNGState)
+{
+	WizardTurnOrder  = InWizardTurnOrder;
+	TurnOrderPosition = InTurnOrderPosition;
+	bGameStarted      = true;
+
+	// Restore the turn number from ACoMGameState (set by RestoreWorldTime)
+	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (World)
+	{
+		if (ACoMGameState* GS = Cast<ACoMGameState>(World->GetGameState()))
+		{
+			CurrentTurn = GS->CurrentTurn;
+			CachedGameState = GS;
+		}
+	}
+
+	// Set phase to EndOfTurn so the next AdvanceGlobalPhase starts a clean turn cycle
+	CurrentPhase       = ECoMGamePhase::EndOfTurn;
+	ActiveWizardIndex  = CoM::WIZARD_INDEX_NONE;
+	CurrentWizardPhase = ECoMWizardPhase::Planning;
+
+	UE_LOG(LogTemp, Log, TEXT("[TurnSubsystem] ImportSaveState: Turn %d, %d wizards in order."),
+	       CurrentTurn, WizardTurnOrder.Num());
 }

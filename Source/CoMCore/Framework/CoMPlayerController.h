@@ -40,6 +40,14 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> IA_EndTurn;
 
+	/** Enhanced Input action for QuickSave (F5). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> IA_QuickSave;
+
+	/** Enhanced Input action for QuickLoad (F9). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> IA_QuickLoad;
+
 	/** Priority for DefaultMappingContext; raise to override UI contexts. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	int32 StartupInputPriority = 0;
@@ -56,6 +64,12 @@ protected:
 private:
 	/** Stub: triggered by IA_EndTurn.  Full logic (validation + subsystem call) in Sprint 2. */
 	void Input_EndTurn(const FInputActionValue& Value);
+
+	/** Triggered by IA_QuickSave (F5). Saves game to the QuickSave slot. */
+	void Input_QuickSave(const FInputActionValue& Value);
+
+	/** Triggered by IA_QuickLoad (F9). Loads game from the QuickSave slot. */
+	void Input_QuickLoad(const FInputActionValue& Value);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

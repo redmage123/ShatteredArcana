@@ -8,6 +8,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "CoreTypes/CoMEnums.h"
 #include "CoreTypes/CoMConstants.h"
+#include "CoMDeterministicRandom.h"
 #include "CoMTurnSubsystem.generated.h"
 
 class ACoMGameState;
@@ -171,6 +172,16 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "TurnSubsystem")
 	FOnTurnEnded OnTurnEnded;
+
+	// ── Save/Load Export/Import ───────────────────────────────────────────
+
+	/** Export turn-relevant state for save serialization. */
+	void ExportSaveState(TArray<int32>& OutWizardTurnOrder, int32& OutTurnOrderPosition,
+	                     FCoMDeterministicRandom& OutRNGState) const;
+
+	/** Import turn-relevant state from save data. */
+	void ImportSaveState(const TArray<int32>& InWizardTurnOrder, int32 InTurnOrderPosition,
+	                     const FCoMDeterministicRandom& InRNGState);
 
 private:
 	// ── Internal State ────────────────────────────────────────────────────

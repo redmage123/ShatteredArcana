@@ -750,3 +750,64 @@ TArray<int32> UCoMDiplomacySubsystem::GetVassals(int32 OverlordId) const
     }
     return Vassals;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save/Load Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UCoMDiplomacySubsystem::ExportAll(TArray<FCoMDiplomaticRelation>& OutRelations,
+                                        TArray<FCoMTreatyProposal>& OutProposals,
+                                        TArray<FCoMDiplomaticPersonality>& OutPersonalities,
+                                        TArray<int32>& OutPersonalityWizardIDs) const
+{
+    OutRelations.Empty();
+    OutRelations.Reserve(Relations.Num());
+    for (const auto& Pair : Relations)
+    {
+        OutRelations.Add(Pair.Value);
+    }
+
+    OutProposals = PendingProposals;
+
+    OutPersonalities.Empty();
+    OutPersonalityWizardIDs.Empty();
+    OutPersonalities.Reserve(Personalities.Num());
+    OutPersonalityWizardIDs.Reserve(Personalities.Num());
+    for (const auto& Pair : Personalities)
+    {
+        OutPersonalityWizardIDs.Add(Pair.Key);
+        OutPersonalities.Add(Pair.Value);
+    }
+}
+
+void UCoMDiplomacySubsystem::ImportAll(const TArray<FCoMDiplomaticRelation>& InRelations,
+                                        const TArray<FCoMTreatyProposal>& InProposals,
+                                        const TArray<FCoMDiplomaticPersonality>& InPersonalities,
+                                        const TArray<int32>& InPersonalityWizardIDs)
+{
+    Relations.Empty();
+    for (const FCoMDiplomaticRelation& Rel : InRelations)
+    {
+        const FIntPoint Key = MakeRelationKey(Rel.WizardA, Rel.WizardB);
+        Relations.Add(Key, Rel);
+    }
+
+    PendingProposals = InProposals;
+    NextProposalId = 1;
+    for (const FCoMTreatyProposal& P : PendingProposals)
+    {
+        if (P.ProposalId >= NextProposalId)
+        {
+            NextProposalId = P.ProposalId + 1;
+        }
+    }
+
+    Personalities.Empty();
+    for (int32 i = 0; i < InPersonalities.Num() && i < InPersonalityWizardIDs.Num(); ++i)
+    {
+        Personalities.Add(InPersonalityWizardIDs[i], InPersonalities[i]);
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("[DiplomacySubsystem] ImportAll: %d relations, %d proposals imported."),
+           Relations.Num(), PendingProposals.Num());
+}

@@ -73,6 +73,18 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Dragons")
 	FOnDragonEggHatched OnDragonEggHatched;
 
+	// ── Save/Load Export/Import ───────────────────────────────────────────
+
+	/** Export all dragon state for save serialization. */
+	void ExportAll(TArray<FCoMDragonInstance>& OutDragons,
+	               TArray<FCoMDragonDomain>& OutDomains,
+	               TArray<FCoMDragonEgg>& OutEggs) const;
+
+	/** Import dragon state from save data (clears existing state). */
+	void ImportAll(const TArray<FCoMDragonInstance>& InDragons,
+	               const TArray<FCoMDragonDomain>& InDomains,
+	               const TArray<FCoMDragonEgg>& InEggs);
+
 private:
 	// -----------------------------------------------------------------
 	// Internal helpers

@@ -226,6 +226,14 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Cities")
 	FOnCityPopulationChanged OnCityPopulationChanged;
 
+	// ── Save/Load Export/Import ───────────────────────────────────────────
+
+	/** Export all cities and next-ID counter for save serialization. */
+	void ExportAll(TArray<FCoMCityData>& OutCities, int32& OutNextCityID) const;
+
+	/** Import cities from save data (clears existing state). */
+	void ImportAll(const TArray<FCoMCityData>& InCities, int32 InNextCityID);
+
 private:
 	// -----------------------------------------------------------------
 	// Internal helpers

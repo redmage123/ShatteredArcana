@@ -5,6 +5,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "Save/CoMSaveSubsystem.h"
 
 // ─── ACoMHumanPlayerController ────────────────────────────────────────────────
 
@@ -53,6 +54,18 @@ void ACoMHumanPlayerController::SetupInputComponent()
 		EIC->BindAction(IA_EndTurn, ETriggerEvent::Started, this,
 		                &ACoMHumanPlayerController::Input_EndTurn);
 	}
+
+	if (IA_QuickSave)
+	{
+		EIC->BindAction(IA_QuickSave, ETriggerEvent::Started, this,
+		                &ACoMHumanPlayerController::Input_QuickSave);
+	}
+
+	if (IA_QuickLoad)
+	{
+		EIC->BindAction(IA_QuickLoad, ETriggerEvent::Started, this,
+		                &ACoMHumanPlayerController::Input_QuickLoad);
+	}
 }
 
 void ACoMHumanPlayerController::Input_EndTurn(const FInputActionValue& /*Value*/)
@@ -60,6 +73,30 @@ void ACoMHumanPlayerController::Input_EndTurn(const FInputActionValue& /*Value*/
 	// TODO (Sprint 2): Validate it is this wizard's turn, then call
 	//   UCoMTurnSubsystem::CommitEndTurn() via GetGameInstance()->GetSubsystem.
 	UE_LOG(LogTemp, Log, TEXT("ACoMHumanPlayerController: EndTurn triggered (stub)."));
+}
+
+void ACoMHumanPlayerController::Input_QuickSave(const FInputActionValue& /*Value*/)
+{
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMSaveSubsystem* SaveSub = GI->GetSubsystem<UCoMSaveSubsystem>())
+		{
+			SaveSub->QuickSave();
+			UE_LOG(LogTemp, Log, TEXT("ACoMHumanPlayerController: QuickSave triggered."));
+		}
+	}
+}
+
+void ACoMHumanPlayerController::Input_QuickLoad(const FInputActionValue& /*Value*/)
+{
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMSaveSubsystem* SaveSub = GI->GetSubsystem<UCoMSaveSubsystem>())
+		{
+			SaveSub->QuickLoad();
+			UE_LOG(LogTemp, Log, TEXT("ACoMHumanPlayerController: QuickLoad triggered."));
+		}
+	}
 }
 
 // ─── ACoMAIPlayerController ───────────────────────────────────────────────────

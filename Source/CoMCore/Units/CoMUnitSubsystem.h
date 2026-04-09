@@ -83,6 +83,16 @@ public:
 	TArray<const FCoMArmyGroup*> GetArmiesAtPosition(ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position) const;
 	TArray<const FCoMArmyGroup*> GetArmiesForWizard(int32 WizardIndex) const;
 
+	// ── Save/Load Export/Import ───────────────────────────────────────────
+
+	/** Export all units and armies for save serialization. */
+	void ExportAll(TArray<FCoMUnitInstance>& OutUnits, TArray<FCoMArmyGroup>& OutArmies,
+	               int32& OutNextUnitID, int32& OutNextArmyID) const;
+
+	/** Import units and armies from save data (clears existing state). */
+	void ImportAll(const TArray<FCoMUnitInstance>& InUnits, const TArray<FCoMArmyGroup>& InArmies,
+	               int32 InNextUnitID, int32 InNextArmyID);
+
 private:
 	/** Resolve the UCoMUnitSpecDataAsset for a given SpecID. */
 	const UCoMUnitSpecDataAsset* ResolveSpec(int32 SpecID) const;

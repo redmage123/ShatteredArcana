@@ -684,3 +684,29 @@ void UCoMCitySubsystem::HandleRebellion(FCoMCityData& City)
 
 	OnCityRebelled.Broadcast(City.CityID, FormerOwner);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save/Load Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UCoMCitySubsystem::ExportAll(TArray<FCoMCityData>& OutCities, int32& OutNextCityID) const
+{
+	OutCities.Empty();
+	OutCities.Reserve(AllCities.Num());
+	for (const auto& Pair : AllCities)
+	{
+		OutCities.Add(Pair.Value);
+	}
+	OutNextCityID = NextCityID;
+}
+
+void UCoMCitySubsystem::ImportAll(const TArray<FCoMCityData>& InCities, int32 InNextCityID)
+{
+	AllCities.Empty();
+	for (const FCoMCityData& City : InCities)
+	{
+		AllCities.Add(City.CityID, City);
+	}
+	NextCityID = InNextCityID;
+	UE_LOG(LogTemp, Log, TEXT("[CitySubsystem] ImportAll: %d cities imported."), AllCities.Num());
+}

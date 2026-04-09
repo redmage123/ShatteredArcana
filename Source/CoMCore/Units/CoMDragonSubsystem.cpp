@@ -288,3 +288,68 @@ TArray<FIntPoint> UCoMDragonSubsystem::ComputeClaimedTiles(FIntPoint Center, int
 
 	return Tiles;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save/Load Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UCoMDragonSubsystem::ExportAll(TArray<FCoMDragonInstance>& OutDragons,
+                                     TArray<FCoMDragonDomain>& OutDomains,
+                                     TArray<FCoMDragonEgg>& OutEggs) const
+{
+	OutDragons.Empty();
+	OutDragons.Reserve(Dragons.Num());
+	for (const auto& Pair : Dragons)
+	{
+		OutDragons.Add(Pair.Value);
+	}
+
+	OutDomains.Empty();
+	OutDomains.Reserve(Domains.Num());
+	for (const auto& Pair : Domains)
+	{
+		OutDomains.Add(Pair.Value);
+	}
+
+	OutEggs = Eggs;
+}
+
+void UCoMDragonSubsystem::ImportAll(const TArray<FCoMDragonInstance>& InDragons,
+                                     const TArray<FCoMDragonDomain>& InDomains,
+                                     const TArray<FCoMDragonEgg>& InEggs)
+{
+	Dragons.Empty();
+	NextDragonID = 1;
+	for (const FCoMDragonInstance& Dragon : InDragons)
+	{
+		Dragons.Add(Dragon.DragonID, Dragon);
+		if (Dragon.DragonID >= NextDragonID)
+		{
+			NextDragonID = Dragon.DragonID + 1;
+		}
+	}
+
+	Domains.Empty();
+	NextDomainID = 1;
+	for (const FCoMDragonDomain& Domain : InDomains)
+	{
+		Domains.Add(Domain.DomainID, Domain);
+		if (Domain.DomainID >= NextDomainID)
+		{
+			NextDomainID = Domain.DomainID + 1;
+		}
+	}
+
+	Eggs = InEggs;
+	NextEggID = 1;
+	for (const FCoMDragonEgg& Egg : Eggs)
+	{
+		if (Egg.EggID >= NextEggID)
+		{
+			NextEggID = Egg.EggID + 1;
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[DragonSubsystem] ImportAll: %d dragons, %d domains, %d eggs imported."),
+	       Dragons.Num(), Domains.Num(), Eggs.Num());
+}

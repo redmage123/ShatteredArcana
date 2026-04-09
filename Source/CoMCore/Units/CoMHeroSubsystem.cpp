@@ -414,3 +414,86 @@ int32 UCoMHeroSubsystem::CountHeroesOfTier(int32 WizardIndex, ECoMHeroTier Tier)
 	}
 	return Count;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save/Load Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UCoMHeroSubsystem::ExportAll(TArray<FCoMHeroPersonality>& OutPersonalities,
+                                   TArray<int32>& OutPersonalityUnitIDs,
+                                   TArray<FCoMHeroRelationship>& OutRelationships,
+                                   TArray<int32>& OutTierUnitIDs, TArray<uint8>& OutTierValues,
+                                   TArray<int32>& OutClassUnitIDs, TArray<uint8>& OutClassValues,
+                                   TArray<int32>& OutOwnerUnitIDs, TArray<int32>& OutOwnerWizardIDs) const
+{
+	OutPersonalities.Empty();
+	OutPersonalityUnitIDs.Empty();
+	for (const auto& Pair : Personalities)
+	{
+		OutPersonalityUnitIDs.Add(Pair.Key);
+		OutPersonalities.Add(Pair.Value);
+	}
+
+	OutRelationships = Relationships;
+
+	OutTierUnitIDs.Empty();
+	OutTierValues.Empty();
+	for (const auto& Pair : HeroTiers)
+	{
+		OutTierUnitIDs.Add(Pair.Key);
+		OutTierValues.Add(static_cast<uint8>(Pair.Value));
+	}
+
+	OutClassUnitIDs.Empty();
+	OutClassValues.Empty();
+	for (const auto& Pair : HeroClasses)
+	{
+		OutClassUnitIDs.Add(Pair.Key);
+		OutClassValues.Add(static_cast<uint8>(Pair.Value));
+	}
+
+	OutOwnerUnitIDs.Empty();
+	OutOwnerWizardIDs.Empty();
+	for (const auto& Pair : HeroOwners)
+	{
+		OutOwnerUnitIDs.Add(Pair.Key);
+		OutOwnerWizardIDs.Add(Pair.Value);
+	}
+}
+
+void UCoMHeroSubsystem::ImportAll(const TArray<FCoMHeroPersonality>& InPersonalities,
+                                   const TArray<int32>& InPersonalityUnitIDs,
+                                   const TArray<FCoMHeroRelationship>& InRelationships,
+                                   const TArray<int32>& InTierUnitIDs, const TArray<uint8>& InTierValues,
+                                   const TArray<int32>& InClassUnitIDs, const TArray<uint8>& InClassValues,
+                                   const TArray<int32>& InOwnerUnitIDs, const TArray<int32>& InOwnerWizardIDs)
+{
+	Personalities.Empty();
+	for (int32 i = 0; i < InPersonalities.Num() && i < InPersonalityUnitIDs.Num(); ++i)
+	{
+		Personalities.Add(InPersonalityUnitIDs[i], InPersonalities[i]);
+	}
+
+	Relationships = InRelationships;
+
+	HeroTiers.Empty();
+	for (int32 i = 0; i < InTierUnitIDs.Num() && i < InTierValues.Num(); ++i)
+	{
+		HeroTiers.Add(InTierUnitIDs[i], static_cast<ECoMHeroTier>(InTierValues[i]));
+	}
+
+	HeroClasses.Empty();
+	for (int32 i = 0; i < InClassUnitIDs.Num() && i < InClassValues.Num(); ++i)
+	{
+		HeroClasses.Add(InClassUnitIDs[i], static_cast<ECoMHeroClass>(InClassValues[i]));
+	}
+
+	HeroOwners.Empty();
+	for (int32 i = 0; i < InOwnerUnitIDs.Num() && i < InOwnerWizardIDs.Num(); ++i)
+	{
+		HeroOwners.Add(InOwnerUnitIDs[i], InOwnerWizardIDs[i]);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[HeroSubsystem] ImportAll: %d personalities, %d relationships imported."),
+	       Personalities.Num(), Relationships.Num());
+}

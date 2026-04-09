@@ -26,6 +26,7 @@ public class CoMCore : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"NetCore",
+			"Json",            // Save metadata (.meta) JSON serialization
 		});
 
 		// Automation tests — only compiled for test targets

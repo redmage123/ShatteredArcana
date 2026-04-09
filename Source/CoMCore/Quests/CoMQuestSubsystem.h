@@ -397,6 +397,14 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Quests")
     void ProcessTurn(int32 CurrentTurn, int32 ActiveWizardCount);
 
+    // ── Save/Load Export/Import ─────────────────────────────────────────────
+
+    /** Export all quest state for save serialization. */
+    void ExportAll(TArray<FCoMQuest>& OutQuests, FCoMQuestGenConfig& OutConfig) const;
+
+    /** Import quest state from save data (clears existing state). */
+    void ImportAll(const TArray<FCoMQuest>& InQuests, const FCoMQuestGenConfig& InConfig);
+
     // ── Delegates ────────────────────────────────────────────────────────────
 
     UPROPERTY(BlueprintAssignable, Category = "Quests")

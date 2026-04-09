@@ -634,3 +634,49 @@ int32 UCoMUnitSubsystem::WrapX(int32 X)
 {
 	return ((X % MAP_WIDTH) + MAP_WIDTH) % MAP_WIDTH;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save/Load Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UCoMUnitSubsystem::ExportAll(TArray<FCoMUnitInstance>& OutUnits, TArray<FCoMArmyGroup>& OutArmies,
+                                   int32& OutNextUnitID, int32& OutNextArmyID) const
+{
+	OutUnits.Empty();
+	OutUnits.Reserve(AllUnits.Num());
+	for (const auto& Pair : AllUnits)
+	{
+		OutUnits.Add(Pair.Value);
+	}
+
+	OutArmies.Empty();
+	OutArmies.Reserve(AllArmies.Num());
+	for (const auto& Pair : AllArmies)
+	{
+		OutArmies.Add(Pair.Value);
+	}
+
+	OutNextUnitID = NextUnitID;
+	OutNextArmyID = NextArmyID;
+}
+
+void UCoMUnitSubsystem::ImportAll(const TArray<FCoMUnitInstance>& InUnits, const TArray<FCoMArmyGroup>& InArmies,
+                                   int32 InNextUnitID, int32 InNextArmyID)
+{
+	AllUnits.Empty();
+	for (const FCoMUnitInstance& Unit : InUnits)
+	{
+		AllUnits.Add(Unit.UnitID, Unit);
+	}
+
+	AllArmies.Empty();
+	for (const FCoMArmyGroup& Army : InArmies)
+	{
+		AllArmies.Add(Army.ArmyGroupID, Army);
+	}
+
+	NextUnitID = InNextUnitID;
+	NextArmyID = InNextArmyID;
+	UE_LOG(LogTemp, Log, TEXT("[UnitSubsystem] ImportAll: %d units, %d armies imported."),
+	       AllUnits.Num(), AllArmies.Num());
+}

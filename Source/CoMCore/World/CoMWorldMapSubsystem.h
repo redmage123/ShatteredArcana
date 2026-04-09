@@ -175,6 +175,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "WorldMap|Fog|Debug")
 	void DebugRevealEverything();
 
+	// ── Save/Load Export/Import ───────────────────────────────────────────
+
+	/** Export all map layers as a flat TArray for serialization. */
+	TArray<FCoMMapLayerData> ExportAllLayers() const;
+
+	/** Import all map layers from a flat TArray (replaces current state). */
+	void ImportAllLayers(const TArray<FCoMMapLayerData>& InLayers);
+
 	// ── Neighbor Queries ──────────────────────────────────────────────────
 
 	/**

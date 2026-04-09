@@ -232,6 +232,20 @@ public:
     /** Process all espionage activities for the turn. */
     void ProcessTurn(int32 CurrentTurn);
 
+    // ── Save/Load Export/Import ─────────────────────────────────────────────
+
+    /** Export all espionage state for save serialization. */
+    void ExportAll(TArray<FCoMSpyAgent>& OutAgents,
+                   TArray<FCoMCounterIntel>& OutCounterIntel,
+                   TArray<int32>& OutCounterIntelWizardIDs,
+                   TArray<FCoMMissionResult>& OutHistory) const;
+
+    /** Import espionage state from save data (clears existing state). */
+    void ImportAll(const TArray<FCoMSpyAgent>& InAgents,
+                   const TArray<FCoMCounterIntel>& InCounterIntel,
+                   const TArray<int32>& InCounterIntelWizardIDs,
+                   const TArray<FCoMMissionResult>& InHistory);
+
 private:
     /** Resolve a single mission. */
     FCoMMissionResult ResolveMission(FCoMSpyAgent& Agent, int32 CurrentTurn);

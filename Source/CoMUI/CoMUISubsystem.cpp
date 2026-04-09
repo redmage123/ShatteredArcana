@@ -13,6 +13,7 @@
 #include "Panels/CoMCreditsWidget.h"
 #include "Panels/CoMWizardCreationWidget.h"
 #include "HUD/CoMMainMenuWidget.h"
+#include "HUD/CoMLoadScreenWidget.h"
 #include "Framework/CoMGameInstance.h"
 
 void UCoMUISubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -230,6 +231,23 @@ void UCoMUISubsystem::HideWizardCreation()
 }
 
 // =============================================================================
+// Load Screen
+// =============================================================================
+
+void UCoMUISubsystem::ShowLoadScreen()
+{
+	HideAllPanels();
+	HideMainMenu();
+	CreateAndShowWidget<UCoMLoadScreenWidget>(
+		LoadScreenWidgetClass, LoadScreenInstance, 100);
+}
+
+void UCoMUISubsystem::HideLoadScreen()
+{
+	RemoveWidget(LoadScreenInstance);
+}
+
+// =============================================================================
 // Credits
 // =============================================================================
 
@@ -263,6 +281,7 @@ void UCoMUISubsystem::HideAllPanels()
 	HideArmyPanel();
 	HideCredits();
 	HideWizardCreation();
+	HideLoadScreen();
 }
 
 void UCoMUISubsystem::HideAll()

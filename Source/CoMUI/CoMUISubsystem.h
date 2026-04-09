@@ -16,6 +16,7 @@ class UCoMArmyPanelWidget;
 class UCoMCreditsWidget;
 class UCoMMainMenuWidget;
 class UCoMWizardCreationWidget;
+class UCoMLoadScreenWidget;
 
 /**
  * UCoMUISubsystem
@@ -109,6 +110,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HideWizardCreation();
 
+	// -- Load Screen -----------------------------------------------------------
+
+	/** Create and show the load game screen. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowLoadScreen();
+
+	/** Close the load game screen. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideLoadScreen();
+
 	// -- Credits ---------------------------------------------------------------
 
 	/** Create and show the credits screen. */
@@ -155,6 +166,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<UCoMWizardCreationWidget> WizardCreationWidgetClass;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<UCoMLoadScreenWidget> LoadScreenWidgetClass;
+
 private:
 	/** Helper: create a widget of the given class and add it to the viewport. */
 	template<typename T>
@@ -189,4 +203,7 @@ private:
 
 	UPROPERTY()
 	UCoMWizardCreationWidget* WizardCreationInstance = nullptr;
+
+	UPROPERTY()
+	UCoMLoadScreenWidget* LoadScreenInstance = nullptr;
 };

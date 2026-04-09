@@ -368,3 +368,19 @@ void UCoMWorldMapSubsystem::DebugRevealEverything()
 	}
 	UE_LOG(LogTemp, Log, TEXT("[WorldMap] Debug: revealed EVERYTHING"));
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save/Load Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+TArray<FCoMMapLayerData> UCoMWorldMapSubsystem::ExportAllLayers() const
+{
+	return Layers;
+}
+
+void UCoMWorldMapSubsystem::ImportAllLayers(const TArray<FCoMMapLayerData>& InLayers)
+{
+	Layers = InLayers;
+	bLayersReady = Layers.Num() > 0;
+	UE_LOG(LogTemp, Log, TEXT("[WorldMap] ImportAllLayers: %d layers imported."), Layers.Num());
+}

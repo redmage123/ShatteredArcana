@@ -463,3 +463,60 @@ FString UCoMEspionageSubsystem::GenerateAgentName()
     int32 SI = RngStream.RandRange(0, Surnames.Num() - 1);
     return FString::Printf(TEXT("%s %s"), *FirstNames[FI], *Surnames[SI]);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Save/Load Export/Import
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UCoMEspionageSubsystem::ExportAll(TArray<FCoMSpyAgent>& OutAgents,
+                                        TArray<FCoMCounterIntel>& OutCounterIntel,
+                                        TArray<int32>& OutCounterIntelWizardIDs,
+                                        TArray<FCoMMissionResult>& OutHistory) const
+{
+    OutAgents.Empty();
+    OutAgents.Reserve(AllAgents.Num());
+    for (const auto& Pair : AllAgents)
+    {
+        OutAgents.Add(Pair.Value);
+    }
+
+    OutCounterIntel.Empty();
+    OutCounterIntelWizardIDs.Empty();
+    OutCounterIntel.Reserve(CounterIntelMap.Num());
+    OutCounterIntelWizardIDs.Reserve(CounterIntelMap.Num());
+    for (const auto& Pair : CounterIntelMap)
+    {
+        OutCounterIntelWizardIDs.Add(Pair.Key);
+        OutCounterIntel.Add(Pair.Value);
+    }
+
+    OutHistory = MissionHistory;
+}
+
+void UCoMEspionageSubsystem::ImportAll(const TArray<FCoMSpyAgent>& InAgents,
+                                        const TArray<FCoMCounterIntel>& InCounterIntel,
+                                        const TArray<int32>& InCounterIntelWizardIDs,
+                                        const TArray<FCoMMissionResult>& InHistory)
+{
+    AllAgents.Empty();
+    NextAgentId = 1;
+    for (const FCoMSpyAgent& Agent : InAgents)
+    {
+        AllAgents.Add(Agent.AgentId, Agent);
+        if (Agent.AgentId >= NextAgentId)
+        {
+            NextAgentId = Agent.AgentId + 1;
+        }
+    }
+
+    CounterIntelMap.Empty();
+    for (int32 i = 0; i < InCounterIntel.Num() && i < InCounterIntelWizardIDs.Num(); ++i)
+    {
+        CounterIntelMap.Add(InCounterIntelWizardIDs[i], InCounterIntel[i]);
+    }
+
+    MissionHistory = InHistory;
+
+    UE_LOG(LogTemp, Log, TEXT("[EspionageSubsystem] ImportAll: %d agents, %d counter-intel entries imported."),
+           AllAgents.Num(), CounterIntelMap.Num());
+}

@@ -252,6 +252,20 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Diplomacy")
     TArray<int32> GetVassals(int32 OverlordId) const;
 
+    // ── Save/Load Export/Import ───────────────────────────────────────────
+
+    /** Export all diplomacy state for save serialization. */
+    void ExportAll(TArray<FCoMDiplomaticRelation>& OutRelations,
+                   TArray<FCoMTreatyProposal>& OutProposals,
+                   TArray<FCoMDiplomaticPersonality>& OutPersonalities,
+                   TArray<int32>& OutPersonalityWizardIDs) const;
+
+    /** Import diplomacy state from save data (clears existing state). */
+    void ImportAll(const TArray<FCoMDiplomaticRelation>& InRelations,
+                   const TArray<FCoMTreatyProposal>& InProposals,
+                   const TArray<FCoMDiplomaticPersonality>& InPersonalities,
+                   const TArray<int32>& InPersonalityWizardIDs);
+
 private:
     FIntPoint MakeRelationKey(int32 A, int32 B) const;
     void DecayReputations();

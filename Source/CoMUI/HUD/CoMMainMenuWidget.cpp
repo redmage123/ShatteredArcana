@@ -80,7 +80,16 @@ void UCoMMainMenuWidget::OnNewGameClicked()
 
 void UCoMMainMenuWidget::OnLoadGameClicked()
 {
-	ShowNotification(TEXT("Save/Load coming in a future update"));
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMUISubsystem* UISS = GI->GetSubsystem<UCoMUISubsystem>())
+		{
+			UISS->ShowLoadScreen();
+			return;
+		}
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("CoMMainMenuWidget: Could not get CoMUISubsystem for load screen."));
 }
 
 void UCoMMainMenuWidget::OnSettingsClicked()

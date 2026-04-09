@@ -7,6 +7,7 @@
 #include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
 #include "CoMCore/Units/CoMHeroSubsystem.h"
+#include "CoMCore/Framework/CoMGameInstance.h"
 #include "CoMCombatSubsystem.generated.h"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -113,9 +114,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|Combat")
 	TArray<FIntPoint> DetectEncounters() const;
 
-	/** Resolve all detected encounters for this turn. */
+	/** Resolve all detected encounters for this turn.
+	 *  AI-vs-AI battles auto-resolve. Player-involved battles populate
+	 *  FCoMCombatContext and trigger a level transition to the tactical map. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Combat")
 	void ResolveAllEncounters(int32 CurrentTurn);
+
+	/** Set the human player's wizard index (used to decide tactical vs auto-resolve). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Combat")
+	void SetHumanPlayerWizardIndex(int32 WizardIndex) { HumanPlayerWizardIndex = WizardIndex; }
+
+	/** Name of the tactical combat map level to open for player battles. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|Combat")
+	FName TacticalCombatMapName = FName(TEXT("TacticalCombatMap"));
 
 	/** Calculate total combat power of an army. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Combat")
@@ -162,9 +173,16 @@ private:
 
 	/** Get hero tier bonus as a multiplier (Adventurer +5%, Hero +10%, etc.). */
 
+	/** Populate CombatContext and open the tactical combat level. */
+	void StartTacticalBattle(int32 AttackerArmyID, int32 DefenderArmyID,
+	                         int32 AttackerWizard, int32 DefenderWizard);
+
 	// -----------------------------------------------------------------
 	// State
 	// -----------------------------------------------------------------
 
 	FRandomStream RngStream;
+
+	/** Wizard index of the human player (-1 = not set / all AI). */
+	int32 HumanPlayerWizardIndex = -1;
 };
