@@ -146,6 +146,10 @@ struct COMCORE_API FCoMCityData
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 WallLevel = 0; // 0=none, 1=palisade, 2=stone, 3=fortress
+
+	/** Visual architecture style — set at founding based on the founding race. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	ECoMArchitectureStyle Architecture = ECoMArchitectureStyle::Human;
 };
 
 /**

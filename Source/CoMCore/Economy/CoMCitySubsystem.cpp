@@ -117,6 +117,9 @@ int32 UCoMCitySubsystem::FoundCity(int32 OwnerWizard, ECoMPlane Plane,
 	// Underdark cities start without a light source.
 	City.bHasLightSource = (Layer != ECoMMapLayer::Underdark);
 
+	// Set architecture style based on the founding race.
+	City.Architecture = CoMBuildingDatabase::GetArchitectureForRace(RaceTag);
+
 	AllCities.Add(CityID, MoveTemp(City));
 
 	// Compute initial outputs.
@@ -539,6 +542,13 @@ TArray<FName> UCoMCitySubsystem::GetAvailableBuildings(int32 CityId) const
 
 			// Check prerequisites from the database.
 			const FCoMBuildingInfo& Info = CoMBuildingDatabase::GetBuildingInfo(BID);
+
+			// Race-specific buildings: only available if the city's primary race matches.
+			if (Info.RaceRequirement.IsValid() && Info.RaceRequirement != City->PrimaryRaceTag)
+			{
+				continue;
+			}
+
 			bool bPrereqsMet = true;
 			for (const FName& ReqID : Info.Prerequisites)
 			{

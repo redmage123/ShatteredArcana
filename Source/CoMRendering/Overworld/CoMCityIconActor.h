@@ -44,6 +44,17 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "City")
 	int32 OwnerWizardIndex = -1;
 
+	/** Architecture style — determines which city icon texture set to use. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "City")
+	ECoMArchitectureStyle ArchitectureStyle = ECoMArchitectureStyle::Human;
+
+	/**
+	 * Set the architecture style for this city icon.
+	 * Swaps the billboard sprite to the appropriate texture for the style.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "City")
+	void SetArchitecture(ECoMArchitectureStyle Style);
+
 private:
 	UPROPERTY(VisibleAnywhere, Category = "City")
 	TObjectPtr<UBillboardComponent> IconSprite;
@@ -56,4 +67,7 @@ private:
 
 	/** Get a colour for a wizard index (simple palette). */
 	static FColor GetWizardColor(int32 WizardIndex);
+
+	/** Get the texture path for a given architecture style. */
+	static FString GetArchitectureTexturePath(ECoMArchitectureStyle Style);
 };

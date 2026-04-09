@@ -1136,3 +1136,29 @@ enum class ECoMShipType : uint8
 
     MAX             UMETA(Hidden)
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ARCHITECTURE STYLES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Visual architectural style for city rendering.
+ *  Determines which city icon textures and building art variants to use.
+ *  Each race maps to one of these styles via CoMBuildingDatabase::GetArchitectureForRace(). */
+UENUM(BlueprintType)
+enum class ECoMArchitectureStyle : uint8
+{
+    Human        UMETA(DisplayName = "Human"),        // Stone castles, thatched roofs, timber frames — High Men, Nomads, Halflings, Barbarians
+    Elven        UMETA(DisplayName = "Elven"),        // Organic curves, living wood, crystal spires — High Elves, Wood Elves
+    Dwarven      UMETA(DisplayName = "Dwarven"),      // Stone halls, geometric, underground vaults — Dwarves, Gnomes, Deep Dwarves
+    Orcish       UMETA(DisplayName = "Orcish"),       // Crude wood/bone, palisades, war tents — Orcs, Gnolls, Beastmen, Trolls
+    Dark         UMETA(DisplayName = "Dark"),         // Gothic spires, obsidian, shadow-wreathed — Dark Elves, Drow, Shades, Undead
+    Draconic     UMETA(DisplayName = "Draconic"),     // Volcanic stone, dragon motifs, lava channels — Draconians
+    Demonic      UMETA(DisplayName = "Demonic"),      // Iron fortresses, fire, chains — Demons, Demonkin, Hellbound
+    Aquatic      UMETA(DisplayName = "Aquatic"),      // Coral, shell, flowing water — Merfolk, Deep Ones, Lizardmen
+    Fey          UMETA(DisplayName = "Fey"),          // Mushroom caps, crystal springs, living flowers — Sprites, Pixies, Satyrs, Dryads
+    Ethereal     UMETA(DisplayName = "Ethereal"),     // Phase-shifted, translucent, echo architecture — Wraiths, Phantoms, Mistborn
+    Abyssal      UMETA(DisplayName = "Abyssal"),      // Bone, flesh, organic growths — Maleficii, Gorethians, Plagueborn
+    Crystalline  UMETA(DisplayName = "Crystalline"),  // Crystal formations, prismatic — Crystallines, Sylphs, Voidwalkers
+
+    MAX UMETA(Hidden)
+};

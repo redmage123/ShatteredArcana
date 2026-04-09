@@ -5,9 +5,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "CoMCore/CoreTypes/CoMEnums.h"
 
 /**
- * Static building info — all 34 buildings from the art asset set.
+ * Static building info — all 34 universal buildings + 45 racial buildings.
  * This struct mirrors UCoMBuildingDataAsset fields but lives in code
  * so the game has real data without needing editor-authored data assets.
  */
@@ -60,6 +62,14 @@ struct COMCORE_API FCoMBuildingInfo
 
 	/** Summoning cost reduction */
 	int32 SummonCostReduction = 0;
+
+	// ── Race-specific building fields ────────────────────────────────────
+
+	/** If set, only cities whose PrimaryRaceTag matches can build this. */
+	FGameplayTag RaceRequirement;
+
+	/** Visual architecture style — determines which art variant to render. */
+	ECoMArchitectureStyle Architecture = ECoMArchitectureStyle::Human;
 };
 
 /**
@@ -80,6 +90,12 @@ public:
 
 	/** Get buildings that have no prerequisites (tier 0). */
 	static TArray<FName> GetStarterBuildings();
+
+	/** Map a race tag to its architectural style. */
+	static ECoMArchitectureStyle GetArchitectureForRace(FGameplayTag RaceTag);
+
+	/** Get all racial building IDs for a specific race tag. */
+	static TArray<FName> GetBuildingsForRace(FGameplayTag RaceTag);
 
 private:
 	static void EnsureInitialized();

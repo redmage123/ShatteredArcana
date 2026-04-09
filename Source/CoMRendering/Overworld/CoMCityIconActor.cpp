@@ -65,6 +65,47 @@ void ACoMCityIconActor::InitFromCityData(const FCoMCityData& CityData)
 	const FColor WizColor = GetWizardColor(OwnerWizardIndex);
 	// UBillboardComponent uses material tinting; color is applied via NameLabel instead
 	NameLabel->SetTextRenderColor(WizColor);
+
+	// Set architecture style from city data.
+	SetArchitecture(CityData.Architecture);
+}
+
+void ACoMCityIconActor::SetArchitecture(ECoMArchitectureStyle Style)
+{
+	ArchitectureStyle = Style;
+
+	// Attempt to load the architecture-specific texture.
+	const FString TexturePath = GetArchitectureTexturePath(Style);
+	UTexture2D* ArchTexture = Cast<UTexture2D>(
+		StaticLoadObject(UTexture2D::StaticClass(), nullptr, *TexturePath));
+
+	if (ArchTexture && IconSprite)
+	{
+		IconSprite->SetSprite(ArchTexture);
+	}
+	// If the texture is not found, keep the current/default sprite.
+}
+
+FString ACoMCityIconActor::GetArchitectureTexturePath(ECoMArchitectureStyle Style)
+{
+	// Texture paths point to future art assets — placeholders until artist delivers.
+	// Convention: /Game/Art/CityIcons/CI_<StyleName>
+	switch (Style)
+	{
+	case ECoMArchitectureStyle::Human:       return TEXT("/Game/Art/CityIcons/CI_Human");
+	case ECoMArchitectureStyle::Elven:       return TEXT("/Game/Art/CityIcons/CI_Elven");
+	case ECoMArchitectureStyle::Dwarven:     return TEXT("/Game/Art/CityIcons/CI_Dwarven");
+	case ECoMArchitectureStyle::Orcish:      return TEXT("/Game/Art/CityIcons/CI_Orcish");
+	case ECoMArchitectureStyle::Dark:        return TEXT("/Game/Art/CityIcons/CI_Dark");
+	case ECoMArchitectureStyle::Draconic:    return TEXT("/Game/Art/CityIcons/CI_Draconic");
+	case ECoMArchitectureStyle::Demonic:     return TEXT("/Game/Art/CityIcons/CI_Demonic");
+	case ECoMArchitectureStyle::Aquatic:     return TEXT("/Game/Art/CityIcons/CI_Aquatic");
+	case ECoMArchitectureStyle::Fey:         return TEXT("/Game/Art/CityIcons/CI_Fey");
+	case ECoMArchitectureStyle::Ethereal:    return TEXT("/Game/Art/CityIcons/CI_Ethereal");
+	case ECoMArchitectureStyle::Abyssal:     return TEXT("/Game/Art/CityIcons/CI_Abyssal");
+	case ECoMArchitectureStyle::Crystalline: return TEXT("/Game/Art/CityIcons/CI_Crystalline");
+	default:                                 return TEXT("/Engine/EditorResources/S_Note.S_Note");
+	}
 }
 
 FColor ACoMCityIconActor::GetWizardColor(int32 WizardIndex)
