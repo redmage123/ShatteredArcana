@@ -78,6 +78,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|HUD")
 	void ClearNotifications();
 
+	// -- Game Speed Control ----------------------------------------------------
+
+	/** Set the game speed multiplier from the HUD speed buttons. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|HUD")
+	void SetGameSpeed(float Speed);
+
+	/** Update the speed button display to show the current speed. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|HUD")
+	void UpdateSpeedDisplay(float CurrentSpeed);
+
 	// -- Delegates (so the UI subsystem can bind) ------------------------------
 
 	UPROPERTY(BlueprintAssignable, Category = "CoM|HUD")
@@ -113,6 +123,15 @@ protected:
 	UFUNCTION()
 	void OnDiplomacyClicked();
 
+	UFUNCTION()
+	void OnSpeed1xClicked();
+
+	UFUNCTION()
+	void OnSpeed2xClicked();
+
+	UFUNCTION()
+	void OnSpeed4xClicked();
+
 	// -- Widget references (bound from UMG or created in C++) ------------------
 
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -147,6 +166,18 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UScrollBox> NotificationScrollBox;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> Speed1xButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> Speed2xButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> Speed4xButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> SpeedDisplayText;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> MinimapFrame;

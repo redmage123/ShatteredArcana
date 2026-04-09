@@ -23,8 +23,9 @@ void UCoMArmyPanelWidget::NativeConstruct()
 	if (MoveButton)      { MoveButton->OnClicked.AddDynamic(this, &UCoMArmyPanelWidget::OnMoveButtonClicked); }
 	if (MergeButton)     { MergeButton->OnClicked.AddDynamic(this, &UCoMArmyPanelWidget::OnMergeButtonClicked); }
 	if (SplitButton)     { SplitButton->OnClicked.AddDynamic(this, &UCoMArmyPanelWidget::OnSplitButtonClicked); }
-	if (FoundCityButton) { FoundCityButton->OnClicked.AddDynamic(this, &UCoMArmyPanelWidget::OnFoundCityButtonClicked); }
-	if (CloseButton)     { CloseButton->OnClicked.AddDynamic(this, &UCoMArmyPanelWidget::OnCloseClicked); }
+	if (FoundCityButton)    { FoundCityButton->OnClicked.AddDynamic(this, &UCoMArmyPanelWidget::OnFoundCityButtonClicked); }
+	if (AutoExploreButton)  { AutoExploreButton->OnClicked.AddDynamic(this, &UCoMArmyPanelWidget::OnAutoExploreButtonClicked); }
+	if (CloseButton)        { CloseButton->OnClicked.AddDynamic(this, &UCoMArmyPanelWidget::OnCloseClicked); }
 }
 
 UCoMUnitSubsystem* UCoMArmyPanelWidget::GetUnitSubsystem()
@@ -90,6 +91,7 @@ void UCoMArmyPanelWidget::SetArmy(int32 ArmyId)
 
 	RefreshUnits();
 	UpdateFoundCityButton();
+	UpdateAutoExploreButton();
 }
 
 void UCoMArmyPanelWidget::RefreshUnits()
@@ -268,10 +270,44 @@ void UCoMArmyPanelWidget::OnFoundCityClicked()
 	}
 }
 
+void UCoMArmyPanelWidget::OnAutoExploreClicked()
+{
+	if (CurrentArmyId < 0) return;
+
+	UCoMUnitSubsystem* UnitSub = GetUnitSubsystem();
+	if (!UnitSub) return;
+
+	const bool bCurrentlyExploring = UnitSub->IsAutoExploring(CurrentArmyId);
+	UnitSub->SetAutoExplore(CurrentArmyId, !bCurrentlyExploring);
+
+	UpdateAutoExploreButton();
+}
+
+void UCoMArmyPanelWidget::UpdateAutoExploreButton()
+{
+	if (!AutoExploreButton) return;
+
+	UCoMUnitSubsystem* UnitSub = GetUnitSubsystem();
+	const bool bExploring = UnitSub && UnitSub->IsAutoExploring(CurrentArmyId);
+
+	if (AutoExploreStatusText)
+	{
+		AutoExploreStatusText->SetText(FText::FromString(
+			bExploring ? TEXT("Auto-Explore: ON") : TEXT("Auto-Explore: OFF")));
+
+		// Gold color when active, white when inactive.
+		FLinearColor StatusColor = bExploring
+			? FLinearColor(0.85f, 0.65f, 0.13f, 1.f)
+			: FLinearColor::White;
+		AutoExploreStatusText->SetColorAndOpacity(FSlateColor(StatusColor));
+	}
+}
+
 void UCoMArmyPanelWidget::OnMoveButtonClicked()       { OnMoveClicked(); }
 void UCoMArmyPanelWidget::OnMergeButtonClicked()      { OnMergeClicked(); }
 void UCoMArmyPanelWidget::OnSplitButtonClicked()      { OnSplitClicked(); }
 void UCoMArmyPanelWidget::OnFoundCityButtonClicked()   { OnFoundCityClicked(); }
+void UCoMArmyPanelWidget::OnAutoExploreButtonClicked() { OnAutoExploreClicked(); }
 void UCoMArmyPanelWidget::OnCloseClicked()
 {
 	if (auto* UISS = GetGameInstance()->GetSubsystem<UCoMUISubsystem>())

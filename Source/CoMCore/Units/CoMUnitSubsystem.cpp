@@ -9,6 +9,7 @@
 #include "CoMCore/CoreTypes/CoMConstants.h"
 #include "CoMCore/Economy/CoMCitySubsystem.h"
 #include "CoMCore/Audio/CoMAudioSubsystem.h"
+#include "CoMCore/World/CoMFogOfWarSubsystem.h"
 #include "Engine/AssetManager.h"
 
 static constexpr int32 MAP_WIDTH  = CoM::MAP_WIDTH;
@@ -397,8 +398,86 @@ void UCoMUnitSubsystem::MoveArmy(int32 ArmyID, FIntPoint Destination)
 	}
 }
 
+void UCoMUnitSubsystem::SetAutoExplore(int32 ArmyId, bool bEnable)
+{
+	if (bEnable)
+	{
+		AutoExploreArmies.Add(ArmyId);
+	}
+	else
+	{
+		AutoExploreArmies.Remove(ArmyId);
+	}
+}
+
+bool UCoMUnitSubsystem::IsAutoExploring(int32 ArmyId) const
+{
+	return AutoExploreArmies.Contains(ArmyId);
+}
+
+void UCoMUnitSubsystem::ProcessAutoExplore()
+{
+	UGameInstance* GI = GetGameInstance();
+	if (!GI) return;
+
+	UCoMFogOfWarSubsystem* FoW = GI->GetSubsystem<UCoMFogOfWarSubsystem>();
+	if (!FoW) return;
+
+	// Iterate over a copy since we may remove entries.
+	TSet<int32> CurrentAutoExplore = AutoExploreArmies;
+
+	for (int32 ArmyId : CurrentAutoExplore)
+	{
+		FCoMArmyGroup* Army = AllArmies.Find(ArmyId);
+		if (!Army || Army->UnitIDs.Num() == 0)
+		{
+			AutoExploreArmies.Remove(ArmyId);
+			continue;
+		}
+
+		// Find the nearest unexplored tile within a reasonable search radius.
+		const int32 SearchRadius = 30;
+		FIntPoint BestTile = FIntPoint(-1, -1);
+		int32 BestDist = INT_MAX;
+
+		for (int32 dy = -SearchRadius; dy <= SearchRadius; ++dy)
+		{
+			for (int32 dx = -SearchRadius; dx <= SearchRadius; ++dx)
+			{
+				const int32 TileX = WrapX(Army->Position.X + dx);
+				const int32 TileY = FMath::Clamp(Army->Position.Y + dy, 0, MAP_HEIGHT - 1);
+				const FIntPoint Candidate(TileX, TileY);
+
+				if (!FoW->IsTileExplored(Army->OwnerWizardIndex, Army->Plane, Candidate, Army->Layer))
+				{
+					const int32 Dist = FMath::Abs(dx) + FMath::Abs(dy);
+					if (Dist < BestDist)
+					{
+						BestDist = Dist;
+						BestTile = Candidate;
+					}
+				}
+			}
+		}
+
+		if (BestTile.X < 0)
+		{
+			// No unexplored tiles found — cancel auto-explore.
+			AutoExploreArmies.Remove(ArmyId);
+			UE_LOG(LogTemp, Log, TEXT("Auto-explore: Army %d has no reachable unexplored tiles, cancelling."), ArmyId);
+			continue;
+		}
+
+		// Move toward the unexplored tile.
+		MoveArmy(ArmyId, BestTile);
+	}
+}
+
 void UCoMUnitSubsystem::ProcessMovementTurn()
 {
+	// Process auto-explore orders before regular movement resolution.
+	ProcessAutoExplore();
+
 	// Resolve encounters: detect armies of different wizards on the same tile.
 	TMap<uint64, TArray<int32>> TileArmies;
 

@@ -232,6 +232,12 @@ int32 UCoMDragonSubsystem::HatchEgg(int32 EggID)
 
 void UCoMDragonSubsystem::ProcessDragonTurn()
 {
+	// Early-out: no dragons exist.
+	if (Dragons.Num() == 0)
+	{
+		return;
+	}
+
 	// 1. Age all dragons.
 	for (auto& Pair : Dragons)
 	{

@@ -64,6 +64,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|ArmyPanel")
 	void OnFoundCityClicked();
 
+	/** Toggle auto-explore for this army. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|ArmyPanel")
+	void OnAutoExploreClicked();
+
 	// -- Delegates -------------------------------------------------------------
 
 	UPROPERTY(BlueprintAssignable, Category = "CoM|ArmyPanel")
@@ -90,6 +94,9 @@ protected:
 
 	UFUNCTION()
 	void OnFoundCityButtonClicked();
+
+	UFUNCTION()
+	void OnAutoExploreButtonClicked();
 
 	UFUNCTION()
 	void OnCloseClicked();
@@ -133,6 +140,12 @@ protected:
 	TObjectPtr<UTextBlock> FoundCityTooltipText;
 
 	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> AutoExploreButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> AutoExploreStatusText;
+
+	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> CloseButton;
 
 private:
@@ -144,6 +157,9 @@ private:
 
 	/** Update the FoundCity button visibility and enabled state. */
 	void UpdateFoundCityButton();
+
+	/** Update the auto-explore button state (active/inactive). */
+	void UpdateAutoExploreButton();
 
 	int32 CurrentArmyId = -1;
 

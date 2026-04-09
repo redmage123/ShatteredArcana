@@ -6,6 +6,10 @@
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/PlayerController.h"
+#include "Engine/GameInstance.h"
+#include "Kismet/GameplayStatics.h"
+#include "CoMCore/Units/CoMUnitSubsystem.h"
+#include "CoMCore/Economy/CoMCitySubsystem.h"
 
 ACoMCameraPawn::ACoMCameraPawn()
 {
@@ -39,6 +43,8 @@ void ACoMCameraPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAxis("CameraMoveRight",   this, &ACoMCameraPawn::MoveRight);
 	PlayerInputComponent->BindAction("CameraZoomIn",  IE_Pressed, this, &ACoMCameraPawn::ZoomIn);
 	PlayerInputComponent->BindAction("CameraZoomOut", IE_Pressed, this, &ACoMCameraPawn::ZoomOut);
+	PlayerInputComponent->BindAction("JumpToNextIdleArmy", IE_Pressed, this, &ACoMCameraPawn::JumpToNextIdleArmy);
+	PlayerInputComponent->BindAction("JumpToNextCity", IE_Pressed, this, &ACoMCameraPawn::JumpToNextCity);
 }
 
 void ACoMCameraPawn::MoveForward(float Value) { KeyboardInput.Y = Value; }
@@ -115,4 +121,73 @@ FVector2D ACoMCameraPawn::ComputeEdgeScrollDir() const
 	else if (NY > 1.f - EdgeScrollMargin)  Dir.Y =  1.f;  // scroll down (south)
 
 	return Dir;
+}
+
+// ─── Jump-to-Next Navigation ────────────────────────────────────────────────
+
+void ACoMCameraPawn::CenterOnPosition(FIntPoint GridPos)
+{
+	// Convert grid position to world coordinates (assuming 1 tile = 100 UU).
+	const float WorldX = static_cast<float>(GridPos.X) * 100.f;
+	const float WorldY = static_cast<float>(GridPos.Y) * 100.f;
+	SetActorLocation(FVector(WorldX, WorldY, GetActorLocation().Z));
+}
+
+void ACoMCameraPawn::JumpToNextIdleArmy()
+{
+	UGameInstance* GI = UGameplayStatics::GetGameInstance(this);
+	if (!GI) return;
+
+	UCoMUnitSubsystem* UnitSub = GI->GetSubsystem<UCoMUnitSubsystem>();
+	if (!UnitSub) return;
+
+	TArray<const FCoMArmyGroup*> Armies = UnitSub->GetArmiesForWizard(LocalWizardIndex);
+
+	// Filter to armies with remaining movement.
+	TArray<const FCoMArmyGroup*> IdleArmies;
+	for (const FCoMArmyGroup* Army : Armies)
+	{
+		if (Army && Army->MovementRemaining > 0)
+		{
+			IdleArmies.Add(Army);
+		}
+	}
+
+	if (IdleArmies.Num() == 0) return;
+
+	IdleArmyJumpIndex = IdleArmyJumpIndex % IdleArmies.Num();
+	CenterOnPosition(IdleArmies[IdleArmyJumpIndex]->Position);
+	IdleArmyJumpIndex = (IdleArmyJumpIndex + 1) % IdleArmies.Num();
+}
+
+void ACoMCameraPawn::JumpToNextArmy()
+{
+	UGameInstance* GI = UGameplayStatics::GetGameInstance(this);
+	if (!GI) return;
+
+	UCoMUnitSubsystem* UnitSub = GI->GetSubsystem<UCoMUnitSubsystem>();
+	if (!UnitSub) return;
+
+	TArray<const FCoMArmyGroup*> Armies = UnitSub->GetArmiesForWizard(LocalWizardIndex);
+	if (Armies.Num() == 0) return;
+
+	ArmyJumpIndex = ArmyJumpIndex % Armies.Num();
+	CenterOnPosition(Armies[ArmyJumpIndex]->Position);
+	ArmyJumpIndex = (ArmyJumpIndex + 1) % Armies.Num();
+}
+
+void ACoMCameraPawn::JumpToNextCity()
+{
+	UGameInstance* GI = UGameplayStatics::GetGameInstance(this);
+	if (!GI) return;
+
+	UCoMCitySubsystem* CitySub = GI->GetSubsystem<UCoMCitySubsystem>();
+	if (!CitySub) return;
+
+	TArray<const FCoMCityData*> Cities = CitySub->GetCitiesForWizard(LocalWizardIndex);
+	if (Cities.Num() == 0) return;
+
+	CityJumpIndex = CityJumpIndex % Cities.Num();
+	CenterOnPosition(Cities[CityJumpIndex]->Position);
+	CityJumpIndex = (CityJumpIndex + 1) % Cities.Num();
 }

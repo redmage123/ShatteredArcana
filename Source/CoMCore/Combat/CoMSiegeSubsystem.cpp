@@ -65,6 +65,12 @@ void UCoMSiegeSubsystem::EndSiege(int32 SiegeID, bool bAttackerVictory)
 
 void UCoMSiegeSubsystem::ProcessSiegeTurn()
 {
+	// Early-out: no sieges to process.
+	if (AllSieges.Num() == 0)
+	{
+		return;
+	}
+
 	TArray<int32> SiegeIDs;
 	AllSieges.GetKeys(SiegeIDs);
 

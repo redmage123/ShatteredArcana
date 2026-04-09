@@ -10,6 +10,7 @@
 
 class UTextBlock;
 class UButton;
+class UCheckBox;
 class UScrollBox;
 class UProgressBar;
 class UHorizontalBox;
@@ -70,6 +71,9 @@ protected:
 	void OnManaSliderChanged(float Value);
 
 	UFUNCTION()
+	void OnAutoResearchToggled(bool bIsChecked);
+
+	UFUNCTION()
 	void OnCastButtonClicked();
 
 	UFUNCTION()
@@ -127,6 +131,14 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> CloseButton;
+
+	/** Auto-research toggle checkbox. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCheckBox> AutoResearchCheckBox;
+
+	/** Label showing auto-research status. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> AutoResearchLabel;
 
 	// Realm tab buttons
 	UPROPERTY(meta = (BindWidgetOptional)) TObjectPtr<UButton> LifeTab;

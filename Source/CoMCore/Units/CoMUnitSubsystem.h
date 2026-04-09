@@ -69,6 +69,16 @@ public:
 	/** End-of-turn movement processing: restore movement points, resolve any pending encounters. */
 	void ProcessMovementTurn();
 
+	// --- Auto-Explore ---
+
+	/** Enable or disable auto-explore for an army. */
+	UFUNCTION(BlueprintCallable, Category = "Units|AutoExplore")
+	void SetAutoExplore(int32 ArmyId, bool bEnable);
+
+	/** Check if an army is currently auto-exploring. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Units|AutoExplore")
+	bool IsAutoExploring(int32 ArmyId) const;
+
 	// --- Queries ---
 
 	const FCoMUnitInstance* GetUnit(int32 UnitID) const;
@@ -123,6 +133,12 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UCoMWeatherSubsystem> WeatherSubsystem;
+
+	/** Process auto-explore orders: find nearest unexplored tile, pathfind and move. */
+	void ProcessAutoExplore();
+
+	UPROPERTY()
+	TSet<int32> AutoExploreArmies;
 
 	UPROPERTY()
 	TMap<int32, FCoMUnitInstance> AllUnits;

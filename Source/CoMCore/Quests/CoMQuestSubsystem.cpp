@@ -795,11 +795,16 @@ FCoMQuestGenConfig UCoMQuestSubsystem::GetQuestGenConfig() const
 
 void UCoMQuestSubsystem::ProcessTurn(int32 CurrentTurn, int32 ActiveWizardCount)
 {
-    // 1. Expire unclaimed quests.
-    ExpireQuests(CurrentTurn);
+    // Early-out: skip expiry/failure processing if no quests exist at all.
+    // Still fall through to generation below.
+    if (AllQuests.Num() > 0)
+    {
+        // 1. Expire unclaimed quests.
+        ExpireQuests(CurrentTurn);
 
-    // 2. Fail quests past their time limit.
-    FailTimedOutQuests(CurrentTurn);
+        // 2. Fail quests past their time limit.
+        FailTimedOutQuests(CurrentTurn);
+    }
 
     // 3. Generate new quests at the configured interval.
     if (CurrentTurn - LastGenerationTurn >= GenConfig.QuestGenerationInterval)

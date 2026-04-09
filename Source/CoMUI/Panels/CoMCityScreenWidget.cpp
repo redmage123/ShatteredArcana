@@ -45,6 +45,14 @@ void UCoMCityScreenWidget::NativeConstruct()
 		CloseBuildPickerButton->OnClicked.AddDynamic(this, &UCoMCityScreenWidget::OnCloseBuildPickerClicked);
 	}
 
+	// Bind city focus buttons.
+	if (FocusManualButton)     { FocusManualButton->OnClicked.AddDynamic(this, &UCoMCityScreenWidget::OnFocusManualClicked); }
+	if (FocusGrowthButton)     { FocusGrowthButton->OnClicked.AddDynamic(this, &UCoMCityScreenWidget::OnFocusGrowthClicked); }
+	if (FocusMilitaryButton)   { FocusMilitaryButton->OnClicked.AddDynamic(this, &UCoMCityScreenWidget::OnFocusMilitaryClicked); }
+	if (FocusEconomyButton)    { FocusEconomyButton->OnClicked.AddDynamic(this, &UCoMCityScreenWidget::OnFocusEconomyClicked); }
+	if (FocusResearchButton)   { FocusResearchButton->OnClicked.AddDynamic(this, &UCoMCityScreenWidget::OnFocusResearchClicked); }
+	if (FocusProductionButton) { FocusProductionButton->OnClicked.AddDynamic(this, &UCoMCityScreenWidget::OnFocusProductionClicked); }
+
 	// Hide the build picker overlay on startup.
 	HideBuildPicker();
 }
@@ -200,6 +208,21 @@ void UCoMCityScreenWidget::SetCity(int32 CityId)
 	RefreshBuildings();
 	RefreshQueue();
 	RefreshGarrison();
+	RefreshFocusButtons();
+
+	// Update queue header with "(Auto)" if governor is active.
+	if (QueueHeaderText)
+	{
+		const ECoMCityFocus Focus = CitySub->GetCityFocus(CityId);
+		if (Focus != ECoMCityFocus::Manual)
+		{
+			QueueHeaderText->SetText(FText::FromString(TEXT("Production Queue (Auto)")));
+		}
+		else
+		{
+			QueueHeaderText->SetText(FText::FromString(TEXT("Production Queue")));
+		}
+	}
 }
 
 void UCoMCityScreenWidget::RefreshBuildings()
@@ -629,3 +652,64 @@ void UCoMCityScreenWidget::OnCloseClicked()
 		UISS->HideCityScreen();
 	}
 }
+
+// =============================================================================
+// City Focus / Governor
+// =============================================================================
+
+void UCoMCityScreenWidget::SetCityFocus(ECoMCityFocus Focus)
+{
+	UCoMCitySubsystem* CitySub = GetCitySubsystem();
+	if (CitySub && CurrentCityId >= 0)
+	{
+		CitySub->SetCityFocus(CurrentCityId, Focus);
+		SetCity(CurrentCityId); // Full refresh.
+	}
+}
+
+void UCoMCityScreenWidget::RefreshFocusButtons()
+{
+	UCoMCitySubsystem* CitySub = GetCitySubsystem();
+	if (!CitySub || CurrentCityId < 0)
+	{
+		return;
+	}
+
+	const ECoMCityFocus CurrentFocus = CitySub->GetCityFocus(CurrentCityId);
+
+	// Gold color for active focus, default for inactive.
+	const FLinearColor GoldColor(0.85f, 0.65f, 0.13f, 1.f);
+	const FLinearColor DefaultColor(0.3f, 0.3f, 0.3f, 1.f);
+
+	auto SetButtonColor = [&](UButton* Btn, ECoMCityFocus BtnFocus)
+	{
+		if (!Btn) return;
+		const FLinearColor& Color = (CurrentFocus == BtnFocus) ? GoldColor : DefaultColor;
+		Btn->SetBackgroundColor(Color);
+	};
+
+	SetButtonColor(FocusManualButton,     ECoMCityFocus::Manual);
+	SetButtonColor(FocusGrowthButton,     ECoMCityFocus::BalancedGrowth);
+	SetButtonColor(FocusMilitaryButton,   ECoMCityFocus::Military);
+	SetButtonColor(FocusEconomyButton,    ECoMCityFocus::Economy);
+	SetButtonColor(FocusResearchButton,   ECoMCityFocus::Research);
+	SetButtonColor(FocusProductionButton, ECoMCityFocus::Production);
+
+	// Update focus label.
+	if (FocusLabelText)
+	{
+		const UEnum* FocusEnum = StaticEnum<ECoMCityFocus>();
+		FString FocusName = FocusEnum
+			? FocusEnum->GetDisplayNameTextByValue(static_cast<int64>(CurrentFocus)).ToString()
+			: TEXT("Manual");
+		FocusLabelText->SetText(FText::FromString(
+			FString::Printf(TEXT("City Focus: %s"), *FocusName)));
+	}
+}
+
+void UCoMCityScreenWidget::OnFocusManualClicked()     { SetCityFocus(ECoMCityFocus::Manual); }
+void UCoMCityScreenWidget::OnFocusGrowthClicked()     { SetCityFocus(ECoMCityFocus::BalancedGrowth); }
+void UCoMCityScreenWidget::OnFocusMilitaryClicked()   { SetCityFocus(ECoMCityFocus::Military); }
+void UCoMCityScreenWidget::OnFocusEconomyClicked()    { SetCityFocus(ECoMCityFocus::Economy); }
+void UCoMCityScreenWidget::OnFocusResearchClicked()   { SetCityFocus(ECoMCityFocus::Research); }
+void UCoMCityScreenWidget::OnFocusProductionClicked() { SetCityFocus(ECoMCityFocus::Production); }

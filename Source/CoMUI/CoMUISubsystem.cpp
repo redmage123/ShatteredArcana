@@ -19,7 +19,9 @@
 #include "HUD/CoMTooltipWidget.h"
 #include "HUD/CoMTurnNotificationWidget.h"
 #include "HUD/CoMSpellTargetingWidget.h"
+#include "Panels/CoMPreBattleWidget.h"
 #include "Framework/CoMGameInstance.h"
+#include "CoMCore/Combat/CoMCombatSubsystem.h"
 
 void UCoMUISubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -128,6 +130,15 @@ void UCoMUISubsystem::ShowHUD()
 		if (NotifWidget)
 		{
 			NotifWidget->BindToSubsystems();
+		}
+	}
+
+	// Bind to combat subsystem's pre-battle delegate so we can show the popup.
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMCombatSubsystem* CombatSub = GI->GetSubsystem<UCoMCombatSubsystem>())
+		{
+			CombatSub->OnPreBattleChoice.AddDynamic(this, &UCoMUISubsystem::ShowPreBattlePopup);
 		}
 	}
 
@@ -422,6 +433,26 @@ void UCoMUISubsystem::HideTooltip()
 	{
 		TooltipInstance->Hide();
 	}
+}
+
+// =============================================================================
+// Pre-Battle Popup
+// =============================================================================
+
+void UCoMUISubsystem::ShowPreBattlePopup(int32 AttackerArmyId, int32 DefenderArmyId)
+{
+	UCoMPreBattleWidget* Widget = CreateAndShowWidget<UCoMPreBattleWidget>(
+		PreBattleWidgetClass, PreBattleInstance, 80);
+
+	if (Widget)
+	{
+		Widget->SetBattle(AttackerArmyId, DefenderArmyId);
+	}
+}
+
+void UCoMUISubsystem::HidePreBattlePopup()
+{
+	RemoveWidget(PreBattleInstance);
 }
 
 // =============================================================================

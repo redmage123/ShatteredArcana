@@ -475,9 +475,21 @@ void UCoMMagicSubsystem::ProcessTurn(int32 CurrentTurn)
             if (State.ResearchProgress >= TotalCost)
             {
                 // Research complete!
-                State.KnownSpells.Add(State.CurrentResearchSpell);
+                FName CompletedSpell = State.CurrentResearchSpell;
+                State.KnownSpells.Add(CompletedSpell);
                 State.CurrentResearchSpell = NAME_None;
                 State.ResearchProgress = 0;
+
+                // Auto-research: pick the next spell if enabled.
+                if (IsAutoResearchEnabled(Pair.Key))
+                {
+                    if (AutoPickResearch(Pair.Key))
+                    {
+                        UE_LOG(LogTemp, Log,
+                            TEXT("[MagicSubsystem] Auto-researching %s for wizard %d"),
+                            *State.CurrentResearchSpell.ToString(), Pair.Key);
+                    }
+                }
             }
         }
     }
@@ -637,4 +649,86 @@ void UCoMMagicSubsystem::ImportAll(const TArray<FCoMWizardMagicState>& InMagicSt
 
     UE_LOG(LogTemp, Log, TEXT("[MagicSubsystem] ImportAll: %d wizard states, %d castings, %d rituals, %d runes imported."),
            WizardMagicStates.Num(), ActiveCastings.Num(), ActiveRituals.Num(), ActiveRunes.Num());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Auto-Research
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UCoMMagicSubsystem::SetAutoResearch(int32 WizardId, bool bEnable)
+{
+    if (bEnable)
+    {
+        AutoResearchMap.Add(WizardId, true);
+    }
+    else
+    {
+        AutoResearchMap.Remove(WizardId);
+    }
+}
+
+bool UCoMMagicSubsystem::IsAutoResearchEnabled(int32 WizardId) const
+{
+    const bool* bEnabled = AutoResearchMap.Find(WizardId);
+    return bEnabled && *bEnabled;
+}
+
+bool UCoMMagicSubsystem::AutoPickResearch(int32 WizardId)
+{
+    FCoMWizardMagicState& State = GetWizardMagic(WizardId);
+    if (!State.CurrentResearchSpell.IsNone())
+    {
+        return false; // Already researching something.
+    }
+
+    TArray<FName> Researchable = GetResearchableSpells(WizardId);
+    if (Researchable.Num() == 0)
+    {
+        return false;
+    }
+
+    // Build a priority order: strongest realm first, then secondary, then others.
+    // Within each realm, prefer the cheapest spell.
+    TArray<ECoMSpellRealm> RealmOrder;
+    RealmOrder.Add(State.PrimaryRealm);
+    if (State.SecondaryRealm != ECoMSpellRealm::None &&
+        State.SecondaryRealm != State.PrimaryRealm)
+    {
+        RealmOrder.Add(State.SecondaryRealm);
+    }
+    // Add remaining realms.
+    const UEnum* RealmEnum = StaticEnum<ECoMSpellRealm>();
+    for (int32 i = 0; i < static_cast<int32>(ECoMSpellRealm::MAX); ++i)
+    {
+        ECoMSpellRealm Realm = static_cast<ECoMSpellRealm>(i);
+        if (Realm != ECoMSpellRealm::None && !RealmOrder.Contains(Realm))
+        {
+            RealmOrder.Add(Realm);
+        }
+    }
+
+    // Search each realm in priority order for the cheapest researchable spell.
+    for (ECoMSpellRealm Realm : RealmOrder)
+    {
+        FName CheapestSpell = NAME_None;
+        int32 CheapestCost = MAX_int32;
+
+        for (const FName& SpellId : Researchable)
+        {
+            FCoMSpellInfo Info = CoMSpellDatabase::GetSpellInfo(SpellId);
+            if (Info.Realm == Realm && Info.ResearchCost < CheapestCost)
+            {
+                CheapestCost = Info.ResearchCost;
+                CheapestSpell = SpellId;
+            }
+        }
+
+        if (CheapestSpell != NAME_None)
+        {
+            StartResearch(WizardId, CheapestSpell);
+            return true;
+        }
+    }
+
+    return false;
 }

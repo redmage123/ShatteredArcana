@@ -59,6 +59,9 @@ struct COMCORE_API FCoMCombatModifiers
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCombatResolved, const FCoMCombatResult&, Result);
 
+/** Fired when a player battle is detected and needs a pre-battle choice (auto-resolve vs tactical). */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPreBattleChoice, int32, AttackerArmyID, int32, DefenderArmyID);
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Internal: snapshot of a unit for combat simulation
 // ═══════════════════════════════════════════════════════════════════════════
@@ -132,6 +135,18 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Combat")
 	FFixed64 CalculateArmyPower(int32 ArmyID) const;
 
+	/** Quick-resolve a battle using army power comparison + random roll (no tactical map). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Combat")
+	FCoMCombatResult QuickResolveBattle(int32 AttackerArmyId, int32 DefenderArmyId);
+
+	/** Player's preference for auto-resolve vs tactical combat. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|Combat")
+	bool bPlayerPrefersAutoResolve = false;
+
+	/** Called by UI after the player picks auto-resolve or fight on the pre-battle popup. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Combat")
+	void ResolvePendingBattle(bool bAutoResolve);
+
 	/** Static terrain defense modifier lookup. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Combat")
 	static FFixed64 GetTerrainModifier(ECoMTerrain TerrainType);
@@ -150,6 +165,10 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Combat")
 	FOnCombatResolved OnCombatResolved;
+
+	/** Fired when a player-involved battle needs a pre-battle choice. */
+	UPROPERTY(BlueprintAssignable, Category = "CoM|Combat")
+	FOnPreBattleChoice OnPreBattleChoice;
 
 	static FFixed64 GetHeroTierAttackBonus(ECoMHeroTier Tier);
 private:
@@ -185,4 +204,10 @@ private:
 
 	/** Wizard index of the human player (-1 = not set / all AI). */
 	int32 HumanPlayerWizardIndex = -1;
+
+	/** Pending battle army IDs (set when waiting for player pre-battle choice). */
+	int32 PendingAttackerArmyID = INDEX_NONE;
+	int32 PendingDefenderArmyID = INDEX_NONE;
+	int32 PendingAttackerWizard = INDEX_NONE;
+	int32 PendingDefenderWizard = INDEX_NONE;
 };

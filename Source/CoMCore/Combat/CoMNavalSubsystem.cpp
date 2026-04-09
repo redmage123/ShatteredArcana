@@ -248,6 +248,12 @@ void UCoMNavalSubsystem::ProcessNavalTurn()
 		bMonstersSpawned = true;
 	}
 
+	// Early-out: nothing to process if no fleets and no sea monsters exist.
+	if (AllFleets.Num() == 0 && SeaMonsters.Num() == 0)
+	{
+		return;
+	}
+
 	CurrentTurn++;
 
 	// 1. Move fleets along their routes (one tile per turn per speed).

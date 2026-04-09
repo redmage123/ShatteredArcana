@@ -10,6 +10,9 @@
 #include "Components/HorizontalBox.h"
 #include "Components/ScrollBox.h"
 #include "Components/Border.h"
+#include "Engine/GameInstance.h"
+#include "Kismet/GameplayStatics.h"
+#include "CoMCore/Turn/CoMTurnSubsystem.h"
 
 void UCoMHUDWidget::NativeConstruct()
 {
@@ -36,6 +39,12 @@ void UCoMHUDWidget::NativeConstruct()
 	{
 		DiplomacyButton->OnClicked.AddDynamic(this, &UCoMHUDWidget::OnDiplomacyClicked);
 	}
+	if (Speed1xButton) { Speed1xButton->OnClicked.AddDynamic(this, &UCoMHUDWidget::OnSpeed1xClicked); }
+	if (Speed2xButton) { Speed2xButton->OnClicked.AddDynamic(this, &UCoMHUDWidget::OnSpeed2xClicked); }
+	if (Speed4xButton) { Speed4xButton->OnClicked.AddDynamic(this, &UCoMHUDWidget::OnSpeed4xClicked); }
+
+	// Initialize speed display.
+	UpdateSpeedDisplay(1.0f);
 
 	// Set initial display values.
 	UpdateResources(0, 0, 0, 0);
@@ -166,3 +175,31 @@ void UCoMHUDWidget::RefreshMinimap()
 		MinimapWidget->RefreshMinimap();
 	}
 }
+
+// ─── Game Speed Control ─────────────────────────────────────────────────────
+
+void UCoMHUDWidget::SetGameSpeed(float Speed)
+{
+	UGameInstance* GI = UGameplayStatics::GetGameInstance(this);
+	if (!GI) return;
+
+	if (UCoMTurnSubsystem* TurnSub = GI->GetSubsystem<UCoMTurnSubsystem>())
+	{
+		TurnSub->SetGameSpeed(Speed);
+	}
+
+	UpdateSpeedDisplay(Speed);
+}
+
+void UCoMHUDWidget::UpdateSpeedDisplay(float CurrentSpeed)
+{
+	if (SpeedDisplayText)
+	{
+		SpeedDisplayText->SetText(FText::FromString(
+			FString::Printf(TEXT("%.0fx"), CurrentSpeed)));
+	}
+}
+
+void UCoMHUDWidget::OnSpeed1xClicked() { SetGameSpeed(1.0f); }
+void UCoMHUDWidget::OnSpeed2xClicked() { SetGameSpeed(2.0f); }
+void UCoMHUDWidget::OnSpeed4xClicked() { SetGameSpeed(4.0f); }

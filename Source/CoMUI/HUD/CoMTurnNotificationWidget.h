@@ -16,6 +16,22 @@ class UVerticalBox;
 class UScrollBox;
 class UCanvasPanel;
 class UCoMHUDWidget;
+class UAudioComponent;
+class USoundBase;
+
+/**
+ * Notification priority levels for filtering late-game spam.
+ */
+UENUM(BlueprintType)
+enum class ECoMNotificationPriority : uint8
+{
+	Critical  UMETA(DisplayName = "Critical"),   // Always show: victory, defeat, city lost, hero died
+	Important UMETA(DisplayName = "Important"),   // Show by default: combat results, events, city complete
+	Normal    UMETA(DisplayName = "Normal"),      // Show by default: turn start, research done, trade complete
+	Minor     UMETA(DisplayName = "Minor"),       // Show on verbose: army spotted, fog revealed, minor events
+	Debug     UMETA(DisplayName = "Debug"),       // Never show in gameplay: subsystem logs
+	MAX UMETA(Hidden)
+};
 
 /**
  * Queued notification entry for the slide-in popup system.
@@ -28,6 +44,7 @@ struct FCoMQueuedNotification
 	UPROPERTY() FString Title;
 	UPROPERTY() FString Body;
 	UPROPERTY() float DisplayTime = 4.f;
+	UPROPERTY() ECoMNotificationPriority Priority = ECoMNotificationPriority::Normal;
 };
 
 /**
@@ -77,20 +94,44 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|Notification")
 	void ShowCombatResult(ECoMCombatResult Result, int32 AttackerLosses, int32 DefenderLosses);
 
+	// -- Idle Warning ----------------------------------------------------------
+
+	/**
+	 * Show idle army/city warning popup before end turn.
+	 * "You have X idle armies and Y cities with no production. End turn anyway?"
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Notification")
+	void ShowIdleWarning(int32 IdleArmyCount, int32 IdleCityCount);
+
 	// -- Notification Feed -----------------------------------------------------
 
 	/**
 	 * Add a color-coded message to the HUD notification scroll box.
 	 * Colors: gold (important), white (info), red (danger), green (success).
+	 * Priority determines whether the message is shown based on MinimumPriority filter.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Notification")
-	void AddNotificationMessage(const FString& Message, FLinearColor Color);
+	void AddNotificationMessage(const FString& Message, FLinearColor Color,
+		ECoMNotificationPriority InPriority = ECoMNotificationPriority::Normal);
 
 	/**
 	 * Queue a generic notification popup (title + body).
+	 * Only Critical and Important popups are shown as event popups.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Notification")
-	void QueueNotification(const FString& Title, const FString& Body);
+	void QueueNotification(const FString& Title, const FString& Body,
+		ECoMNotificationPriority InPriority = ECoMNotificationPriority::Normal);
+
+	/**
+	 * Set the minimum notification priority to display. Messages below this
+	 * threshold are silently discarded.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Notification")
+	void SetMinimumPriority(ECoMNotificationPriority InPriority);
+
+	/** Get the current minimum notification priority. */
+	UFUNCTION(BlueprintPure, Category = "CoM|Notification")
+	ECoMNotificationPriority GetMinimumPriority() const { return MinimumPriority; }
 
 	// -- Delegate Binding Helpers ----------------------------------------------
 
@@ -145,6 +186,9 @@ private:
 	UFUNCTION()
 	void HandleBattleEnded(ECoMCombatResult Result);
 
+	UFUNCTION()
+	void HandleIdleWarning(int32 IdleArmyCount, int32 IdleCityCount);
+
 	// -- Banner Animation State ------------------------------------------------
 
 	enum class EBannerState : uint8 { Hidden, FadingIn, Showing, FadingOut };
@@ -186,6 +230,15 @@ private:
 
 	/** Find the HUD widget to push notification messages into its scroll box. */
 	UCoMHUDWidget* GetHUDWidget();
+
+	// -- Priority Filtering ----------------------------------------------------
+
+	/** Minimum priority level to display. Default: Normal (shows Critical, Important, Normal). */
+	ECoMNotificationPriority MinimumPriority = ECoMNotificationPriority::Normal;
+
+	/** Sound to play for critical notifications. */
+	UPROPERTY(EditDefaultsOnly, Category = "CoM|Notification")
+	TObjectPtr<USoundBase> CriticalNotificationSound;
 
 	// -- Color Constants -------------------------------------------------------
 

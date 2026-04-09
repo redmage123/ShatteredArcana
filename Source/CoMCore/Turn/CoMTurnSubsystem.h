@@ -56,6 +56,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnStarted, int32, TurnNumber);
 /** Fired at the very end of a turn (after all wizards have acted). */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnEnded, int32, TurnNumber);
 
+/** Fired when the player hits End Turn with idle armies/cities. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnIdleWarning, int32, IdleArmyCount, int32, IdleCityCount);
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -156,6 +159,32 @@ public:
 	UFUNCTION(BlueprintPure, Category = "TurnSubsystem")
 	int32 GetActiveWizardCount() const;
 
+	// ── Idle Checks ──────────────────────────────────────────────────────
+
+	/** Get armies belonging to WizardId that still have movement remaining. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "TurnSubsystem")
+	TArray<int32> GetIdleArmies(int32 WizardId) const;
+
+	/** Get cities belonging to WizardId that have empty production queues. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "TurnSubsystem")
+	TArray<int32> GetIdleCities(int32 WizardId) const;
+
+	/**
+	 * Check for idle armies/cities before ending the turn.
+	 * If any found, broadcasts OnIdleWarning and returns true (turn not ended).
+	 * If none found, returns false (caller should proceed with EndTurn).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "TurnSubsystem")
+	bool CheckIdleBeforeEndTurn(int32 WizardId);
+
+	/** Game speed multiplier (affects AI turn processing delay). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TurnSubsystem")
+	float GameSpeed = 1.0f;
+
+	/** Set game speed: 0.5x, 1x, 2x, 4x. */
+	UFUNCTION(BlueprintCallable, Category = "TurnSubsystem")
+	void SetGameSpeed(float Speed);
+
 	// ── Delegates ─────────────────────────────────────────────────────────
 
 	UPROPERTY(BlueprintAssignable, Category = "TurnSubsystem")
@@ -172,6 +201,10 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "TurnSubsystem")
 	FOnTurnEnded OnTurnEnded;
+
+	/** Fired when player tries to end turn with idle armies/cities. */
+	UPROPERTY(BlueprintAssignable, Category = "TurnSubsystem")
+	FOnIdleWarning OnIdleWarning;
 
 	// ── Save/Load Export/Import ───────────────────────────────────────────
 

@@ -305,6 +305,20 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Magic")
     bool CounterSpell(int32 CounterCasterWizardId, int32 TargetWizardId, int32 ManaSpent);
 
+    // ── Auto-Research ────────────────────────────────────────────────────────
+
+    /** Enable or disable auto-research for a wizard. */
+    UFUNCTION(BlueprintCallable, Category = "Magic")
+    void SetAutoResearch(int32 WizardId, bool bEnable);
+
+    /** Check if auto-research is enabled for a wizard. */
+    UFUNCTION(BlueprintPure, Category = "Magic")
+    bool IsAutoResearchEnabled(int32 WizardId) const;
+
+    /** Auto-pick the next research spell for a wizard. Returns true if a spell was selected. */
+    UFUNCTION(BlueprintCallable, Category = "Magic")
+    bool AutoPickResearch(int32 WizardId);
+
     // ── Turn Processing ──────────────────────────────────────────────────────
 
     UFUNCTION(BlueprintCallable, Category = "Magic")
@@ -355,6 +369,10 @@ private:
     TArray<FCoMActiveRune> ActiveRunes;
 
     int32 NextRuneInstanceId = 1;
+
+    /** Per-wizard auto-research toggle. */
+    UPROPERTY()
+    TMap<int32, bool> AutoResearchMap;
 
     FRandomStream RngStream;
 };

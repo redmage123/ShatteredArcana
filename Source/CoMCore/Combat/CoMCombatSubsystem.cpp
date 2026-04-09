@@ -4,6 +4,7 @@
 #include "CoMCore/Units/CoMUnitSubsystem.h"
 #include "CoMCore/Data/CoMUnitDatabase.h"
 #include "CoMCore/Framework/CoMGameInstance.h"
+#include "CoMCore/Turn/CoMTurnSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 
 // =====================================================================
@@ -311,7 +312,15 @@ void UCoMCombatSubsystem::ResolveAllEncounters(int32 CurrentTurn)
 
 		if (bPlayerInvolved)
 		{
-			StartTacticalBattle(AttackerArmyID, DefenderArmyID, AttackerWizard, DefenderWizard);
+			// Store pending battle state for the pre-battle choice UI.
+			PendingAttackerArmyID = AttackerArmyID;
+			PendingDefenderArmyID = DefenderArmyID;
+			PendingAttackerWizard = AttackerWizard;
+			PendingDefenderWizard = DefenderWizard;
+
+			// Broadcast so the UI can show the pre-battle popup.
+			OnPreBattleChoice.Broadcast(AttackerArmyID, DefenderArmyID);
+
 			// Only one tactical battle at a time — remaining encounters auto-resolve next turn.
 			return;
 		}
@@ -595,4 +604,64 @@ TArray<int32> UCoMCombatSubsystem::RemoveDeadUnits(TArray<FCoMCombatUnitState>& 
 	}
 
 	return DeadIDs;
+}
+
+// =====================================================================
+// Quick-Resolve Battle (army power + random roll, no tactical map)
+// =====================================================================
+
+FCoMCombatResult UCoMCombatSubsystem::QuickResolveBattle(int32 AttackerArmyId, int32 DefenderArmyId)
+{
+	// Use the full auto-combat engine for a faithful result.
+	// The current turn is approximated from the game state.
+	int32 CurrentTurn = 0;
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMTurnSubsystem* TurnSub = GI->GetSubsystem<UCoMTurnSubsystem>())
+		{
+			CurrentTurn = TurnSub->GetCurrentTurn();
+		}
+	}
+
+	FCoMCombatResult Result = ResolveAutoCombat(AttackerArmyId, DefenderArmyId, CurrentTurn);
+	Result.bAutoResolved = true;
+
+	UE_LOG(LogTemp, Log, TEXT("QuickResolveBattle: Army %d vs Army %d — Winner wizard %d, %d rounds"),
+		AttackerArmyId, DefenderArmyId, Result.WinnerWizardID, Result.CombatRounds);
+
+	OnCombatResolved.Broadcast(Result);
+	return Result;
+}
+
+// =====================================================================
+// Resolve Pending Battle (called by UI after player chooses)
+// =====================================================================
+
+void UCoMCombatSubsystem::ResolvePendingBattle(bool bAutoResolve)
+{
+	if (PendingAttackerArmyID == INDEX_NONE || PendingDefenderArmyID == INDEX_NONE)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ResolvePendingBattle: No pending battle."));
+		return;
+	}
+
+	const int32 AtkID = PendingAttackerArmyID;
+	const int32 DefID = PendingDefenderArmyID;
+	const int32 AtkWiz = PendingAttackerWizard;
+	const int32 DefWiz = PendingDefenderWizard;
+
+	// Clear pending state.
+	PendingAttackerArmyID = INDEX_NONE;
+	PendingDefenderArmyID = INDEX_NONE;
+	PendingAttackerWizard = INDEX_NONE;
+	PendingDefenderWizard = INDEX_NONE;
+
+	if (bAutoResolve)
+	{
+		QuickResolveBattle(AtkID, DefID);
+	}
+	else
+	{
+		StartTacticalBattle(AtkID, DefID, AtkWiz, DefWiz);
+	}
 }

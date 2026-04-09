@@ -203,6 +203,70 @@ int32 UCoMTurnSubsystem::GetActiveWizardCount() const
 	return WizardTurnOrder.Num();
 }
 
+TArray<int32> UCoMTurnSubsystem::GetIdleArmies(int32 WizardId) const
+{
+	TArray<int32> Result;
+
+	UGameInstance* GI = GetGameInstance();
+	if (!GI) return Result;
+
+	UCoMUnitSubsystem* UnitSub = GI->GetSubsystem<UCoMUnitSubsystem>();
+	if (!UnitSub) return Result;
+
+	TArray<const FCoMArmyGroup*> Armies = UnitSub->GetArmiesForWizard(WizardId);
+	for (const FCoMArmyGroup* Army : Armies)
+	{
+		if (Army && Army->MovementRemaining > 0)
+		{
+			Result.Add(Army->ArmyGroupID);
+		}
+	}
+
+	return Result;
+}
+
+TArray<int32> UCoMTurnSubsystem::GetIdleCities(int32 WizardId) const
+{
+	TArray<int32> Result;
+
+	UGameInstance* GI = GetGameInstance();
+	if (!GI) return Result;
+
+	UCoMCitySubsystem* CitySub = GI->GetSubsystem<UCoMCitySubsystem>();
+	if (!CitySub) return Result;
+
+	TArray<const FCoMCityData*> Cities = CitySub->GetCitiesForWizard(WizardId);
+	for (const FCoMCityData* City : Cities)
+	{
+		if (City && City->ProductionQueue.Num() == 0)
+		{
+			Result.Add(City->CityID);
+		}
+	}
+
+	return Result;
+}
+
+bool UCoMTurnSubsystem::CheckIdleBeforeEndTurn(int32 WizardId)
+{
+	TArray<int32> IdleArmies = GetIdleArmies(WizardId);
+	TArray<int32> IdleCities = GetIdleCities(WizardId);
+
+	if (IdleArmies.Num() > 0 || IdleCities.Num() > 0)
+	{
+		OnIdleWarning.Broadcast(IdleArmies.Num(), IdleCities.Num());
+		return true; // Idle units found — turn not ended.
+	}
+
+	return false; // No idle units — safe to end turn.
+}
+
+void UCoMTurnSubsystem::SetGameSpeed(float Speed)
+{
+	GameSpeed = FMath::Clamp(Speed, 0.5f, 4.0f);
+	UE_LOG(LogTemp, Log, TEXT("Game speed set to %.1fx"), GameSpeed);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase Processors — private
 // ─────────────────────────────────────────────────────────────────────────────
@@ -227,12 +291,15 @@ void UCoMTurnSubsystem::ProcessWorldPhase()
 	// Build wizard turn order after world processing so any new/dead wizards are captured.
 	BuildWizardTurnOrder();
 
-	// ── Audio: turn-start notification chime ──────────────────────────────
-	if (UGameInstance* AudioGI = GetGameInstance())
+	// ── Audio: turn-start notification chime (skip at 4x speed) ──────────
+	if (GameSpeed < 3.5f)
 	{
-		if (UCoMAudioSubsystem* Audio = AudioGI->GetSubsystem<UCoMAudioSubsystem>())
+		if (UGameInstance* AudioGI = GetGameInstance())
 		{
-			Audio->PlayUISound(FName("SFX_UI_TurnStart"));
+			if (UCoMAudioSubsystem* Audio = AudioGI->GetSubsystem<UCoMAudioSubsystem>())
+			{
+				Audio->PlayUISound(FName("SFX_UI_TurnStart"));
+			}
 		}
 	}
 
@@ -250,7 +317,11 @@ void UCoMTurnSubsystem::ProcessAllSubsystemTurns()
 	}
 
 	UE_LOG(LogTemp, Log,
-	       TEXT("UCoMTurnSubsystem: Turn %d — ticking all gameplay subsystems."), CurrentTurn);
+	       TEXT("UCoMTurnSubsystem: Turn %d — ticking all gameplay subsystems (speed %.1fx)."),
+	       CurrentTurn, GameSpeed);
+
+	// At 4x speed, skip notification popups for faster turn processing.
+	const bool bFastMode = (GameSpeed >= 3.5f);
 
 	// ── Seasons / Weather ────────────────────────────────────────────
 	if (UCoMSeasonSubsystem* Seasons = GI->GetSubsystem<UCoMSeasonSubsystem>())

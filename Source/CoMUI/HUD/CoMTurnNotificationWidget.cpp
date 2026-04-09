@@ -9,6 +9,7 @@
 #include "Components/VerticalBox.h"
 #include "Components/ScrollBox.h"
 #include "Components/CanvasPanel.h"
+#include "Sound/SoundBase.h"
 #include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "CoMCore/Turn/CoMTurnSubsystem.h"
@@ -68,7 +69,7 @@ void UCoMTurnNotificationWidget::ShowTurnBanner(int32 TurnNumber, const FString&
 	// Also add to the notification feed.
 	AddNotificationMessage(
 		FString::Printf(TEXT("Turn %d started - %s's turn"), TurnNumber, *WizardName),
-		GoldColor());
+		GoldColor(), ECoMNotificationPriority::Normal);
 }
 
 void UCoMTurnNotificationWidget::UpdateBanner(float DeltaTime)
@@ -148,10 +149,11 @@ void UCoMTurnNotificationWidget::ShowEventNotification(const FCoMWorldEvent& Eve
 		AffectedStr.IsEmpty() ? TEXT("All Planes") : *AffectedStr,
 		Event.Duration);
 
-	QueueNotification(Title, Body);
+	QueueNotification(Title, Body, ECoMNotificationPriority::Important);
 
 	// Also push to notification feed.
-	AddNotificationMessage(FString::Printf(TEXT("Event: %s"), *Title), GoldColor());
+	AddNotificationMessage(FString::Printf(TEXT("Event: %s"), *Title), GoldColor(),
+		ECoMNotificationPriority::Important);
 }
 
 void UCoMTurnNotificationWidget::UpdatePopup(float DeltaTime)
@@ -250,11 +252,25 @@ void UCoMTurnNotificationWidget::ShowNextQueuedNotification()
 	PopupTimer = 0.f;
 }
 
-void UCoMTurnNotificationWidget::QueueNotification(const FString& Title, const FString& Body)
+void UCoMTurnNotificationWidget::QueueNotification(const FString& Title, const FString& Body,
+	ECoMNotificationPriority InPriority)
 {
+	// Event popups: only show for Critical and Important.
+	if (InPriority > ECoMNotificationPriority::Important)
+	{
+		return;
+	}
+
+	// Also filter against MinimumPriority.
+	if (InPriority > MinimumPriority)
+	{
+		return;
+	}
+
 	FCoMQueuedNotification Entry;
 	Entry.Title = Title;
 	Entry.Body = Body;
+	Entry.Priority = InPriority;
 	NotificationQueue.Add(Entry);
 }
 
@@ -329,7 +345,7 @@ void UCoMTurnNotificationWidget::ShowCombatResult(ECoMCombatResult Result,
 	// Also push to notification feed.
 	AddNotificationMessage(
 		FString::Printf(TEXT("Battle: %s (Lost %d / Enemy lost %d)"), *ResultStr, AttackerLosses, DefenderLosses),
-		ResultColor);
+		ResultColor, ECoMNotificationPriority::Important);
 }
 
 void UCoMTurnNotificationWidget::UpdateCombatResult(float DeltaTime)
@@ -370,8 +386,15 @@ void UCoMTurnNotificationWidget::UpdateCombatResult(float DeltaTime)
 // Notification Feed
 // =============================================================================
 
-void UCoMTurnNotificationWidget::AddNotificationMessage(const FString& Message, FLinearColor Color)
+void UCoMTurnNotificationWidget::AddNotificationMessage(const FString& Message, FLinearColor Color,
+	ECoMNotificationPriority InPriority)
 {
+	// Filter: skip messages below the minimum priority threshold.
+	if (InPriority > MinimumPriority)
+	{
+		return;
+	}
+
 	UCoMHUDWidget* HUD = GetHUDWidget();
 	if (!HUD)
 	{
@@ -389,6 +412,17 @@ void UCoMTurnNotificationWidget::AddNotificationMessage(const FString& Message, 
 	else                             { Prefix = TEXT("    "); }
 
 	HUD->AddNotification(Prefix + Message);
+
+	// Critical notifications also play a sound.
+	if (InPriority == ECoMNotificationPriority::Critical && CriticalNotificationSound)
+	{
+		UGameplayStatics::PlaySound2D(this, CriticalNotificationSound);
+	}
+}
+
+void UCoMTurnNotificationWidget::SetMinimumPriority(ECoMNotificationPriority InPriority)
+{
+	MinimumPriority = InPriority;
 }
 
 UCoMHUDWidget* UCoMTurnNotificationWidget::GetHUDWidget()
@@ -409,10 +443,11 @@ void UCoMTurnNotificationWidget::BindToSubsystems()
 	UGameInstance* GI = UGameplayStatics::GetGameInstance(this);
 	if (!GI) { return; }
 
-	// Turn subsystem: OnTurnStarted -> ShowTurnBanner
+	// Turn subsystem: OnTurnStarted -> ShowTurnBanner, OnIdleWarning -> HandleIdleWarning
 	if (UCoMTurnSubsystem* TurnSub = GI->GetSubsystem<UCoMTurnSubsystem>())
 	{
 		TurnSub->OnTurnStarted.AddDynamic(this, &UCoMTurnNotificationWidget::HandleTurnStarted);
+		TurnSub->OnIdleWarning.AddDynamic(this, &UCoMTurnNotificationWidget::HandleIdleWarning);
 	}
 
 	// World event subsystem: OnWorldEventTriggered -> ShowEventNotification
@@ -436,6 +471,7 @@ void UCoMTurnNotificationWidget::UnbindFromSubsystems()
 	if (UCoMTurnSubsystem* TurnSub = GI->GetSubsystem<UCoMTurnSubsystem>())
 	{
 		TurnSub->OnTurnStarted.RemoveDynamic(this, &UCoMTurnNotificationWidget::HandleTurnStarted);
+		TurnSub->OnIdleWarning.RemoveDynamic(this, &UCoMTurnNotificationWidget::HandleIdleWarning);
 	}
 
 	if (UCoMWorldEventSubsystem* EventSub = GI->GetSubsystem<UCoMWorldEventSubsystem>())
@@ -471,4 +507,46 @@ void UCoMTurnNotificationWidget::HandleBattleEnded(ECoMCombatResult Result)
 	// For now show placeholder values; the combat subsystem can broadcast
 	// detailed results in a future sprint.
 	ShowCombatResult(Result, 0, 0);
+}
+
+void UCoMTurnNotificationWidget::HandleIdleWarning(int32 IdleArmyCount, int32 IdleCityCount)
+{
+	ShowIdleWarning(IdleArmyCount, IdleCityCount);
+}
+
+// =============================================================================
+// Idle Warning
+// =============================================================================
+
+void UCoMTurnNotificationWidget::ShowIdleWarning(int32 IdleArmyCount, int32 IdleCityCount)
+{
+	FString Title = TEXT("Idle Units Warning");
+	FString Body;
+
+	if (IdleArmyCount > 0 && IdleCityCount > 0)
+	{
+		Body = FString::Printf(
+			TEXT("You have %d idle %s and %d %s with no production.\nEnd turn anyway?"),
+			IdleArmyCount, IdleArmyCount == 1 ? TEXT("army") : TEXT("armies"),
+			IdleCityCount, IdleCityCount == 1 ? TEXT("city") : TEXT("cities"));
+	}
+	else if (IdleArmyCount > 0)
+	{
+		Body = FString::Printf(
+			TEXT("You have %d idle %s with movement remaining.\nEnd turn anyway?"),
+			IdleArmyCount, IdleArmyCount == 1 ? TEXT("army") : TEXT("armies"));
+	}
+	else
+	{
+		Body = FString::Printf(
+			TEXT("You have %d %s with no production queued.\nEnd turn anyway?"),
+			IdleCityCount, IdleCityCount == 1 ? TEXT("city") : TEXT("cities"));
+	}
+
+	QueueNotification(Title, Body, ECoMNotificationPriority::Important);
+
+	// Also add to notification feed.
+	AddNotificationMessage(
+		FString::Printf(TEXT("Warning: %d idle armies, %d idle cities"), IdleArmyCount, IdleCityCount),
+		GoldColor(), ECoMNotificationPriority::Important);
 }

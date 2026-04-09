@@ -23,6 +23,7 @@ class UCoMVictoryScreenWidget;
 class UCoMTooltipWidget;
 class UCoMTurnNotificationWidget;
 class UCoMSpellTargetingWidget;
+class UCoMPreBattleWidget;
 
 /**
  * UCoMUISubsystem
@@ -192,6 +193,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "CoM|UI")
 	UCoMTurnNotificationWidget* GetTurnNotificationWidget() const { return TurnNotificationInstance; }
 
+	// -- Pre-Battle Popup ------------------------------------------------------
+
+	/** Show the pre-battle choice popup for the given encounter. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowPreBattlePopup(int32 AttackerArmyId, int32 DefenderArmyId);
+
+	/** Hide the pre-battle popup. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HidePreBattlePopup();
+
 	// -- Spell Targeting -------------------------------------------------------
 
 	/** Get the spell targeting widget (may be nullptr). */
@@ -258,6 +269,9 @@ public:
 	TSubclassOf<UCoMTurnNotificationWidget> TurnNotificationWidgetClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<UCoMPreBattleWidget> PreBattleWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<UCoMSpellTargetingWidget> SpellTargetingWidgetClass;
 
 private:
@@ -309,6 +323,9 @@ private:
 
 	UPROPERTY()
 	UCoMTurnNotificationWidget* TurnNotificationInstance = nullptr;
+
+	UPROPERTY()
+	UCoMPreBattleWidget* PreBattleInstance = nullptr;
 
 	UPROPERTY()
 	UCoMSpellTargetingWidget* SpellTargetingInstance = nullptr;

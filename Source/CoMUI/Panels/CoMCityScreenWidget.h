@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "CoMCore/Economy/CoMCitySubsystem.h"
 #include "CoMCityScreenWidget.generated.h"
 
 class UTextBlock;
@@ -70,6 +71,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "CoM|CityScreen")
 	int32 GetCurrentCityId() const { return CurrentCityId; }
 
+	// -- City Focus / Governor ----------------------------------------------------
+
+	/** Set city focus and refresh the display. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|CityScreen")
+	void SetCityFocus(ECoMCityFocus Focus);
+
+	/** Refresh the focus button highlighting. */
+	void RefreshFocusButtons();
+
 protected:
 	UFUNCTION()
 	void OnCloseClicked();
@@ -94,6 +104,15 @@ protected:
 
 	UFUNCTION()
 	void OnCloseBuildPickerClicked();
+
+	// -- City Focus Callbacks -----------------------------------------------------
+
+	UFUNCTION() void OnFocusManualClicked();
+	UFUNCTION() void OnFocusGrowthClicked();
+	UFUNCTION() void OnFocusMilitaryClicked();
+	UFUNCTION() void OnFocusEconomyClicked();
+	UFUNCTION() void OnFocusResearchClicked();
+	UFUNCTION() void OnFocusProductionClicked();
 
 	// -- Widget references (bound from UMG) ------------------------------------
 
@@ -175,6 +194,29 @@ protected:
 	/** Button to close the build picker. */
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> CloseBuildPickerButton;
+
+	// -- City Focus / Governor UI ----------------------------------------------
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> FocusManualButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> FocusGrowthButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> FocusMilitaryButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> FocusEconomyButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> FocusResearchButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> FocusProductionButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> FocusLabelText;
 
 	// -- Resource Output Display -----------------------------------------------
 

@@ -7,6 +7,21 @@
 #include "CoMCore/CoreTypes/CoMStructs.h"
 #include "CoMCitySubsystem.generated.h"
 
+/**
+ * City governor focus — determines what the city auto-builds when its queue is empty.
+ */
+UENUM(BlueprintType)
+enum class ECoMCityFocus : uint8
+{
+	Manual         UMETA(DisplayName = "Manual"),          // Player manages queue manually
+	BalancedGrowth UMETA(DisplayName = "Balanced Growth"), // Auto-build: granary, marketplace, library, then balanced
+	Military       UMETA(DisplayName = "Military"),        // Auto-build: barracks, stable, armory, then units
+	Economy        UMETA(DisplayName = "Economy"),         // Auto-build: marketplace, bank, then gold buildings
+	Research       UMETA(DisplayName = "Research"),        // Auto-build: library, mage tower, wizard guild
+	Production     UMETA(DisplayName = "Production"),      // Auto-build: smithy, enchanter's workshop, then production buildings
+	MAX UMETA(Hidden)
+};
+
 class UCoMUnitSubsystem;
 class UCoMBuildingDataAsset;
 class UCoMUnitSpecDataAsset;
@@ -256,6 +271,34 @@ public:
 	TArray<FCoMProductionItem> GetQueue(int32 CityId) const;
 
 	// -----------------------------------------------------------------
+	// City Governor / Auto-Build
+	// -----------------------------------------------------------------
+
+	/** Set the auto-build focus for a city. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Cities")
+	void SetCityFocus(int32 CityId, ECoMCityFocus Focus);
+
+	/** Get the current auto-build focus for a city. */
+	UFUNCTION(BlueprintPure, Category = "CoM|Cities")
+	ECoMCityFocus GetCityFocus(int32 CityId) const;
+
+	// -----------------------------------------------------------------
+	// Rally Points
+	// -----------------------------------------------------------------
+
+	/** Set a rally point for a city. New units will auto-move toward this position. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Cities")
+	void SetRallyPoint(int32 CityId, FIntPoint Position);
+
+	/** Get the rally point for a city. Returns the city's own position if no rally point is set. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Cities")
+	FIntPoint GetRallyPoint(int32 CityId) const;
+
+	/** Clear the rally point for a city (units stay at the city). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Cities")
+	void ClearRallyPoint(int32 CityId);
+
+	// -----------------------------------------------------------------
 	// Availability Queries
 	// -----------------------------------------------------------------
 
@@ -380,12 +423,29 @@ private:
 	/** Handle city rebellion when unrest reaches 10. */
 	void HandleRebellion(FCoMCityData& City);
 
+	/** Auto-enqueue the next building/unit based on city focus when queue is empty. */
+	void AutoEnqueueForFocus(FCoMCityData& City);
+
+	/** Get the priority build list for a given focus. Returns building FNames in priority order. */
+	static TArray<FName> GetFocusBuildingPriority(ECoMCityFocus Focus);
+
+	/** Get the priority unit list for Military focus. Returns unit FNames to cycle. */
+	static TArray<FName> GetMilitaryUnitCycle();
+
 	// -----------------------------------------------------------------
 	// State
 	// -----------------------------------------------------------------
 
 	UPROPERTY()
 	TMap<int32, FCoMCityData> AllCities;
+
+	/** Per-city rally points (position where new units auto-move to). */
+	UPROPERTY()
+	TMap<int32, FIntPoint> CityRallyPoints;
+
+	/** Per-city governor focus setting. */
+	UPROPERTY()
+	TMap<int32, ECoMCityFocus> CityFocusMap;
 
 	int32 NextCityID = 1;
 

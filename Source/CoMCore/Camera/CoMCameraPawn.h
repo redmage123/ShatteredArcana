@@ -8,6 +8,8 @@
 
 class USpringArmComponent;
 class UCameraComponent;
+class UCoMUnitSubsystem;
+class UCoMCitySubsystem;
 
 /**
  * ACoMCameraPawn
@@ -83,6 +85,24 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Pan")
 	bool bEdgeScrollEnabled = true;
 
+	// ─── Jump-to-Next ────────────────────────────────────────────────────────
+
+	/** Cycle to the next idle army (with remaining movement) and center camera. */
+	UFUNCTION(BlueprintCallable, Category = "Camera|Navigation")
+	void JumpToNextIdleArmy();
+
+	/** Cycle to the next army owned by the player and center camera. */
+	UFUNCTION(BlueprintCallable, Category = "Camera|Navigation")
+	void JumpToNextArmy();
+
+	/** Cycle to the next city owned by the player and center camera. */
+	UFUNCTION(BlueprintCallable, Category = "Camera|Navigation")
+	void JumpToNextCity();
+
+	/** The wizard index of the local human player (set externally). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Navigation")
+	int32 LocalWizardIndex = 0;
+
 private:
 	// ─── Input handlers ──────────────────────────────────────────────────────
 
@@ -104,4 +124,12 @@ private:
 
 	/** Keyboard pan input accumulated this frame from axis bindings. */
 	FVector2D KeyboardInput = FVector2D::ZeroVector;
+
+	/** Cycle indices for jump-to-next navigation. */
+	int32 CityJumpIndex = 0;
+	int32 ArmyJumpIndex = 0;
+	int32 IdleArmyJumpIndex = 0;
+
+	/** Center the camera on a world grid position. */
+	void CenterOnPosition(FIntPoint GridPos);
 };

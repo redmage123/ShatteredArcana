@@ -270,6 +270,12 @@ bool UCoMEspionageSubsystem::TurnCapturedAgent(int32 WizardId, int32 CapturedAge
 
 void UCoMEspionageSubsystem::ProcessTurn(int32 CurrentTurn)
 {
+    // Early-out: no agents to process.
+    if (AllAgents.Num() == 0)
+    {
+        return;
+    }
+
     TArray<int32> AgentsToProcess;
     for (auto& Pair : AllAgents)
     {

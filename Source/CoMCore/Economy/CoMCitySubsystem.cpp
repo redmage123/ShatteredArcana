@@ -27,7 +27,43 @@ void UCoMCitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UCoMCitySubsystem::Deinitialize()
 {
 	AllCities.Empty();
+	CityRallyPoints.Empty();
 	Super::Deinitialize();
+}
+
+// =====================================================================
+// Rally Points
+// =====================================================================
+
+void UCoMCitySubsystem::SetRallyPoint(int32 CityId, FIntPoint Position)
+{
+	const FCoMCityData* City = AllCities.Find(CityId);
+	if (!City)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SetRallyPoint: invalid CityId %d"), CityId);
+		return;
+	}
+
+	CityRallyPoints.Add(CityId, Position);
+	UE_LOG(LogTemp, Log, TEXT("Rally point set for city %d at (%d, %d)"), CityId, Position.X, Position.Y);
+}
+
+FIntPoint UCoMCitySubsystem::GetRallyPoint(int32 CityId) const
+{
+	const FIntPoint* RallyPt = CityRallyPoints.Find(CityId);
+	if (RallyPt)
+	{
+		return *RallyPt;
+	}
+
+	// Default: the city's own position.
+	const FCoMCityData* City = AllCities.Find(CityId);
+	return City ? City->Position : FIntPoint::ZeroValue;
+}
+
+void UCoMCitySubsystem::ClearRallyPoint(int32 CityId)
+{
+	CityRallyPoints.Remove(CityId);
 }
 
 // =====================================================================
@@ -1208,7 +1244,13 @@ void UCoMCitySubsystem::ProcessBuilding(FCoMCityData& City)
 
 void UCoMCitySubsystem::ProcessCityProduction(FCoMCityData& City)
 {
-	// If the queue is empty, fall back to legacy single-item processing.
+	// If the queue is empty, try auto-enqueue from city focus governor.
+	if (City.ProductionQueue.Num() == 0)
+	{
+		AutoEnqueueForFocus(City);
+	}
+
+	// If still empty after auto-enqueue, fall back to legacy single-item processing.
 	if (City.ProductionQueue.Num() == 0)
 	{
 		ProcessBuilding(City);
@@ -1421,15 +1463,28 @@ int32 UCoMCitySubsystem::SpawnRecruitedUnit(const FCoMCityData& City, FName Unit
 	}
 
 	// Add to garrison army if one exists, otherwise create one.
+	int32 TargetArmyId = INDEX_NONE;
 	if (City.GarrisonArmyID >= 0)
 	{
 		UnitSub->AddUnitToArmy(UnitId, City.GarrisonArmyID);
+		TargetArmyId = City.GarrisonArmyID;
 	}
 	else
 	{
 		const int32 ArmyId = UnitSub->CreateArmy(
 			City.OwnerWizardIndex, City.Plane, City.Layer, City.Position);
 		UnitSub->AddUnitToArmy(UnitId, ArmyId);
+		TargetArmyId = ArmyId;
+	}
+
+	// If a rally point is set, auto-move the new army toward it.
+	if (TargetArmyId != INDEX_NONE)
+	{
+		const FIntPoint* RallyPt = CityRallyPoints.Find(City.CityID);
+		if (RallyPt && *RallyPt != City.Position)
+		{
+			UnitSub->MoveArmy(TargetArmyId, *RallyPt);
+		}
 	}
 
 	return UnitId;
@@ -1481,4 +1536,197 @@ void UCoMCitySubsystem::ImportAll(const TArray<FCoMCityData>& InCities, int32 In
 	}
 	NextCityID = InNextCityID;
 	UE_LOG(LogTemp, Log, TEXT("[CitySubsystem] ImportAll: %d cities imported."), AllCities.Num());
+}
+
+// =====================================================================
+// City Governor / Auto-Build
+// =====================================================================
+
+void UCoMCitySubsystem::SetCityFocus(int32 CityId, ECoMCityFocus Focus)
+{
+	if (Focus == ECoMCityFocus::Manual)
+	{
+		CityFocusMap.Remove(CityId);
+	}
+	else
+	{
+		CityFocusMap.Add(CityId, Focus);
+	}
+}
+
+ECoMCityFocus UCoMCitySubsystem::GetCityFocus(int32 CityId) const
+{
+	if (const ECoMCityFocus* Found = CityFocusMap.Find(CityId))
+	{
+		return *Found;
+	}
+	return ECoMCityFocus::Manual;
+}
+
+TArray<FName> UCoMCitySubsystem::GetFocusBuildingPriority(ECoMCityFocus Focus)
+{
+	TArray<FName> Priority;
+
+	switch (Focus)
+	{
+	case ECoMCityFocus::BalancedGrowth:
+		Priority = {
+			FName(TEXT("Granary")),
+			FName(TEXT("Marketplace")),
+			FName(TEXT("Library")),
+			FName(TEXT("Farmers_Guild")),
+			FName(TEXT("Shrine")),
+			FName(TEXT("Temple")),
+			FName(TEXT("Smithy")),
+			FName(TEXT("Bank")),
+			FName(TEXT("Builders_Hall")),
+			FName(TEXT("Cathedral"))
+		};
+		break;
+
+	case ECoMCityFocus::Military:
+		Priority = {
+			FName(TEXT("Barracks")),
+			FName(TEXT("Stable")),
+			FName(TEXT("Armory")),
+			FName(TEXT("Fighters_Guild")),
+			FName(TEXT("War_College")),
+			FName(TEXT("Smithy"))
+		};
+		break;
+
+	case ECoMCityFocus::Economy:
+		Priority = {
+			FName(TEXT("Marketplace")),
+			FName(TEXT("Bank")),
+			FName(TEXT("Merchants_Guild")),
+			FName(TEXT("Granary")),
+			FName(TEXT("Shrine")),
+			FName(TEXT("Temple"))
+		};
+		break;
+
+	case ECoMCityFocus::Research:
+		Priority = {
+			FName(TEXT("Library")),
+			FName(TEXT("Mage_Tower")),
+			FName(TEXT("Wizard_Guild")),
+			FName(TEXT("Sages_Guild")),
+			FName(TEXT("Observatory")),
+			FName(TEXT("Shrine"))
+		};
+		break;
+
+	case ECoMCityFocus::Production:
+		Priority = {
+			FName(TEXT("Smithy")),
+			FName(TEXT("Enchanter_Workshop")),
+			FName(TEXT("Builders_Hall")),
+			FName(TEXT("Miners_Guild")),
+			FName(TEXT("Granary")),
+			FName(TEXT("Marketplace"))
+		};
+		break;
+
+	default:
+		break;
+	}
+
+	return Priority;
+}
+
+TArray<FName> UCoMCitySubsystem::GetMilitaryUnitCycle()
+{
+	return {
+		FName(TEXT("Swordsmen")),
+		FName(TEXT("Cavalry")),
+		FName(TEXT("Halberdiers")),
+		FName(TEXT("Cavalry")),
+		FName(TEXT("Bowmen")),
+		FName(TEXT("Pikemen"))
+	};
+}
+
+void UCoMCitySubsystem::AutoEnqueueForFocus(FCoMCityData& City)
+{
+	const ECoMCityFocus Focus = GetCityFocus(City.CityID);
+	if (Focus == ECoMCityFocus::Manual)
+	{
+		return;
+	}
+
+	// Get available buildings and units for this city.
+	const TArray<FName> AvailableBuildings = GetAvailableBuildings(City.CityID);
+	const TArray<FName> AvailableUnits = GetAvailableUnits(City.CityID);
+
+	// Try to enqueue a building from the focus priority list.
+	const TArray<FName> BuildingPriority = GetFocusBuildingPriority(Focus);
+	for (const FName& BuildingID : BuildingPriority)
+	{
+		// Skip if already built.
+		if (CityHasBuilding(City, BuildingID))
+		{
+			continue;
+		}
+		// Skip if not available (prerequisites not met).
+		if (!AvailableBuildings.Contains(BuildingID))
+		{
+			continue;
+		}
+		// Enqueue it.
+		AddToQueue(City.CityID, BuildingID, /*bIsUnit=*/false);
+
+		const FText Msg = FText::FromString(FString::Printf(
+			TEXT("[Auto] %s queued in %s (%s focus)"),
+			*BuildingID.ToString(), *City.CityName.ToString(),
+			*StaticEnum<ECoMCityFocus>()->GetDisplayNameTextByValue(
+				static_cast<int64>(Focus)).ToString()));
+		OnProductionNotification.Broadcast(City.CityID, Msg);
+		return;
+	}
+
+	// For Military focus: if all priority buildings are built, queue a unit.
+	if (Focus == ECoMCityFocus::Military && AvailableUnits.Num() > 0)
+	{
+		const TArray<FName> UnitCycle = GetMilitaryUnitCycle();
+		for (const FName& UnitID : UnitCycle)
+		{
+			if (AvailableUnits.Contains(UnitID))
+			{
+				AddToQueue(City.CityID, UnitID, /*bIsUnit=*/true);
+
+				const FText Msg = FText::FromString(FString::Printf(
+					TEXT("[Auto] %s recruitment queued in %s (Military focus)"),
+					*UnitID.ToString(), *City.CityName.ToString()));
+				OnProductionNotification.Broadcast(City.CityID, Msg);
+				return;
+			}
+		}
+
+		// Fallback: queue whatever unit is available.
+		const FName& FallbackUnit = AvailableUnits[0];
+		AddToQueue(City.CityID, FallbackUnit, /*bIsUnit=*/true);
+
+		const FText Msg = FText::FromString(FString::Printf(
+			TEXT("[Auto] %s recruitment queued in %s (Military focus)"),
+			*FallbackUnit.ToString(), *City.CityName.ToString()));
+		OnProductionNotification.Broadcast(City.CityID, Msg);
+		return;
+	}
+
+	// For non-Military focuses: if all priority buildings are built, pick the
+	// first available building not yet constructed.
+	for (const FName& BuildingID : AvailableBuildings)
+	{
+		if (!CityHasBuilding(City, BuildingID))
+		{
+			AddToQueue(City.CityID, BuildingID, /*bIsUnit=*/false);
+
+			const FText Msg = FText::FromString(FString::Printf(
+				TEXT("[Auto] %s queued in %s (fallback)"),
+				*BuildingID.ToString(), *City.CityName.ToString()));
+			OnProductionNotification.Broadcast(City.CityID, Msg);
+			return;
+		}
+	}
 }

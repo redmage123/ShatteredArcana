@@ -5,6 +5,7 @@
 
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
+#include "Components/CheckBox.h"
 #include "Components/ScrollBox.h"
 #include "Components/ProgressBar.h"
 #include "Components/HorizontalBox.h"
@@ -38,6 +39,12 @@ void UCoMSpellBookWidget::NativeConstruct()
 	if (ManaAllocationSlider)
 	{
 		ManaAllocationSlider->OnValueChanged.AddDynamic(this, &UCoMSpellBookWidget::OnManaSliderChanged);
+	}
+
+	// Bind auto-research checkbox.
+	if (AutoResearchCheckBox)
+	{
+		AutoResearchCheckBox->OnCheckStateChanged.AddDynamic(this, &UCoMSpellBookWidget::OnAutoResearchToggled);
 	}
 }
 
@@ -106,6 +113,29 @@ void UCoMSpellBookWidget::SetWizardId(int32 WizardId)
 		float SliderValue = static_cast<float>(State.ResearchAllocation) /
 			static_cast<float>(FMath::Max(State.ManaPerTurn, 1));
 		ManaAllocationSlider->SetValue(FMath::Clamp(SliderValue, 0.f, 1.f));
+	}
+
+	// Auto-research toggle.
+	if (AutoResearchCheckBox)
+	{
+		AutoResearchCheckBox->SetIsChecked(MagicSub->IsAutoResearchEnabled(WizardId));
+	}
+	if (AutoResearchLabel)
+	{
+		if (MagicSub->IsAutoResearchEnabled(WizardId) && State.CurrentResearchSpell != NAME_None)
+		{
+			AutoResearchLabel->SetText(FText::FromString(
+				FString::Printf(TEXT("Auto-researching: %s"),
+					*State.CurrentResearchSpell.ToString())));
+		}
+		else if (MagicSub->IsAutoResearchEnabled(WizardId))
+		{
+			AutoResearchLabel->SetText(FText::FromString(TEXT("Auto-Research: ON")));
+		}
+		else
+		{
+			AutoResearchLabel->SetText(FText::FromString(TEXT("Auto-Research: OFF")));
+		}
 	}
 
 	// Default to the wizard's primary realm.
@@ -269,3 +299,27 @@ void UCoMSpellBookWidget::OnArcaneTabClicked()  { SelectRealm(ECoMSpellRealm::Ar
 void UCoMSpellBookWidget::OnBindingTabClicked() { SelectRealm(ECoMSpellRealm::Binding); }
 void UCoMSpellBookWidget::OnSpiritTabClicked()  { SelectRealm(ECoMSpellRealm::Spirit); }
 void UCoMSpellBookWidget::OnGlamourTabClicked() { SelectRealm(ECoMSpellRealm::Glamour); }
+
+void UCoMSpellBookWidget::OnAutoResearchToggled(bool bIsChecked)
+{
+	UCoMMagicSubsystem* MagicSub = GetMagicSubsystem();
+	if (!MagicSub || CurrentWizardId < 0)
+	{
+		return;
+	}
+
+	MagicSub->SetAutoResearch(CurrentWizardId, bIsChecked);
+
+	// If enabling and nothing is being researched, auto-pick now.
+	if (bIsChecked)
+	{
+		FCoMWizardMagicState& State = MagicSub->GetWizardMagic(CurrentWizardId);
+		if (State.CurrentResearchSpell.IsNone())
+		{
+			MagicSub->AutoPickResearch(CurrentWizardId);
+		}
+	}
+
+	// Refresh display.
+	SetWizardId(CurrentWizardId);
+}
