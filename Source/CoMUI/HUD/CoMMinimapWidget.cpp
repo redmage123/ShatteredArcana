@@ -109,7 +109,7 @@ int32 UCoMMinimapWidget::NativePaint(
 		return Result;
 	}
 
-	const bool bIsEnabled = bParentEnabled && IsEnabled();
+	const bool bIsEnabled = bParentEnabled && GetIsEnabled();
 	const ESlateDrawEffect DrawEffects = bIsEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
 
 	// Draw 2px gold border around the entire widget.

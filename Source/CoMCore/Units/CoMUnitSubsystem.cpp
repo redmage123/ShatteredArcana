@@ -5,6 +5,7 @@
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
 #include "CoMCore/World/CoMWeatherSubsystem.h"
 #include "CoMCore/Data/CoMUnitSpecDataAsset.h"
+#include "CoMCore/Data/CoMUnitDatabase.h"
 #include "CoMCore/CoreTypes/CoMConstants.h"
 #include "CoMCore/Economy/CoMCitySubsystem.h"
 #include "CoMCore/Audio/CoMAudioSubsystem.h"
@@ -41,8 +42,15 @@ void UCoMUnitSubsystem::Deinitialize()
 
 int32 UCoMUnitSubsystem::SpawnUnit(int32 SpecID, ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position, int32 OwnerWizard)
 {
-	const UCoMUnitSpecDataAsset* Spec = ResolveSpec(SpecID);
-	if (!Spec)
+	const FName SpecFName = FName(*FString::FromInt(SpecID));
+
+	// Try static C++ database first
+	bool bFromDatabase = CoMUnitDatabase::Contains(SpecFName);
+
+	// Then try editor-authored data asset
+	const UCoMUnitSpecDataAsset* Spec = bFromDatabase ? nullptr : ResolveSpec(SpecID);
+
+	if (!bFromDatabase && !Spec)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("UCoMUnitSubsystem::SpawnUnit - unknown SpecID %d"), SpecID);
 		return INDEX_NONE;
@@ -52,12 +60,27 @@ int32 UCoMUnitSubsystem::SpawnUnit(int32 SpecID, ECoMPlane Plane, ECoMMapLayer L
 
 	FCoMUnitInstance& Unit = AllUnits.Add(UnitID);
 	Unit.UnitID           = UnitID;
-	Unit.SpecID           = FName(*FString::FromInt(SpecID));
+	Unit.SpecID           = SpecFName;
 	Unit.OwnerWizardIndex = OwnerWizard;
-	Unit.CurrentHP        = Spec->HitPoints;
 	Unit.Experience       = 0;
 	Unit.Level            = 1;
-	Unit.bFlying          = Spec->bFlying;
+
+	if (bFromDatabase)
+	{
+		const FCoMUnitSpecInfo& DBSpec = CoMUnitDatabase::GetUnitSpec(SpecFName);
+		Unit.CurrentHP = DBSpec.HitPoints;
+		Unit.MaxHP     = DBSpec.HitPoints;
+		Unit.bFlying   = DBSpec.bFlying;
+		Unit.bIsHero   = DBSpec.bHero;
+		Unit.bIsSettler = DBSpec.bSettler;
+	}
+	else
+	{
+		Unit.CurrentHP = Spec->HitPoints;
+		Unit.MaxHP     = Spec->HitPoints;
+		Unit.bFlying   = Spec->bFlying;
+		Unit.bIsHero   = Spec->bHero;
+	}
 
 	return UnitID;
 }

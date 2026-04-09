@@ -2,6 +2,7 @@
 
 #include "CoMCombatSubsystem.h"
 #include "CoMCore/Units/CoMUnitSubsystem.h"
+#include "CoMCore/Data/CoMUnitDatabase.h"
 #include "CoMCore/Framework/CoMGameInstance.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -202,10 +203,57 @@ TArray<FCoMCombatUnitState> UCoMCombatSubsystem::BuildCombatUnits(int32 ArmyID) 
 {
 	TArray<FCoMCombatUnitState> Result;
 
-	// TODO: Query UCoMArmySubsystem for the unit roster of ArmyID,
-	// then query UCoMUnitSubsystem for each unit's stats. For now we
-	// return an empty array — callers that need test data should
-	// populate FCoMCombatUnitState arrays directly.
+	UCoMUnitSubsystem* UnitSub = GetGameInstance() ? GetGameInstance()->GetSubsystem<UCoMUnitSubsystem>() : nullptr;
+	if (!UnitSub)
+	{
+		return Result;
+	}
+
+	const FCoMArmyGroup* Army = UnitSub->GetArmy(ArmyID);
+	if (!Army)
+	{
+		return Result;
+	}
+
+	for (const int32 UnitID : Army->UnitIDs)
+	{
+		const FCoMUnitInstance* UnitInst = UnitSub->GetUnit(UnitID);
+		if (!UnitInst)
+		{
+			continue;
+		}
+
+		FCoMCombatUnitState CombatUnit;
+		CombatUnit.UnitID        = UnitID;
+		CombatUnit.OwnerWizardID = UnitInst->OwnerWizardIndex;
+		CombatUnit.bIsHero       = UnitInst->bIsHero;
+
+		// Pull real stats from the unit database
+		if (CoMUnitDatabase::Contains(UnitInst->SpecID))
+		{
+			const FCoMUnitSpecInfo& Spec = CoMUnitDatabase::GetUnitSpec(UnitInst->SpecID);
+			CombatUnit.MeleeAttack       = FFixed64(Spec.MeleeAttack);
+			CombatUnit.RangedAttack      = FFixed64(Spec.RangedAttack);
+			CombatUnit.Defense           = FFixed64(Spec.Defense);
+			CombatUnit.HitPoints         = UnitInst->CurrentHP;
+			CombatUnit.MaxHP             = Spec.HitPoints;
+			CombatUnit.FiguresRemaining  = Spec.Figures;
+			CombatUnit.bIsRanged         = (Spec.RangedAttack > 0);
+		}
+		else
+		{
+			// Fallback to unit instance data with defaults
+			CombatUnit.MeleeAttack       = FFixed64(3);
+			CombatUnit.RangedAttack      = FFixed64(0);
+			CombatUnit.Defense           = FFixed64(3);
+			CombatUnit.HitPoints         = UnitInst->CurrentHP;
+			CombatUnit.MaxHP             = UnitInst->MaxHP;
+			CombatUnit.FiguresRemaining  = 1;
+			CombatUnit.bIsRanged         = false;
+		}
+
+		Result.Add(CombatUnit);
+	}
 
 	return Result;
 }

@@ -1,5 +1,6 @@
 
 #include "CoMMagicSubsystem.h"
+#include "CoMCore/Data/CoMSpellDatabase.h"
 
 
 
@@ -159,16 +160,29 @@ int32 UCoMMagicSubsystem::CalculateSpellPower(int32 WizardId, FName SpellId) con
 {
     const FCoMWizardMagicState* State = WizardMagicStates.Find(WizardId);
     if (!State) return 0;
-    int32 BasePower = 10;
+
+    // Base power scales with spell tier
+    FCoMSpellInfo SpellInfo = CoMSpellDatabase::GetSpellInfo(SpellId);
+    int32 BasePower = SpellInfo.CastingCost; // Higher tier = more base power
+
     // Casting skill multiplier (1.0x at skill 10, 3.0x at skill 100)
     float SkillMult = 1.0f + (State->CastingSkill - 10) * 0.022f;
-    // Spell books bonus (more books in the spell's realm = more power)
-    // Would need spell->realm lookup in full implementation
+
+    // Spell books bonus: more books in the spell's realm = more power
     int32 BookBonus = 0;
+    if (const int32* BookCount = State->SpellBooks.Find(SpellInfo.Realm))
+    {
+        BookBonus = (*BookCount) * 3; // 3 power per book in matching realm
+    }
+    // Smaller bonus from off-realm books
     for (const auto& Pair : State->SpellBooks)
     {
-        BookBonus += Pair.Value * 2;
+        if (Pair.Key != SpellInfo.Realm)
+        {
+            BookBonus += Pair.Value; // 1 power per off-realm book
+        }
     }
+
     return FMath::RoundToInt(BasePower * SkillMult) + BookBonus;
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -179,11 +193,63 @@ TArray<FName> UCoMMagicSubsystem::GetResearchableSpells(int32 WizardId) const
     TArray<FName> Available;
     const FCoMWizardMagicState* State = WizardMagicStates.Find(WizardId);
     if (!State) return Available;
-    // In full implementation, this would check:
-    // 1. Spell data assets for realm/tier requirements
-    // 2. Number of spell books the wizard has in each realm
-    // 3. Exclude already-known spells
-    // For now, return empty — spell data assets define available spells
+
+    // Check all spells in the database
+    TArray<FName> AllSpells = CoMSpellDatabase::GetAllSpellIDs();
+    for (const FName& SpellId : AllSpells)
+    {
+        // Skip already-known spells
+        if (State->KnownSpells.Contains(SpellId))
+        {
+            continue;
+        }
+
+        // Skip the spell currently being researched
+        if (State->CurrentResearchSpell == SpellId)
+        {
+            continue;
+        }
+
+        FCoMSpellInfo Info = CoMSpellDatabase::GetSpellInfo(SpellId);
+
+        // Check if the wizard has spell books in the right realm
+        // Arcane spells are always available
+        if (Info.Realm != ECoMSpellRealm::Arcane)
+        {
+            const int32* BookCount = State->SpellBooks.Find(Info.Realm);
+            if (!BookCount || *BookCount <= 0)
+            {
+                // Also check primary/secondary realm
+                if (State->PrimaryRealm != Info.Realm && State->SecondaryRealm != Info.Realm)
+                {
+                    continue;
+                }
+            }
+
+            // Tier requirements: Common=1 book, Uncommon=2, Rare=4, VeryRare=6
+            int32 BooksInRealm = 0;
+            if (BookCount) BooksInRealm = *BookCount;
+            if (State->PrimaryRealm == Info.Realm) BooksInRealm = FMath::Max(BooksInRealm, 1);
+
+            int32 RequiredBooks = 1;
+            switch (Info.Rarity)
+            {
+            case ECoMSpellRarity::Common:    RequiredBooks = 1; break;
+            case ECoMSpellRarity::Uncommon:  RequiredBooks = 2; break;
+            case ECoMSpellRarity::Rare:      RequiredBooks = 4; break;
+            case ECoMSpellRarity::VeryRare:  RequiredBooks = 6; break;
+            default: break;
+            }
+
+            if (BooksInRealm < RequiredBooks)
+            {
+                continue;
+            }
+        }
+
+        Available.Add(SpellId);
+    }
+
     return Available;
 }
 bool UCoMMagicSubsystem::StartResearch(int32 WizardId, FName SpellId)
@@ -198,8 +264,9 @@ int32 UCoMMagicSubsystem::GetResearchProgress(int32 WizardId) const
 {
     const FCoMWizardMagicState* State = WizardMagicStates.Find(WizardId);
     if (!State || State->CurrentResearchSpell.IsNone()) return 0;
-    // Would need spell research cost from data asset
-    int32 TotalCost = 100; // Placeholder
+    // Look up research cost from spell database
+    FCoMSpellInfo SpellInfo = CoMSpellDatabase::GetSpellInfo(State->CurrentResearchSpell);
+    int32 TotalCost = SpellInfo.ResearchCost;
     if (TotalCost <= 0) return 100;
     return FMath::Clamp(State->ResearchProgress * 100 / TotalCost, 0, 100);
 }
@@ -208,7 +275,9 @@ int32 UCoMMagicSubsystem::GetResearchETATurns(int32 WizardId) const
     const FCoMWizardMagicState* State = WizardMagicStates.Find(WizardId);
     if (!State || State->CurrentResearchSpell.IsNone()) return -1;
     if (State->ResearchAllocation <= 0) return -1;
-    int32 TotalCost = 100; // Placeholder
+    // Look up research cost from spell database
+    FCoMSpellInfo SpellInfo = CoMSpellDatabase::GetSpellInfo(State->CurrentResearchSpell);
+    int32 TotalCost = SpellInfo.ResearchCost;
     int32 Remaining = TotalCost - State->ResearchProgress;
     return FMath::CeilToInt(static_cast<float>(Remaining) / State->ResearchAllocation);
 }
@@ -370,8 +439,13 @@ void UCoMMagicSubsystem::ProcessTurn(int32 CurrentTurn)
         FCoMWizardMagicState& State = Pair.Value;
         // 1. Calculate mana income
         int32 Income = CalculateManaIncome(Pair.Key);
-        // 2. Subtract maintenance costs
-        int32 Maintenance = State.ActiveEnchantments.Num() * 5; // 5 mana per enchantment
+        // 2. Subtract maintenance costs — look up actual upkeep from spell database
+        int32 Maintenance = 0;
+        for (const FName& EnchantID : State.ActiveEnchantments)
+        {
+            FCoMSpellInfo EnchInfo = CoMSpellDatabase::GetSpellInfo(EnchantID);
+            Maintenance += (EnchInfo.UpkeepMana > 0) ? EnchInfo.UpkeepMana : 5;
+        }
         State.MaintenanceCost = Maintenance;
         // 3. Subtract research allocation
         int32 ResearchSpend = FMath::Clamp(FMath::Min(State.ResearchAllocation, Income - Maintenance), 0, Income);
@@ -382,9 +456,13 @@ void UCoMMagicSubsystem::ProcessTurn(int32 CurrentTurn)
         // 5. Force-dismiss enchantments if mana would go negative
         while (ProjectedMana < 0 && State.ActiveEnchantments.Num() > 0)
         {
+            // Dismiss the last enchantment and recoup its maintenance
+            FName DismissedSpell = State.ActiveEnchantments.Last();
+            FCoMSpellInfo DismissedInfo = CoMSpellDatabase::GetSpellInfo(DismissedSpell);
+            int32 DismissedUpkeep = (DismissedInfo.UpkeepMana > 0) ? DismissedInfo.UpkeepMana : 5;
             State.ActiveEnchantments.RemoveAt(State.ActiveEnchantments.Num() - 1);
-            Maintenance -= 5;
-            ProjectedMana += 5;
+            Maintenance -= DismissedUpkeep;
+            ProjectedMana += DismissedUpkeep;
         }
         State.CurrentMana = FMath::Clamp(ProjectedMana, 0, State.MaxMana);
         State.MaintenanceCost = Maintenance;
@@ -392,7 +470,8 @@ void UCoMMagicSubsystem::ProcessTurn(int32 CurrentTurn)
         if (ResearchSpend > 0 && !State.CurrentResearchSpell.IsNone())
         {
             State.ResearchProgress += ResearchSpend;
-            int32 TotalCost = 100; // Would come from spell data asset
+            FCoMSpellInfo ResearchSpellInfo = CoMSpellDatabase::GetSpellInfo(State.CurrentResearchSpell);
+            int32 TotalCost = ResearchSpellInfo.ResearchCost;
             if (State.ResearchProgress >= TotalCost)
             {
                 // Research complete!

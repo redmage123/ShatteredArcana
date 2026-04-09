@@ -210,16 +210,16 @@ private:
 
 	// Audio value labels
 	UPROPERTY()
-	TObjectPtr<UTextBlock> MasterVolumeText;
+	UTextBlock* MasterVolumeText = nullptr;
 
 	UPROPERTY()
-	TObjectPtr<UTextBlock> MusicVolumeText;
+	UTextBlock* MusicVolumeText = nullptr;
 
 	UPROPERTY()
-	TObjectPtr<UTextBlock> SFXVolumeText;
+	UTextBlock* SFXVolumeText = nullptr;
 
 	UPROPERTY()
-	TObjectPtr<UTextBlock> AmbientVolumeText;
+	UTextBlock* AmbientVolumeText = nullptr;
 
 	// Graphics widgets
 	UPROPERTY()

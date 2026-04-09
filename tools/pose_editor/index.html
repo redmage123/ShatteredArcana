@@ -127,7 +127,11 @@ statusEl.textContent = 'Building knight...';
 // The FBX load is kept as a fallback if buildStandaloneKnight isn't available yet.
 setTimeout(() => {
   if (window.buildStandaloneKnight) {
-    const boneCount = window.buildStandaloneKnight({ resolution: 64 });
+    const boneCount = window.buildStandaloneKnight({
+      resolution: 72,
+      steelColor: 0xc8d0dc,
+      goldColor: 0xf0c040,
+    });
     if (boneCount > 0) {
       buildBoneList();
       statusEl.textContent = `SDF Knight: ${boneCount} bones. Click bone to select.`;

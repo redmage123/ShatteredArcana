@@ -9,6 +9,8 @@
 #include "CoMCore/Data/CoMBuildingDataAsset.h"
 #include "CoMCore/Data/CoMUnitSpecDataAsset.h"
 #include "CoMCore/Data/CoMRaceDataAsset.h"
+#include "CoMCore/Data/CoMBuildingDatabase.h"
+#include "CoMCore/Data/CoMUnitDatabase.h"
 #include "Engine/AssetManager.h"
 
 // =====================================================================
@@ -472,11 +474,6 @@ TArray<FName> UCoMCitySubsystem::GetAvailableBuildings(int32 CityId) const
 		return Result;
 	}
 
-	UAssetManager& AM = UAssetManager::Get();
-	const FPrimaryAssetType BuildingType(TEXT("CoMBuilding"));
-	TArray<FPrimaryAssetId> AssetList;
-	AM.GetPrimaryAssetIdList(BuildingType, AssetList);
-
 	// Collect IDs already in queue (to avoid duplicate queueing).
 	TSet<FName> QueuedBuildingIDs;
 	for (const FCoMProductionItem& QItem : City->ProductionQueue)
@@ -487,44 +484,96 @@ TArray<FName> UCoMCitySubsystem::GetAvailableBuildings(int32 CityId) const
 		}
 	}
 
-	for (const FPrimaryAssetId& AssetId : AssetList)
+	// --- Static C++ database buildings (primary source) ---
 	{
-		FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
-		const UCoMBuildingDataAsset* Building = Cast<UCoMBuildingDataAsset>(Path.ResolveObject());
-		if (!Building)
+		TArray<FName> AllDBBuildings = CoMBuildingDatabase::GetAllBuildingIDs();
+		for (const FName& BID : AllDBBuildings)
 		{
-			continue;
-		}
-
-		// Skip if already built.
-		if (CityHasBuilding(*City, Building->BuildingID))
-		{
-			continue;
-		}
-
-		// Skip if already in queue.
-		if (QueuedBuildingIDs.Contains(Building->BuildingID))
-		{
-			continue;
-		}
-
-		// Check prerequisites: all required buildings must already be built.
-		bool bPrereqsMet = true;
-		for (const FName& ReqID : Building->RequiredBuildingIDs)
-		{
-			if (!CityHasBuilding(*City, ReqID))
+			// Skip if already built.
+			if (CityHasBuilding(*City, BID))
 			{
-				bPrereqsMet = false;
-				break;
+				continue;
 			}
-		}
 
-		if (!bPrereqsMet)
+			// Skip if already in queue.
+			if (QueuedBuildingIDs.Contains(BID))
+			{
+				continue;
+			}
+
+			// Check prerequisites from the database.
+			const FCoMBuildingInfo& Info = CoMBuildingDatabase::GetBuildingInfo(BID);
+			bool bPrereqsMet = true;
+			for (const FName& ReqID : Info.Prerequisites)
+			{
+				if (!CityHasBuilding(*City, ReqID))
+				{
+					bPrereqsMet = false;
+					break;
+				}
+			}
+
+			if (!bPrereqsMet)
+			{
+				continue;
+			}
+
+			Result.Add(BID);
+		}
+	}
+
+	// --- Editor-authored data asset buildings (fallback/supplement) ---
+	{
+		UAssetManager& AM = UAssetManager::Get();
+		const FPrimaryAssetType BuildingType(TEXT("CoMBuilding"));
+		TArray<FPrimaryAssetId> AssetList;
+		AM.GetPrimaryAssetIdList(BuildingType, AssetList);
+
+		for (const FPrimaryAssetId& AssetId : AssetList)
 		{
-			continue;
-		}
+			FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
+			const UCoMBuildingDataAsset* Building = Cast<UCoMBuildingDataAsset>(Path.ResolveObject());
+			if (!Building)
+			{
+				continue;
+			}
 
-		Result.Add(Building->BuildingID);
+			// Skip if already added from static database.
+			if (Result.Contains(Building->BuildingID))
+			{
+				continue;
+			}
+
+			// Skip if already built.
+			if (CityHasBuilding(*City, Building->BuildingID))
+			{
+				continue;
+			}
+
+			// Skip if already in queue.
+			if (QueuedBuildingIDs.Contains(Building->BuildingID))
+			{
+				continue;
+			}
+
+			// Check prerequisites: all required buildings must already be built.
+			bool bPrereqsMet = true;
+			for (const FName& ReqID : Building->RequiredBuildingIDs)
+			{
+				if (!CityHasBuilding(*City, ReqID))
+				{
+					bPrereqsMet = false;
+					break;
+				}
+			}
+
+			if (!bPrereqsMet)
+			{
+				continue;
+			}
+
+			Result.Add(Building->BuildingID);
+		}
 	}
 
 	// Add settler option if population >= 2.
@@ -546,60 +595,127 @@ TArray<FName> UCoMCitySubsystem::GetAvailableUnits(int32 CityId) const
 		return Result;
 	}
 
-	UAssetManager& AM = UAssetManager::Get();
 	TSet<FName> EnabledUnitSpecIDs;
 
-	// 1. Gather units enabled by the city's buildings.
-	const FPrimaryAssetType BuildingType(TEXT("CoMBuilding"));
-	TArray<FPrimaryAssetId> BuildingAssets;
-	AM.GetPrimaryAssetIdList(BuildingType, BuildingAssets);
-
-	for (const FPrimaryAssetId& AssetId : BuildingAssets)
+	// --- Static C++ database: check units whose required building is present ---
 	{
-		FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
-		const UCoMBuildingDataAsset* Building = Cast<UCoMBuildingDataAsset>(Path.ResolveObject());
-		if (!Building)
+		// First, collect which building tags the city has
+		TSet<FString> CityBuildingTags;
+		for (const int32 BldID : City->BuildingIDs)
 		{
-			continue;
-		}
-
-		// Only consider buildings the city actually has.
-		if (!CityHasBuilding(*City, Building->BuildingID))
-		{
-			continue;
-		}
-
-		for (const TSoftObjectPtr<UCoMUnitSpecDataAsset>& UnitRef : Building->EnabledUnits)
-		{
-			if (const UCoMUnitSpecDataAsset* UnitSpec = UnitRef.Get())
+			TArray<FName> AllBuildings = CoMBuildingDatabase::GetAllBuildingIDs();
+			for (const FName& BName : AllBuildings)
 			{
-				EnabledUnitSpecIDs.Add(UnitSpec->UnitSpecID);
+				if (GetTypeHash(BName) == BldID)
+				{
+					// The building's EnablesUnitTag identifies what it unlocks
+					const FCoMBuildingInfo& Info = CoMBuildingDatabase::GetBuildingInfo(BName);
+					if (!Info.EnablesUnitTag.IsEmpty())
+					{
+						CityBuildingTags.Add(Info.EnablesUnitTag);
+					}
+					// Also add the building name itself as a tag for RequiredBuildingTag matching
+					CityBuildingTags.Add(BName.ToString());
+					break;
+				}
 			}
+		}
+
+		// Now find all units from the city's race whose required building is present
+		FString RaceTagStr = City->PrimaryRaceTag.ToString();
+		TArray<FName> AllUnits = CoMUnitDatabase::GetAllUnitSpecIDs();
+		for (const FName& UnitID : AllUnits)
+		{
+			const FCoMUnitSpecInfo& Spec = CoMUnitDatabase::GetUnitSpec(UnitID);
+
+			// Skip heroes and settlers (recruited differently)
+			if (Spec.bHero || Spec.bSettler)
+			{
+				continue;
+			}
+
+			// Check if the unit matches the city's race (or is race-neutral)
+			bool bRaceMatch = (Spec.RaceTag == TEXT("Any"));
+			if (!bRaceMatch)
+			{
+				// Match the race tag — either exact or partial match
+				bRaceMatch = RaceTagStr.Contains(Spec.RaceTag) || Spec.RaceTag.Contains(RaceTagStr);
+			}
+
+			if (!bRaceMatch)
+			{
+				continue;
+			}
+
+			// Check if the required building is present
+			if (!Spec.RequiredBuildingTag.IsEmpty())
+			{
+				if (!CityBuildingTags.Contains(Spec.RequiredBuildingTag))
+				{
+					continue;
+				}
+			}
+
+			EnabledUnitSpecIDs.Add(UnitID);
 		}
 	}
 
-	// 2. Add racial units if the race data asset can be resolved.
-	const FPrimaryAssetType RaceType(TEXT("CoMRace"));
-	TArray<FPrimaryAssetId> RaceAssets;
-	AM.GetPrimaryAssetIdList(RaceType, RaceAssets);
-
-	for (const FPrimaryAssetId& AssetId : RaceAssets)
+	// --- Editor-authored data assets (fallback/supplement) ---
 	{
-		FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
-		const UCoMRaceDataAsset* Race = Cast<UCoMRaceDataAsset>(Path.ResolveObject());
-		if (!Race || Race->RaceTag != City->PrimaryRaceTag)
-		{
-			continue;
-		}
+		UAssetManager& AM = UAssetManager::Get();
 
-		for (const TSoftObjectPtr<UCoMUnitSpecDataAsset>& UnitRef : Race->UniqueUnits)
+		// 1. Gather units enabled by the city's buildings via data assets.
+		const FPrimaryAssetType BuildingType(TEXT("CoMBuilding"));
+		TArray<FPrimaryAssetId> BuildingAssets;
+		AM.GetPrimaryAssetIdList(BuildingType, BuildingAssets);
+
+		for (const FPrimaryAssetId& AssetId : BuildingAssets)
 		{
-			if (const UCoMUnitSpecDataAsset* UnitSpec = UnitRef.Get())
+			FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
+			const UCoMBuildingDataAsset* Building = Cast<UCoMBuildingDataAsset>(Path.ResolveObject());
+			if (!Building)
 			{
-				EnabledUnitSpecIDs.Add(UnitSpec->UnitSpecID);
+				continue;
+			}
+
+			// Only consider buildings the city actually has.
+			if (!CityHasBuilding(*City, Building->BuildingID))
+			{
+				continue;
+			}
+
+			for (const TSoftObjectPtr<UCoMUnitSpecDataAsset>& UnitRef : Building->EnabledUnits)
+			{
+				if (const UCoMUnitSpecDataAsset* UnitSpec = UnitRef.Get())
+				{
+					EnabledUnitSpecIDs.Add(UnitSpec->UnitSpecID);
+				}
 			}
 		}
-		break; // Found the matching race.
+
+		// 2. Add racial units from data assets.
+		const FPrimaryAssetType RaceType(TEXT("CoMRace"));
+		TArray<FPrimaryAssetId> RaceAssets;
+		AM.GetPrimaryAssetIdList(RaceType, RaceAssets);
+
+		for (const FPrimaryAssetId& AssetId : RaceAssets)
+		{
+			FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
+			const UCoMRaceDataAsset* Race = Cast<UCoMRaceDataAsset>(Path.ResolveObject());
+			if (!Race || Race->RaceTag != City->PrimaryRaceTag)
+			{
+				continue;
+			}
+
+			for (const TSoftObjectPtr<UCoMUnitSpecDataAsset>& UnitRef : Race->UniqueUnits)
+			{
+				if (const UCoMUnitSpecDataAsset* UnitSpec = UnitRef.Get())
+				{
+					EnabledUnitSpecIDs.Add(UnitSpec->UnitSpecID);
+				}
+			}
+			break;
+		}
 	}
 
 	Result = EnabledUnitSpecIDs.Array();
@@ -688,7 +804,19 @@ int32 UCoMCitySubsystem::GetCityPopulationCap(int32 CityID) const
 		Cap = 5;
 	}
 
-	Cap += City->BuildingIDs.Num();
+	// Sum population cap bonuses from buildings (e.g., Granary +1, Aqueduct +2)
+	for (const int32 BldID : City->BuildingIDs)
+	{
+		TArray<FName> AllBuildings = CoMBuildingDatabase::GetAllBuildingIDs();
+		for (const FName& BName : AllBuildings)
+		{
+			if (GetTypeHash(BName) == BldID)
+			{
+				Cap += CoMBuildingDatabase::GetBuildingInfo(BName).PopCapBonus;
+				break;
+			}
+		}
+	}
 
 	return Cap;
 }
@@ -794,17 +922,45 @@ int32 UCoMCitySubsystem::ComputeTileFood(ECoMPlane Plane, ECoMMapLayer Layer,
 	case ECoMMapLayer::Surface:
 		switch (Tile->Terrain)
 		{
-		case ECoMTerrain::Grassland:   return 3;
-		case ECoMTerrain::Plains:      return 2;
-		case ECoMTerrain::Forest:      return 1;
-		case ECoMTerrain::River:       return 3;
-		case ECoMTerrain::Hills:       return 1;
-		case ECoMTerrain::Swamp:       return 1;
-		case ECoMTerrain::Desert:      return 0;
-		case ECoMTerrain::Tundra:      return 1;
-		case ECoMTerrain::Mountains:   return 0;
-		case ECoMTerrain::Ocean:       return 0;
-		case ECoMTerrain::Shore:       return 1;
+		case ECoMTerrain::Grassland:   return 2;  // Standard farmland
+		case ECoMTerrain::Plains:      return 2;  // Open plains, good for farming
+		case ECoMTerrain::Forest:      return 1;  // Forest: 1 food (+ 1 production handled in ComputeBaseProduction)
+		case ECoMTerrain::River:       return 3;  // Fertile river delta
+		case ECoMTerrain::Hills:       return 1;  // Hills: 1 food (+ 2 production)
+		case ECoMTerrain::Swamp:       return 1;  // Marshy food
+		case ECoMTerrain::Desert:      return 0;  // No food in desert
+		case ECoMTerrain::Tundra:      return 0;  // No food in tundra
+		case ECoMTerrain::Mountains:   return 0;  // Mountains: 0 food (+ 3 production)
+		case ECoMTerrain::Ocean:       return 0;  // No food (fishing requires Docks)
+		case ECoMTerrain::Shore:       return 1;  // Coastal fishing: 1 food + 1 gold
+		case ECoMTerrain::Savanna:     return 2;  // Savanna grazing
+		case ECoMTerrain::Jungle:      return 1;  // Jungle foraging
+		case ECoMTerrain::Badlands:    return 0;  // Barren terrain
+		case ECoMTerrain::EnchantedForest: return 2; // Magic-infused food
+		case ECoMTerrain::CrystalLake: return 1;  // Lake fishing
+		// Noctharion plane
+		case ECoMTerrain::ShadowForest:    return 1;
+		case ECoMTerrain::ObsidianPlains:  return 0;
+		case ECoMTerrain::TwilightHills:   return 1;
+		// Verdantis plane — lush, extra food
+		case ECoMTerrain::MegaJungle:      return 3;
+		case ECoMTerrain::FungalForest:    return 2;
+		case ECoMTerrain::LivingSwamp:     return 2;
+		case ECoMTerrain::PollenPlains:    return 3;
+		case ECoMTerrain::AmberCoast:      return 2;
+		case ECoMTerrain::VineHills:       return 2;
+		// Infernyx — harsh, little food
+		case ECoMTerrain::LavaFields:      return 0;
+		case ECoMTerrain::EmberPlains:     return 0;
+		case ECoMTerrain::CinderHills:     return 0;
+		// Aethermist — moderate
+		case ECoMTerrain::CloudPlains:     return 1;
+		case ECoMTerrain::DreamMeadows:    return 2;
+		// Feywild — moderate to high
+		case ECoMTerrain::EternalForest:   return 2;
+		case ECoMTerrain::ShiftingGlades:  return 2;
+		case ECoMTerrain::TwilightMeadows: return 2;
+		case ECoMTerrain::BlossomPeaks:    return 1;
 		default:                       return 0;
 		}
 
@@ -833,26 +989,103 @@ int32 UCoMCitySubsystem::ComputeTileFood(ECoMPlane Plane, ECoMMapLayer Layer,
 
 int32 UCoMCitySubsystem::ComputeBaseGold(const FCoMCityData& City) const
 {
+	// Base gold from population: 1 gold per 2 population (taxes)
 	int32 Gold = City.Population / 2;
-	Gold += City.BuildingIDs.Num();
+
+	// Sum building gold bonuses from the static database
+	int32 GoldMultPercent = 100;
+	for (const int32 BldID : City.BuildingIDs)
+	{
+		// Reverse the hash to find building info — iterate all known buildings
+		// BuildingIDs stores GetTypeHash(FName), so we check each DB entry
+		TArray<FName> AllBuildings = CoMBuildingDatabase::GetAllBuildingIDs();
+		for (const FName& BName : AllBuildings)
+		{
+			if (GetTypeHash(BName) == BldID)
+			{
+				const FCoMBuildingInfo& Info = CoMBuildingDatabase::GetBuildingInfo(BName);
+				Gold += Info.GoldBonus;
+				if (Info.GoldMultiplierPercent > 100)
+				{
+					GoldMultPercent = FMath::Max(GoldMultPercent, Info.GoldMultiplierPercent);
+				}
+				break;
+			}
+		}
+	}
+
+	// Apply percentage multiplier (e.g., Bank +50%)
+	if (GoldMultPercent > 100)
+	{
+		Gold = (Gold * GoldMultPercent) / 100;
+	}
+
 	return FMath::Max(0, Gold);
 }
 
 int32 UCoMCitySubsystem::ComputeBaseProduction(const FCoMCityData& City) const
 {
+	// Base production from population: 1 per 2 pop
 	int32 Prod = City.Population / 2;
-	Prod += City.BuildingIDs.Num();
+
+	// Sum building production bonuses
+	for (const int32 BldID : City.BuildingIDs)
+	{
+		TArray<FName> AllBuildings = CoMBuildingDatabase::GetAllBuildingIDs();
+		for (const FName& BName : AllBuildings)
+		{
+			if (GetTypeHash(BName) == BldID)
+			{
+				Prod += CoMBuildingDatabase::GetBuildingInfo(BName).ProductionBonus;
+				break;
+			}
+		}
+	}
+
 	return FMath::Max(0, Prod);
 }
 
 int32 UCoMCitySubsystem::ComputeBaseMana(const FCoMCityData& City) const
 {
-	return City.BuildingIDs.Num() / 3;
+	int32 Mana = 0;
+
+	// Sum building mana bonuses
+	for (const int32 BldID : City.BuildingIDs)
+	{
+		TArray<FName> AllBuildings = CoMBuildingDatabase::GetAllBuildingIDs();
+		for (const FName& BName : AllBuildings)
+		{
+			if (GetTypeHash(BName) == BldID)
+			{
+				Mana += CoMBuildingDatabase::GetBuildingInfo(BName).ManaBonus;
+				break;
+			}
+		}
+	}
+
+	return FMath::Max(0, Mana);
 }
 
 int32 UCoMCitySubsystem::ComputeBaseResearch(const FCoMCityData& City) const
 {
-	return (City.Population / 3) + (City.BuildingIDs.Num() / 4);
+	// Base research from population: 1 per 3 pop
+	int32 Research = City.Population / 3;
+
+	// Sum building research bonuses
+	for (const int32 BldID : City.BuildingIDs)
+	{
+		TArray<FName> AllBuildings = CoMBuildingDatabase::GetAllBuildingIDs();
+		for (const FName& BName : AllBuildings)
+		{
+			if (GetTypeHash(BName) == BldID)
+			{
+				Research += CoMBuildingDatabase::GetBuildingInfo(BName).ResearchBonus;
+				break;
+			}
+		}
+	}
+
+	return FMath::Max(0, Research);
 }
 
 // =====================================================================
@@ -885,12 +1118,27 @@ int32 UCoMCitySubsystem::CountUnrestReduction(const FCoMCityData& City) const
 {
 	int32 Reduction = 0;
 
+	// Garrison provides base unrest reduction
 	if (City.GarrisonArmyID >= 0)
 	{
 		Reduction += 2;
 	}
 
-	Reduction += City.BuildingIDs.Num() / 4;
+	// Sum building unrest reduction and happiness bonuses
+	for (const int32 BldID : City.BuildingIDs)
+	{
+		TArray<FName> AllBuildings = CoMBuildingDatabase::GetAllBuildingIDs();
+		for (const FName& BName : AllBuildings)
+		{
+			if (GetTypeHash(BName) == BldID)
+			{
+				const FCoMBuildingInfo& Info = CoMBuildingDatabase::GetBuildingInfo(BName);
+				Reduction += Info.UnrestReduction;
+				Reduction += Info.HappinessBonus;
+				break;
+			}
+		}
+	}
 
 	return Reduction;
 }
@@ -937,7 +1185,11 @@ void UCoMCitySubsystem::ProcessBuilding(FCoMCityData& City)
 
 	City.BuildingProgress += City.ProductionOutput;
 
-	const int32 BuildingCost = 50; // TODO: look up from building data asset
+	// Look up real building cost from the static database. Falls back to 50 for unknown IDs.
+	const FName LegacyBuildingName = FName(*FString::FromInt(City.CurrentBuildingID));
+	const int32 BuildingCost = CoMBuildingDatabase::Contains(LegacyBuildingName)
+		? CoMBuildingDatabase::GetBuildingInfo(LegacyBuildingName).ProductionCost
+		: 50;
 
 	if (City.BuildingProgress >= BuildingCost)
 	{
@@ -1045,6 +1297,13 @@ void UCoMCitySubsystem::ProcessCityProduction(FCoMCityData& City)
 
 int32 UCoMCitySubsystem::LookupBuildingCost(FName BuildingID) const
 {
+	// Primary lookup: static C++ database (always available, no editor assets needed)
+	if (CoMBuildingDatabase::Contains(BuildingID))
+	{
+		return CoMBuildingDatabase::GetBuildingInfo(BuildingID).ProductionCost;
+	}
+
+	// Fallback: editor-authored data assets (if any exist)
 	UAssetManager& AM = UAssetManager::Get();
 	const FPrimaryAssetType BuildingType(TEXT("CoMBuilding"));
 	TArray<FPrimaryAssetId> AssetList;
@@ -1074,6 +1333,13 @@ int32 UCoMCitySubsystem::LookupBuildingCost(FName BuildingID) const
 
 int32 UCoMCitySubsystem::LookupUnitCost(FName UnitSpecID) const
 {
+	// Primary lookup: static C++ database (always available, no editor assets needed)
+	if (CoMUnitDatabase::Contains(UnitSpecID))
+	{
+		return CoMUnitDatabase::GetUnitSpec(UnitSpecID).ProductionCost;
+	}
+
+	// Fallback: editor-authored data assets (if any exist)
 	UAssetManager& AM = UAssetManager::Get();
 	const FPrimaryAssetType UnitSpecType(TEXT("CoMUnitSpec"));
 	TArray<FPrimaryAssetId> AssetList;

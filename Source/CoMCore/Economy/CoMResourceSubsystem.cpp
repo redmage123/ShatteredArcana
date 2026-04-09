@@ -538,13 +538,90 @@ int32 UCoMResourceSubsystem::GetBaseYield(ECoMResource Resource)
 {
 	switch (Resource)
 	{
-	case ECoMResource::Iron:       return 3;
-	case ECoMResource::Coal:       return 4;
-	case ECoMResource::GoldOre:    return 5;
-	case ECoMResource::Gems:       return 6;
-	case ECoMResource::Silver:     return 4;
-	case ECoMResource::Mithril:    return 7;
-	case ECoMResource::Adamantium: return 8;
+	// ── Common metals (production-focused) ───────────────────────────
+	case ECoMResource::Iron:       return 3;  // Iron mine: 3 production
+	case ECoMResource::Coal:       return 4;  // Coal mine: 4 production (fuel bonus)
+
+	// ── Precious metals (gold-focused) ──────────────────────────────
+	case ECoMResource::GoldOre:    return 5;  // Gold mine: 5 gold
+	case ECoMResource::Gems:       return 6;  // Gem mine: 6 gold
+	case ECoMResource::Silver:     return 4;  // Silver mine: 4 gold
+
+	// ── Magical materials (hybrid production + mana) ────────────────
+	case ECoMResource::Mithril:    return 4;  // Mithril mine: 2 production + 2 mana (total value 4)
+	case ECoMResource::Adamantium: return 5;  // Adamantium mine: 5 production
+
+	// ── Aurelith-specific ───────────────────────────────────────────
+	case ECoMResource::Quartz:     return 3;  // Crystal mine: mapped to mana
+
+	// ── Noctharion-specific ─────────────────────────────────────────
+	case ECoMResource::Orichalcon:  return 6; // Rare magical metal
+	case ECoMResource::ShadowQuartz: return 4; // Shadow magic focus
+
+	// ── Verdantis-specific ──────────────────────────────────────────
+	case ECoMResource::Lifewood:    return 3;  // Living wood
+	case ECoMResource::AmberEssence: return 4; // Magical amber
+	case ECoMResource::Moonstone:   return 5;  // Moon-aspected crystal
+	case ECoMResource::LivingCrystal: return 5; // Self-growing crystal
+
+	// ── Infernyx-specific ───────────────────────────────────────────
+	case ECoMResource::Fireglass:   return 4;  // Volcanic glass
+	case ECoMResource::Brimstone:   return 3;  // Sulfur/alchemical
+	case ECoMResource::MagmaCore:   return 6;  // Concentrated fire mana
+	case ECoMResource::ChaosOre:    return 5;  // Chaos-infused metal
+
+	// ── Aethermist-specific ─────────────────────────────────────────
+	case ECoMResource::Aetherium:    return 7; // Pure magical resource
+	case ECoMResource::SpiritGlass:  return 4; // Spirit-realm crystal
+	case ECoMResource::Voidstone:    return 6; // Anti-magic stone
+	case ECoMResource::Dreamweave:   return 5; // Dream-realm material
+
+	// ── Abyssal-specific ────────────────────────────────────────────
+	case ECoMResource::DemonBlood:       return 5; // Demon essence
+	case ECoMResource::ChaosCrystal_Aby: return 6; // Chaotic crystal: 4 mana
+	case ECoMResource::BoneShards:       return 3; // Undeath material
+	case ECoMResource::VoidEssence_Aby:  return 7; // Void power
+
+	// ── Infernyx Iron Quarter ───────────────────────────────────────
+	case ECoMResource::SoulSteel:    return 6; // Soul-forged metal
+	case ECoMResource::HellgoldAlloy: return 5; // Infernal alloy
+	case ECoMResource::PactStone:    return 4; // Contract-bound stone
+	case ECoMResource::AshenIron:    return 3; // Volcanic iron
+
+	// ── Ethereal-specific ───────────────────────────────────────────
+	case ECoMResource::MemoryCrystal: return 5; // Crystallized thought
+	case ECoMResource::SpiritDust:   return 3;  // Spirit residue
+	case ECoMResource::PhaseGlass:   return 4;  // Phase-shifting glass
+	case ECoMResource::DreamThread:  return 4;  // Dream-realm thread
+
+	// ── Feywild-specific ────────────────────────────────────────────
+	case ECoMResource::FeyWood:       return 3; // Enchanted wood
+	case ECoMResource::MoonbloomPetal: return 4; // Magical flower
+	case ECoMResource::FaeDust:       return 5; // Fey essence
+	case ECoMResource::TimewornAmber: return 6; // Time-aspected amber
+
+	// ── Underdark-specific ──────────────────────────────────────────
+	case ECoMResource::Deepstone:    return 3;  // Deep rock
+	case ECoMResource::Glowmoss:     return 2;  // Bioluminescent
+	case ECoMResource::ShadowOre:    return 4;  // Shadow metal
+	case ECoMResource::EmberCrystal: return 5;  // Fire crystal
+	case ECoMResource::PhaseMetal:   return 6;  // Phase-shifting metal
+	case ECoMResource::Darkwood:     return 3;  // Underground wood
+	case ECoMResource::Brimite:      return 4;  // Sulphuric mineral
+	case ECoMResource::Thoughtstone: return 5;  // Psychic mineral
+	case ECoMResource::Bloodite:     return 4;  // Blood-infused mineral
+	case ECoMResource::AncientAlloy: return 7;  // Lost civilization metal
+
+	// ── Underwater-specific ─────────────────────────────────────────
+	case ECoMResource::Pearls:           return 5; // Precious
+	case ECoMResource::DeepCoral:        return 3; // Building material
+	case ECoMResource::AbyssalIron:      return 4; // Deep ocean iron
+	case ECoMResource::PressureCrystals: return 6; // High-pressure crystals
+
+	// ── Animals / other ─────────────────────────────────────────────
+	case ECoMResource::Horses:     return 3; // Cavalry resource
+	case ECoMResource::Nightshade: return 4; // Alchemical ingredient
+
 	default:                       return 2;
 	}
 }

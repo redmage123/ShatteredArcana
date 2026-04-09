@@ -16,7 +16,7 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
+renderer.toneMappingExposure = 1.6;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0a1a);
@@ -30,28 +30,35 @@ controls.target.set(0, 1.0, 0);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
-// Lighting — bright enough to pass confidence gate on all angles
-const ambientLight = new THREE.AmbientLight(0x4a4a6a, 0.8);
+// Lighting — tuned for bare-metal SDF knight
+const ambientLight = new THREE.AmbientLight(0x8090b0, 1.5);
 scene.add(ambientLight);
 
-const keyLight = new THREE.DirectionalLight(0xfff0d0, 2.5);
+const keyLight = new THREE.DirectionalLight(0xfff0d0, 4.0);
 keyLight.position.set(3, 5, 4);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(2048, 2048);
 scene.add(keyLight);
 
-// Extra back/top light to illuminate armor from behind
-const backLight = new THREE.DirectionalLight(0xffe8c0, 1.2);
+// Strong back light for rim highlights on metallic surfaces
+const backLight = new THREE.DirectionalLight(0xffe8c0, 2.5);
 backLight.position.set(-2, 4, -3);
 scene.add(backLight);
 
-const fillLight = new THREE.DirectionalLight(0x4060a0, 0.6);
-fillLight.position.set(-3, 2, -2);
+// Cool fill to show form in shadows
+const fillLight = new THREE.DirectionalLight(0x6080c0, 1.2);
+fillLight.position.set(-3, 2, 2);
 scene.add(fillLight);
 
-const rimLight = new THREE.DirectionalLight(0xffc040, 1.0);
+// Warm rim light — golden edge on Aurelith armor
+const rimLight = new THREE.DirectionalLight(0xffc040, 2.0);
 rimLight.position.set(-1, 3, -4);
 scene.add(rimLight);
+
+// Low front fill to brighten the chest/face
+const frontFill = new THREE.DirectionalLight(0xdde0f0, 1.5);
+frontFill.position.set(0, 2, 5);
+scene.add(frontFill);
 
 // Ground
 const ground = new THREE.Mesh(
@@ -65,11 +72,13 @@ scene.add(ground);
 // Environment map for metallic reflections
 const pmremGen = new THREE.PMREMGenerator(renderer);
 const envScene = new THREE.Scene();
-envScene.background = new THREE.Color(0x1a1a2e);
+envScene.background = new THREE.Color(0x303848);
 [
-  [0xfff0d0, 10, [3, 5, 4]],
-  [0x4060a0, 5, [-3, 2, -2]],
-  [0xffc040, 8, [-1, 3, -4]],
+  [0xfff0d0, 20, [3, 5, 4]],
+  [0x6080c0, 12, [-3, 2, 2]],
+  [0xffc040, 15, [-1, 3, -4]],
+  [0xdde0f0, 10, [0, 2, 5]],
+  [0xffe8c0, 12, [-2, 4, -3]],
 ].forEach(([color, intensity, pos]) => {
   const l = new THREE.PointLight(color, intensity, 20);
   l.position.set(...pos);

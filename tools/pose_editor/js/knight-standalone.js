@@ -182,34 +182,39 @@ function buildGoldSDF(worldPositions) {
 
   return function(p) {
     let d = 1e6;
-    // Helmet crest — tall thin fin on top
-    d = Math.min(d, sdBox(p, [head[0], head[1]+0.11, head[2]-0.01], [0.008, 0.045, 0.07], 0.003));
-    // Chest vertical line
-    d = Math.min(d, sdBox(p, [chest[0], chest[1], chest[2]+0.085], [0.004, 0.10, 0.004], 0.002));
-    // Chest horizontal line
-    d = Math.min(d, sdBox(p, [chest[0], chest[1], chest[2]+0.085], [0.11, 0.004, 0.004], 0.002));
-    // Waist belt
-    d = Math.min(d, sdCapsule(p, [wp[0][0]-0.12, wp[0][1]+0.04, wp[0][2]+0.02],
-                                  [wp[0][0]+0.12, wp[0][1]+0.04, wp[0][2]+0.02], 0.012));
-    // Pauldron rims — thick rings around shoulders
+    // Helmet crest — raised ridge on top (thicker to resolve at grid)
+    d = Math.min(d, sdBox(p, [head[0], head[1]+0.11, head[2]-0.01], [0.015, 0.05, 0.07], 0.008));
+    // Chest vertical gold band
+    d = Math.min(d, sdBox(p, [chest[0], chest[1], chest[2]+0.085], [0.012, 0.10, 0.012], 0.005));
+    // Chest horizontal gold band
+    d = Math.min(d, sdBox(p, [chest[0], chest[1], chest[2]+0.085], [0.11, 0.012, 0.012], 0.005));
+    // Waist belt — thick ring
+    d = Math.min(d, sdCapsule(p, [wp[0][0]-0.13, wp[0][1]+0.04, wp[0][2]+0.02],
+                                  [wp[0][0]+0.13, wp[0][1]+0.04, wp[0][2]+0.02], 0.018));
+    // Pauldron rims — thick bands around shoulder tops
     const lArm = wp[8], rArm = wp[12];
-    d = Math.min(d, sdCapsule(p, [lArm[0]+0.02, lArm[1]+0.06, lArm[2]-0.04],
-                                  [lArm[0]+0.02, lArm[1]+0.06, lArm[2]+0.04], 0.015));
-    d = Math.min(d, sdCapsule(p, [rArm[0]-0.02, rArm[1]+0.06, rArm[2]-0.04],
-                                  [rArm[0]-0.02, rArm[1]+0.06, rArm[2]+0.04], 0.015));
-    // Knee cap accents
-    d = Math.min(d, sdSphere(p, [wp[16][0], wp[16][1], wp[16][2]+0.035], 0.028));
-    d = Math.min(d, sdSphere(p, [wp[20][0], wp[20][1], wp[20][2]+0.035], 0.028));
-    // Boot top rims
-    d = Math.min(d, sdCapsule(p, [wp[17][0]-0.05, wp[17][1]+0.03, wp[17][2]],
-                                  [wp[17][0]+0.05, wp[17][1]+0.03, wp[17][2]], 0.010));
-    d = Math.min(d, sdCapsule(p, [wp[21][0]-0.05, wp[21][1]+0.03, wp[21][2]],
-                                  [wp[21][0]+0.05, wp[21][1]+0.03, wp[21][2]], 0.010));
+    d = Math.min(d, sdCapsule(p, [lArm[0]+0.03, lArm[1]+0.06, lArm[2]-0.05],
+                                  [lArm[0]+0.03, lArm[1]+0.06, lArm[2]+0.05], 0.020));
+    d = Math.min(d, sdCapsule(p, [rArm[0]-0.03, rArm[1]+0.06, rArm[2]-0.05],
+                                  [rArm[0]-0.03, rArm[1]+0.06, rArm[2]+0.05], 0.020));
+    // Knee cap accents — golden knee pads
+    d = Math.min(d, sdSphere(p, [wp[16][0], wp[16][1], wp[16][2]+0.04], 0.035));
+    d = Math.min(d, sdSphere(p, [wp[20][0], wp[20][1], wp[20][2]+0.04], 0.035));
+    // Boot rims
+    d = Math.min(d, sdCapsule(p, [wp[17][0]-0.055, wp[17][1]+0.03, wp[17][2]],
+                                  [wp[17][0]+0.055, wp[17][1]+0.03, wp[17][2]], 0.015));
+    d = Math.min(d, sdCapsule(p, [wp[21][0]-0.055, wp[21][1]+0.03, wp[21][2]],
+                                  [wp[21][0]+0.055, wp[21][1]+0.03, wp[21][2]], 0.015));
     // Gauntlet cuffs
-    d = Math.min(d, sdCapsule(p, [wp[9][0]-0.01, wp[9][1], wp[9][2]-0.03],
-                                  [wp[9][0]-0.01, wp[9][1], wp[9][2]+0.03], 0.010));
-    d = Math.min(d, sdCapsule(p, [wp[13][0]+0.01, wp[13][1], wp[13][2]-0.03],
-                                  [wp[13][0]+0.01, wp[13][1], wp[13][2]+0.03], 0.010));
+    d = Math.min(d, sdCapsule(p, [wp[9][0]-0.01, wp[9][1], wp[9][2]-0.04],
+                                  [wp[9][0]-0.01, wp[9][1], wp[9][2]+0.04], 0.014));
+    d = Math.min(d, sdCapsule(p, [wp[13][0]+0.01, wp[13][1], wp[13][2]-0.04],
+                                  [wp[13][0]+0.01, wp[13][1], wp[13][2]+0.04], 0.014));
+    // Sword crossguard (gold)
+    const rHand = wp[14];
+    d = Math.min(d, sdBox(p, [rHand[0]-0.02, rHand[1]+0.05, rHand[2]], [0.006, 0.006, 0.065], 0.005));
+    // Sword pommel
+    d = Math.min(d, sdSphere(p, [rHand[0]-0.02, rHand[1]-0.06, rHand[2]], 0.018));
     return d;
   };
 }
@@ -359,8 +364,8 @@ function buildKnight(opts = {}) {
   const bodyMesh = marchCubes(fullSDF, bbMin, bbMax, resolution);
   console.log(`  Body+weapons: ${bodyMesh.vertexCount} vertices`);
 
-  // Gold trim — smaller bounding box, lower res
-  const goldMesh = marchCubes(goldSDF, bbMin, bbMax, Math.max(32, Math.floor(resolution * 0.6)));
+  // Gold trim — same bounds, same resolution so thick features resolve
+  const goldMesh = marchCubes(goldSDF, bbMin, bbMax, resolution);
   console.log(`  Gold trim: ${goldMesh.vertexCount} vertices`);
 
   if (bodyMesh.vertexCount === 0) {
