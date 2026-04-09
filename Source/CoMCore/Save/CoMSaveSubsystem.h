@@ -146,6 +146,21 @@ struct COMCORE_API FCoMSaveData
     UPROPERTY() TArray<int32> WizardTurnOrder;
     UPROPERTY() int32 TurnOrderPosition = 0;
     UPROPERTY() FCoMDeterministicRandom RNGState;
+
+    // ── World Events ─────────────────────────────────────────────────────────
+    UPROPERTY() TArray<FCoMWorldEvent> ActiveWorldEvents;
+    UPROPERTY() TArray<FCoMWorldEvent> WorldEventHistory;
+    UPROPERTY() int32 NextWorldEventID = 1;
+
+    // ── Victory ──────────────────────────────────────────────────────────────
+    UPROPERTY() TArray<int32> EliminatedWizards;
+    UPROPERTY() bool bGameOver = false;
+    UPROPERTY() int32 WinningWizardId = -1;
+    UPROPERTY() uint8 WinningCondition = 0;
+    UPROPERTY() TArray<uint8> DestabilizedPlanes;
+    UPROPERTY() bool bSaelThrixSlain = false;
+    UPROPERTY() bool bSpellOfMasteryCast = false;
+    UPROPERTY() int32 MasteryCasterWizardId = -1;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -249,6 +264,8 @@ private:
     void CollectEspionage(FCoMSaveData& OutData);
     void CollectQuests(FCoMSaveData& OutData);
     void CollectTurnState(FCoMSaveData& OutData);
+    void CollectWorldEvents(FCoMSaveData& OutData);
+    void CollectVictory(FCoMSaveData& OutData);
 
     // ── Restore helpers (LoadGame) ───────────────────────────────────────────
 
@@ -264,6 +281,8 @@ private:
     void RestoreEspionage(const FCoMSaveData& InData);
     void RestoreQuests(const FCoMSaveData& InData);
     void RestoreTurnState(const FCoMSaveData& InData);
+    void RestoreWorldEvents(const FCoMSaveData& InData);
+    void RestoreVictory(const FCoMSaveData& InData);
 
     // ── Metadata I/O ─────────────────────────────────────────────────────────
 

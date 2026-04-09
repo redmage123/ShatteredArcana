@@ -17,6 +17,8 @@
 #include "Espionage/CoMEspionageSubsystem.h"
 #include "Combat/CoMNavalSubsystem.h"
 #include "Quests/CoMQuestSubsystem.h"
+#include "Events/CoMWorldEventSubsystem.h"
+#include "Victory/CoMVictorySubsystem.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "Misc/FileHelper.h"
@@ -75,6 +77,8 @@ bool UCoMSaveSubsystem::SaveGame(const FString& SlotName)
     CollectEspionage(Data);
     CollectQuests(Data);
     CollectTurnState(Data);
+    CollectWorldEvents(Data);
+    CollectVictory(Data);
 
     // Use UE5 SaveGameToSlot — handles serialization of all UPROPERTY fields
     const bool bSuccess = UGameplayStatics::SaveGameToSlot(SaveObject, SlotName, 0);
@@ -151,6 +155,8 @@ bool UCoMSaveSubsystem::LoadGame(const FString& SlotName)
     RestoreEspionage(Data);
     RestoreQuests(Data);
     RestoreTurnState(Data);
+    RestoreWorldEvents(Data);
+    RestoreVictory(Data);
 
     // Mark GameInstance as loaded game
     if (UCoMGameInstance* GI = Cast<UCoMGameInstance>(GetGameInstance()))
@@ -659,4 +665,68 @@ FString UCoMSaveSubsystem::GetSaveFilePath(const FString& SlotName) const
 FString UCoMSaveSubsystem::GetMetaFilePath(const FString& SlotName) const
 {
     return GetSaveDirectory() / (SlotName + TEXT(".meta"));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// World Events — Collect / Restore
+// ═══════════════════════════════════════════════════════════════════════════
+
+void UCoMSaveSubsystem::CollectWorldEvents(FCoMSaveData& OutData)
+{
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) { return; }
+    if (auto* EventSub = GI->GetSubsystem<UCoMWorldEventSubsystem>())
+    {
+        OutData.ActiveWorldEvents = EventSub->GetActiveEvents();
+        OutData.WorldEventHistory = EventSub->GetEventHistory();
+        OutData.NextWorldEventID  = EventSub->GetNextEventID();
+    }
+}
+
+void UCoMSaveSubsystem::RestoreWorldEvents(const FCoMSaveData& InData)
+{
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) { return; }
+    if (auto* EventSub = GI->GetSubsystem<UCoMWorldEventSubsystem>())
+    {
+        EventSub->ImportAll(InData.ActiveWorldEvents, InData.WorldEventHistory, InData.NextWorldEventID);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Victory — Collect / Restore
+// ═══════════════════════════════════════════════════════════════════════════
+
+void UCoMSaveSubsystem::CollectVictory(FCoMSaveData& OutData)
+{
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) { return; }
+    if (auto* VicSub = GI->GetSubsystem<UCoMVictorySubsystem>())
+    {
+        OutData.EliminatedWizards     = VicSub->GetEliminatedWizards();
+        OutData.bGameOver             = VicSub->IsGameOver();
+        OutData.WinningWizardId       = VicSub->GetWinningWizard();
+        OutData.WinningCondition      = static_cast<uint8>(VicSub->GetWinningCondition());
+        OutData.bSaelThrixSlain       = VicSub->IsSaelThrixSlain();
+        OutData.bSpellOfMasteryCast   = VicSub->IsSpellOfMasteryCast();
+        OutData.MasteryCasterWizardId = VicSub->GetMasteryCasterWizardId();
+        for (ECoMPlane P : VicSub->GetDestabilizedPlanes())
+        {
+            OutData.DestabilizedPlanes.Add(static_cast<uint8>(P));
+        }
+    }
+}
+
+void UCoMSaveSubsystem::RestoreVictory(const FCoMSaveData& InData)
+{
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) { return; }
+    if (auto* VicSub = GI->GetSubsystem<UCoMVictorySubsystem>())
+    {
+        VicSub->ImportEliminatedWizards(InData.EliminatedWizards);
+        VicSub->ImportAll(InData.bGameOver, InData.WinningWizardId,
+                          static_cast<ECoMVictoryType>(InData.WinningCondition),
+                          InData.bSaelThrixSlain, InData.bSpellOfMasteryCast,
+                          InData.MasteryCasterWizardId, InData.DestabilizedPlanes);
+    }
 }

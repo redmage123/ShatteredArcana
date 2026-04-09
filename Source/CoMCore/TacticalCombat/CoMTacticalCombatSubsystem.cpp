@@ -733,13 +733,32 @@ TArray<FIntPoint> UCoMTacticalCombatSubsystem::GetValidMoves(int32 UnitIndex) co
 
 			Visited.Add(Key);
 
-			// Only add as a valid destination if unoccupied.
-			if (Grid[Next.Y][Next.X].OccupyingUnitIndex < 0)
+			// Check occupancy — block expansion through enemy-occupied tiles
+			const int32 OccIdx = Grid[Next.Y][Next.X].OccupyingUnitIndex;
+			if (OccIdx >= 0)
 			{
+				const bool bIsFriendly = Units.IsValidIndex(OccIdx) &&
+					(Units[OccIdx].bIsAttacker == Unit.bIsAttacker);
+				// Enemy tile blocks expansion entirely (unless flying)
+				if (!bIsFriendly)
+				{
+					const bool bCanFlyOver = (Unit.MovementType == ECoMMovementType::Flying ||
+					                          Unit.MovementType == ECoMMovementType::PhaseWalk);
+					if (!bCanFlyOver)
+					{
+						continue; // Can't pass through enemies
+					}
+					// Flyers can pass over enemies but can't stop on them
+				}
+				// Friendly or fly-over: don't add as valid destination (can't stack)
+			}
+			else
+			{
+				// Unoccupied tile: valid destination
 				ValidTiles.Add(Next);
 			}
 
-			// Continue expanding even through occupied tiles (allies).
+			// Continue expanding through friendly/flyable tiles.
 			FFloodNode NextNode;
 			NextNode.Pos = Next;
 			NextNode.CostSoFar = NewCost;

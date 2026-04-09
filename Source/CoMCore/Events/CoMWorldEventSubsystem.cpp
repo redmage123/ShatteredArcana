@@ -66,7 +66,16 @@ int32 UCoMWorldEventSubsystem::TriggerEvent(ECoMWorldEventType Type, ECoMPlane P
 	FCoMWorldEvent NewEvent;
 	NewEvent.EventID         = NextEventID++;
 	NewEvent.Type            = Type;
-	NewEvent.TurnTriggered   = 0; // Will be set by caller or ProcessEventTurn context
+	// Query current turn so events triggered via public API get correct expiry timing
+	int32 CurTurn = 0;
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (auto* TS = GI->GetSubsystem<UCoMTurnSubsystem>())
+		{
+			CurTurn = TS->GetCurrentTurn();
+		}
+	}
+	NewEvent.TurnTriggered   = CurTurn;
 	NewEvent.Duration        = GetDefaultDuration(Type);
 	NewEvent.AffectedPlanes.Add(Plane);
 	NewEvent.EpicenterPosition = Epicenter;
