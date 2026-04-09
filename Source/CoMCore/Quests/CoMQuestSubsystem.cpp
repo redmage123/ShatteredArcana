@@ -102,7 +102,7 @@ namespace CoMQuestConstants
 void UCoMQuestSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
-    RngStream.Initialize(FPlatformTime::Cycles());
+    RngStream.Initialize(0x51756573);
     NextQuestId = 1;
     NextChainId = 1;
     LastGenerationTurn = 0;
@@ -241,9 +241,11 @@ void UCoMQuestSubsystem::ForceCompleteQuest(int32 QuestId)
     if (Quest->NextQuestInChainId > 0)
     {
         FCoMQuest* NextQuest = AllQuests.Find(Quest->NextQuestInChainId);
-        if (NextQuest && NextQuest->Status == ECoMQuestStatus::Available)
+        if (NextQuest && (NextQuest->Status == ECoMQuestStatus::Available
+                       || NextQuest->Status == ECoMQuestStatus::Expired))
         {
-            // Auto-offer to same wizard.
+            // Unlock the next quest in the chain and offer to the same wizard.
+            NextQuest->Status = ECoMQuestStatus::Available;
             NextQuest->OfferedToWizardId = WizardId;
             OnQuestAvailable.Broadcast(NextQuest->QuestId, WizardId);
         }
@@ -436,8 +438,8 @@ int32 UCoMQuestSubsystem::GenerateQuestChain(int32 WizardId, int32 CurrentTurn, 
         Quest.ExpiryTurn = CurrentTurn + GenConfig.DefaultExpiryTurns + Step * 10;
         Quest.ChainId = ChainId;
 
-        // First quest is Available, rest are Available but hidden until prior completes.
-        Quest.Status = (Step == 0) ? ECoMQuestStatus::Available : ECoMQuestStatus::Available;
+        // First quest is Available, rest are locked until prior completes.
+        Quest.Status = (Step == 0) ? ECoMQuestStatus::Available : ECoMQuestStatus::Expired;
 
         Quest.Objectives = GenerateObjectives(StepType, WizardId, StepDifficulty, CurrentTurn);
         Quest.Rewards = GenerateRewards(StepType, StepDifficulty);
@@ -791,7 +793,7 @@ FCoMQuestGenConfig UCoMQuestSubsystem::GetQuestGenConfig() const
 // Turn Processing
 // =====================================================================
 
-void UCoMQuestSubsystem::ProcessTurn(int32 CurrentTurn)
+void UCoMQuestSubsystem::ProcessTurn(int32 CurrentTurn, int32 ActiveWizardCount)
 {
     // 1. Expire unclaimed quests.
     ExpireQuests(CurrentTurn);
@@ -804,8 +806,9 @@ void UCoMQuestSubsystem::ProcessTurn(int32 CurrentTurn)
     {
         LastGenerationTurn = CurrentTurn;
 
-        // Generate quests for each wizard (0..MAX_WIZARDS-1).
-        for (int32 WizardId = 0; WizardId < CoM::MAX_WIZARDS; ++WizardId)
+        // Generate quests only for active wizards, not all 14 slots.
+        const int32 WizardCount = FMath::Clamp(ActiveWizardCount, 0, CoM::MAX_WIZARDS);
+        for (int32 WizardId = 0; WizardId < WizardCount; ++WizardId)
         {
             const TArray<FCoMQuest> Available = GetAvailableQuests(WizardId);
 

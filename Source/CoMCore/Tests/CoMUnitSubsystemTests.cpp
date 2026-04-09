@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMUnitSubsystemTests.cpp — Unit and regression tests
 // Phase 7 tests — Shattered Arcana
@@ -8,9 +7,6 @@
 #include "Misc/AutomationTest.h"
 #include "CoMCore/Units/CoMUnitSubsystem.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
-
-#if WITH_AUTOMATION_TESTS
-
 
 namespace CoMUnitTests
 {
@@ -177,7 +173,5 @@ bool FUnitWrapX::RunTest(const FString& Parameters)
 }
 
 } // namespace CoMUnitTests
-
-#endif // WITH_AUTOMATION_TESTS
 
 #endif

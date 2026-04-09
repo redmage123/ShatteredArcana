@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "Misc/AutomationTest.h"
@@ -11,8 +10,7 @@
 
 static UCoMHeroSubsystem* GetTestHeroSubsystem()
 {
-	UGameInstance* GI = NewObject<UGameInstance>();
-	return GI->GetSubsystem<UCoMHeroSubsystem>();
+	return NewObject<UCoMHeroSubsystem>();
 }
 
 // =====================================================================
@@ -39,15 +37,15 @@ bool FCoMHeroInitPersonalityTest::RunTest(const FString& Parameters)
 		P.PrimaryTrait != P.SecondaryTrait);
 
 	// Loyalty should start at 100.
-	TestEqual(TEXT("Initial loyalty is 100"), P.Loyalty, FFixed64(100));
+	TestTrue(TEXT("Initial loyalty is 100"), P.Loyalty == 100);
 
 	// Ambition in [30, 90].
-	TestTrue(TEXT("Ambition >= 30"), P.Ambition >= FFixed64(30));
-	TestTrue(TEXT("Ambition <= 90"), P.Ambition <= FFixed64(90));
+	TestTrue(TEXT("Ambition >= 30"), P.Ambition >= 30);
+	TestTrue(TEXT("Ambition <= 90"), P.Ambition <= 90);
 
 	// Getting personality for unknown hero returns a default.
 	const FCoMHeroPersonality Default = Sub->GetPersonality(9999);
-	TestEqual(TEXT("Default loyalty"), Default.Loyalty, FFixed64(0));
+	TestTrue(TEXT("Default loyalty"), Default.Loyalty == 0);
 
 	return true;
 }
@@ -68,12 +66,12 @@ bool FCoMHeroGetLoyaltyTest::RunTest(const FString& Parameters)
 
 	// Uninitialized hero returns default loyalty (100).
 	const FFixed64 Default = Sub->GetLoyalty(999);
-	TestEqual(TEXT("Default loyalty is 100"), Default, FFixed64(100));
+	TestTrue(TEXT("Default loyalty is 100"), Default == FFixed64(100));
 
 	// After initialization loyalty should be 100.
 	FRandomStream Rng(1);
 	Sub->InitializeHeroPersonality(200, Rng);
-	TestEqual(TEXT("Initialized loyalty is 100"), Sub->GetLoyalty(200), FFixed64(100));
+	TestTrue(TEXT("Initialized loyalty is 100"), Sub->GetLoyalty(200) == FFixed64(100));
 
 	return true;
 }
@@ -95,17 +93,17 @@ bool FCoMHeroModifyLoyaltyTest::RunTest(const FString& Parameters)
 	FRandomStream Rng(5);
 	Sub->InitializeHeroPersonality(300, Rng);
 
-	// Add loyalty.
+	// Add loyalty — already at 100, so +50 should clamp to 100.
 	Sub->ModifyLoyalty(300, FFixed64(50));
-	TestEqual(TEXT("Loyalty after +50"), Sub->GetLoyalty(300), FFixed64(150));
+	TestTrue(TEXT("Loyalty clamped at 100 after +50"), Sub->GetLoyalty(300) == FFixed64(100));
 
-	// Clamp at 200.
+	// Still clamped at 100 after another +100.
 	Sub->ModifyLoyalty(300, FFixed64(100));
-	TestEqual(TEXT("Loyalty clamped at 200"), Sub->GetLoyalty(300), FFixed64(200));
+	TestTrue(TEXT("Loyalty still clamped at 100"), Sub->GetLoyalty(300) == FFixed64(100));
 
 	// Subtract loyalty.
 	Sub->ModifyLoyalty(300, FFixed64(-250));
-	TestEqual(TEXT("Loyalty clamped at 0"), Sub->GetLoyalty(300), FFixed64(0));
+	TestTrue(TEXT("Loyalty clamped at 0"), Sub->GetLoyalty(300) == FFixed64(0));
 
 	// Modifying unknown hero is a no-op (no crash).
 	Sub->ModifyLoyalty(9999, FFixed64(10));

@@ -19,7 +19,7 @@ void UCoMResourceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	NextMineID     = 1;
 	NextRouteID    = 1;
 	NextOutbreakID = 1;
-	ResourceRng.Initialize(12345);
+	ResourceRng.Initialize(0x5265736F);
 }
 
 void UCoMResourceSubsystem::Deinitialize()
@@ -53,7 +53,7 @@ int32 UCoMResourceSubsystem::AllocateOutbreakID()
 // Mining
 // =====================================================================
 
-int32 UCoMResourceSubsystem::BuildMine(int32 CityID, ECoMPlane Plane, FIntPoint Position)
+int32 UCoMResourceSubsystem::BuildMine(int32 CityID, ECoMPlane Plane, FIntPoint Position, ECoMResource TileResource)
 {
 	// Check if tile already has a mine.
 	for (const auto& Pair : AllMines)
@@ -72,7 +72,7 @@ int32 UCoMResourceSubsystem::BuildMine(int32 CityID, ECoMPlane Plane, FIntPoint 
 	Mine.Position       = Position;
 	Mine.Plane          = Plane;
 	Mine.Layer          = ECoMMapLayer::Surface;
-	Mine.ResourceType   = ECoMResource::Iron; // TODO: read from tile data
+	Mine.ResourceType   = TileResource;
 	Mine.OwnerCityID    = CityID;
 	Mine.MineLevel      = 0; // Under construction
 	Mine.WorkersAssigned = 0;
@@ -185,6 +185,95 @@ int32 UCoMResourceSubsystem::GetResourceYield(int32 MineID) const
 }
 
 // =====================================================================
+// Resource -> TradeGood Mapping
+// =====================================================================
+
+static ECoMTradeGood ResourceToTradeGood(ECoMResource Resource)
+{
+	switch (Resource)
+	{
+		// Metals / Ores -> Steel (refined metal goods)
+		case ECoMResource::Iron:            return ECoMTradeGood::Steel;
+		case ECoMResource::Coal:            return ECoMTradeGood::Steel;
+		case ECoMResource::Adamantium:      return ECoMTradeGood::Steel;
+		case ECoMResource::Orichalcon:      return ECoMTradeGood::Steel;
+		case ECoMResource::SoulSteel:       return ECoMTradeGood::Steel;
+		case ECoMResource::HellgoldAlloy:   return ECoMTradeGood::Steel;
+		case ECoMResource::AshenIron:        return ECoMTradeGood::Steel;
+		case ECoMResource::AbyssalIron:      return ECoMTradeGood::Steel;
+		case ECoMResource::Deepstone:        return ECoMTradeGood::Stone;
+		case ECoMResource::ShadowOre:        return ECoMTradeGood::Steel;
+		case ECoMResource::PhaseMetal:       return ECoMTradeGood::Steel;
+		case ECoMResource::AncientAlloy:     return ECoMTradeGood::Steel;
+
+		// Precious metals / gems -> Jewelry
+		case ECoMResource::GoldOre:         return ECoMTradeGood::Jewelry;
+		case ECoMResource::Gems:            return ECoMTradeGood::Jewelry;
+		case ECoMResource::Silver:          return ECoMTradeGood::Jewelry;
+		case ECoMResource::Pearls:          return ECoMTradeGood::Jewelry;
+
+		// Magical minerals -> AlchemicalReagents
+		case ECoMResource::Mithril:         return ECoMTradeGood::AlchemicalReagents;
+		case ECoMResource::Quartz:          return ECoMTradeGood::AlchemicalReagents;
+		case ECoMResource::ShadowQuartz:    return ECoMTradeGood::AlchemicalReagents;
+		case ECoMResource::Moonstone:       return ECoMTradeGood::AlchemicalReagents;
+		case ECoMResource::LivingCrystal:   return ECoMTradeGood::AlchemicalReagents;
+		case ECoMResource::Nightshade:      return ECoMTradeGood::AlchemicalReagents;
+		case ECoMResource::Brimstone:       return ECoMTradeGood::AlchemicalReagents;
+		case ECoMResource::EmberCrystal:    return ECoMTradeGood::AlchemicalReagents;
+		case ECoMResource::Brimite:         return ECoMTradeGood::AlchemicalReagents;
+		case ECoMResource::Bloodite:        return ECoMTradeGood::AlchemicalReagents;
+		case ECoMResource::DemonBlood:      return ECoMTradeGood::AlchemicalReagents;
+		case ECoMResource::BoneShards:      return ECoMTradeGood::AlchemicalReagents;
+		case ECoMResource::PactStone:       return ECoMTradeGood::AlchemicalReagents;
+
+		// Magical artifacts / high-magic resources -> MagicalArtifacts
+		case ECoMResource::Aetherium:        return ECoMTradeGood::MagicalArtifacts;
+		case ECoMResource::Voidstone:        return ECoMTradeGood::MagicalArtifacts;
+		case ECoMResource::ChaosCrystal_Aby: return ECoMTradeGood::MagicalArtifacts;
+		case ECoMResource::ChaosOre:         return ECoMTradeGood::MagicalArtifacts;
+		case ECoMResource::VoidEssence_Aby:  return ECoMTradeGood::MagicalArtifacts;
+		case ECoMResource::Thoughtstone:     return ECoMTradeGood::MagicalArtifacts;
+
+		// Spirit / ethereal resources -> AetherDust
+		case ECoMResource::SpiritGlass:      return ECoMTradeGood::AetherDust;
+		case ECoMResource::Dreamweave:       return ECoMTradeGood::AetherDust;
+		case ECoMResource::MemoryCrystal:    return ECoMTradeGood::AetherDust;
+		case ECoMResource::SpiritDust:       return ECoMTradeGood::AetherDust;
+		case ECoMResource::PhaseGlass:       return ECoMTradeGood::AetherDust;
+		case ECoMResource::DreamThread:      return ECoMTradeGood::AetherDust;
+		case ECoMResource::FaeDust:          return ECoMTradeGood::AetherDust;
+
+		// Shadow / dark resources -> ShadowEssence
+		case ECoMResource::AmberEssence:     return ECoMTradeGood::ShadowEssence;
+		case ECoMResource::TimewornAmber:    return ECoMTradeGood::ShadowEssence;
+		case ECoMResource::Glowmoss:         return ECoMTradeGood::ShadowEssence;
+
+		// Nature / wood resources -> Lumber
+		case ECoMResource::Lifewood:         return ECoMTradeGood::LivingSap;
+		case ECoMResource::FeyWood:          return ECoMTradeGood::Lumber;
+		case ECoMResource::Darkwood:         return ECoMTradeGood::Lumber;
+		case ECoMResource::MoonbloomPetal:   return ECoMTradeGood::Spices;
+
+		// Fire / lava resources -> MoltenGlass
+		case ECoMResource::Fireglass:        return ECoMTradeGood::MoltenGlass;
+		case ECoMResource::MagmaCore:        return ECoMTradeGood::MoltenGlass;
+
+		// Animal / beast resources -> ExoticBeasts
+		case ECoMResource::Horses:           return ECoMTradeGood::ExoticBeasts;
+
+		// Underwater / coral -> AncientRelics
+		case ECoMResource::DeepCoral:        return ECoMTradeGood::AncientRelics;
+		case ECoMResource::PressureCrystals: return ECoMTradeGood::AncientRelics;
+
+		// Dragon-related -> DragonScale
+		// (no direct resource maps here, but keeping the pattern)
+
+		default: return ECoMTradeGood::Grain; // fallback for unmapped resources
+	}
+}
+
+// =====================================================================
 // Trade Routes
 // =====================================================================
 
@@ -215,7 +304,7 @@ int32 UCoMResourceSubsystem::EstablishTradeRoute(int32 SourceCityID, int32 DestC
 	Route.RouteID      = RouteID;
 	Route.SourceCityID = SourceCityID;
 	Route.DestCityID   = DestCityID;
-	Route.Good         = ECoMTradeGood::Grain; // Default; resource-to-good mapping TBD
+	Route.Good         = ResourceToTradeGood(Good);
 	Route.Quantity     = 1;
 	Route.RouteLength  = 10; // TODO: compute from pathfinder
 	Route.bInterplanar = false; // TODO: check if cities are on different planes
@@ -246,6 +335,9 @@ void UCoMResourceSubsystem::CancelTradeRoute(int32 RouteID)
 
 void UCoMResourceSubsystem::ProcessTradeTurn()
 {
+	struct FPendingOutbreak { int32 CityID; ECoMDiseaseType Type; int32 SourceOutbreakID; int32 SourceCityID; };
+	TArray<FPendingOutbreak> PendingOutbreaks;
+
 	for (FCoMTradeRoute& Route : AllTradeRoutes)
 	{
 		Route.TurnsActive++;
@@ -267,6 +359,7 @@ void UCoMResourceSubsystem::ProcessTradeTurn()
 		}
 
 		// Disease spread: if source or dest city has an outbreak, spread chance via trade.
+		PendingOutbreaks.Empty();
 		for (const FCoMDiseaseOutbreak& Outbreak : AllOutbreaks)
 		{
 			if (Outbreak.bQuarantined)
@@ -279,7 +372,6 @@ void UCoMResourceSubsystem::ProcessTradeTurn()
 				const int32 TargetCity = (Outbreak.CityID == Route.SourceCityID)
 					? Route.DestCityID : Route.SourceCityID;
 
-				// Check if target already has this disease.
 				bool bAlreadyInfected = false;
 				for (const FCoMDiseaseOutbreak& Other : AllOutbreaks)
 				{
@@ -292,16 +384,19 @@ void UCoMResourceSubsystem::ProcessTradeTurn()
 
 				if (!bAlreadyInfected)
 				{
-					// SpreadChance is FFixed64 (0-1 range); compare against random roll.
 					const int32 SpreadRoll = ResourceRng.RandRange(1, 100);
 					const int32 SpreadPct = FMath::Max(1, static_cast<int32>(Outbreak.SpreadChance.ToFloat() * 100.0f));
 					if (SpreadRoll <= SpreadPct)
 					{
-						StartOutbreak(TargetCity, Outbreak.Type);
-						OnDiseaseSpread.Broadcast(Outbreak.OutbreakID, Outbreak.CityID, TargetCity);
+						PendingOutbreaks.Add({TargetCity, Outbreak.Type, Outbreak.OutbreakID, Outbreak.CityID});
 					}
 				}
 			}
+		}
+		for (const FPendingOutbreak& Pending : PendingOutbreaks)
+		{
+			StartOutbreak(Pending.CityID, Pending.Type);
+			OnDiseaseSpread.Broadcast(Pending.SourceOutbreakID, Pending.SourceCityID, Pending.CityID);
 		}
 	}
 }
@@ -507,7 +602,7 @@ FFixed64 UCoMResourceSubsystem::ComputeRaidChance(const FCoMTradeRoute& Route) c
 	return FFixed64(5);
 }
 
-bool UCoMResourceSubsystem::CheckUnderdarkBreach(const FCoMMineData& Mine) const
+bool UCoMResourceSubsystem::CheckUnderdarkBreach(const FCoMMineData& Mine)
 {
 	// 5% chance for level-3 surface mines.
 	if (Mine.MineLevel >= MINE_MAX_LEVEL && Mine.Layer == ECoMMapLayer::Surface)

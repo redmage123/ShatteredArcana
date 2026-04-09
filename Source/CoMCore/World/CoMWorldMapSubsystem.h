@@ -12,17 +12,11 @@
 #include "CoMWorldMapSubsystem.generated.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Constants used only by this subsystem (not globally shared)
+// Map-layer helpers (constants live in CoM:: namespace in CoMConstants.h)
 // ─────────────────────────────────────────────────────────────────────────────
 
 namespace CoMMap
 {
-	/** Layers per plane: Surface, Underdark, Underwater = 3. */
-	constexpr int32 LAYERS_PER_PLANE = 3;
-
-	/** Total map layers = 8 planes × 3 layers. */
-	constexpr int32 TOTAL_LAYERS = CoM::NUM_PLANES * LAYERS_PER_PLANE; // 24
-
 	/**
 	 * Computes the flat layer index from a plane + layer enum pair.
 	 * Layout: [Aurelith/Surface, Aurelith/Underdark, Aurelith/Underwater,
@@ -30,7 +24,7 @@ namespace CoMMap
 	 */
 	FORCEINLINE int32 LayerIndex(ECoMPlane Plane, ECoMMapLayer Layer)
 	{
-		return static_cast<int32>(Plane) * LAYERS_PER_PLANE
+		return static_cast<int32>(Plane) * CoM::FULL_LAYERS_PER_PLANE
 		     + static_cast<int32>(Layer);
 	}
 }
@@ -74,7 +68,7 @@ public:
 	// ── Map Lifecycle ─────────────────────────────────────────────────────
 
 	/**
-	 * Allocates and zero-initialises all 15 layers.
+	 * Allocates and zero-initialises all 24 layers.
 	 * Called by world generation before populating terrain/resources.
 	 * Safe to call multiple times (resets map state).
 	 */
@@ -210,11 +204,11 @@ public:
 
 	/** Returns total allocated tiles across all 24 layers. */
 	UFUNCTION(BlueprintPure, Category = "WorldMap|Stats")
-	static int32 TotalTiles() { return CoMMap::TOTAL_LAYERS * CoM::MAP_TILES_PER_LAYER; }
+	static int32 TotalTiles() { return CoM::TOTAL_MAP_LAYERS * CoM::MAP_TILES_PER_LAYER; }
 
 private:
 	/**
-	 * Flat array of all 15 FCoMMapLayerData entries.
+	 * Flat array of all 24 FCoMMapLayerData entries.
 	 * Index via CoMMap::LayerIndex(Plane, Layer).
 	 * Stored here (not as a TMap) for O(1) cache-friendly access.
 	 */

@@ -2,9 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
+#include "GameplayTagContainer.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
 #include "CoMCitySubsystem.generated.h"
+
+class UCoMUnitSubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCityFounded, int32, CityID, int32, OwnerWizardIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCityDestroyed, int32, CityID, int32, FormerOwnerWizardIndex);
@@ -47,10 +50,10 @@ struct COMCORE_API FCoMCityData
 	int32 Population = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	ECoMRace PrimaryRace = ECoMRace::Human;
+	FGameplayTag PrimaryRaceTag;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TArray<ECoMRace> MinorityRaces;
+	TArray<FGameplayTag> MinorityRaceTags;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 FoodSurplus = 0;
@@ -125,11 +128,34 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Cities")
 	int32 FoundCity(int32 OwnerWizard, ECoMPlane Plane, ECoMMapLayer Layer,
-		FIntPoint Position, ECoMRace Race, FText Name);
+		FIntPoint Position, FGameplayTag RaceTag, FText Name);
 
 	/** Remove a city from the world. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Cities")
 	void DestroyCity(int32 CityID);
+
+	// -----------------------------------------------------------------
+	// Settler Production
+	// -----------------------------------------------------------------
+
+	/**
+	 * Spawn a settler unit from a city. Costs 1 population.
+	 * Returns the settler's unit ID, or -1 if city population is too low (must be >= 2).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Cities")
+	int32 ProduceSettler(int32 CityId);
+
+	// -----------------------------------------------------------------
+	// Validation
+	// -----------------------------------------------------------------
+
+	/**
+	 * Check if a city can be founded at the given position.
+	 * Validates MIN_CITY_DISTANCE, terrain suitability, and layer restrictions.
+	 * Returns true if the position is valid for city founding.
+	 */
+	UFUNCTION(BlueprintPure, Category = "CoM|Cities")
+	bool CanFoundCityAt(ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position, FGameplayTag RaceTag) const;
 
 	// -----------------------------------------------------------------
 	// Turn Processing
@@ -212,7 +238,7 @@ private:
 	static int32 WrappedDistance(FIntPoint A, FIntPoint B);
 
 	/** Whether the given race is aquatic and allowed to found underwater cities. */
-	static bool IsAquaticRace(ECoMRace Race);
+	static bool IsAquaticRace(FGameplayTag RaceTag);
 
 	/** Gather food-producing tile coordinates in the city radius. */
 	TArray<FIntPoint> GetCityRadiusTiles(FIntPoint Center) const;

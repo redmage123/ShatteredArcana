@@ -190,9 +190,15 @@ void UCoMRHIAbstraction::SetPreferredUpscaler(ECoMUpscalerType Preferred)
 ECoMScalabilityTier UCoMRHIAbstraction::AutoDetectScalabilityTier() const
 {
 	// Query dedicated VRAM via RHI globals (populated after RHI init).
-	// GRHIDeviceSharedMemoryMB is 0 for dedicated GPUs; use it as a fallback for
-	// integrated GPUs that share system RAM.
-	const int32 DedicatedVRAM = 0;  // TODO: UE5.4 VRAM query — GRHIDeviceSharedMemoryMB removed; use FPlatformMemory or RHI vendor extension
+	// Try FPlatformMemory::GetGPUMemoryInfo first, fall back to 0 if unavailable.
+	int32 DedicatedVRAM = 0;
+	{
+		FPlatformMemory::FGPUMemoryInfo GPUMemInfo = FPlatformMemory::GetGPUMemoryInfo();
+		if (GPUMemInfo.DedicatedVideoMemory > 0)
+		{
+			DedicatedVRAM = static_cast<int32>(GPUMemInfo.DedicatedVideoMemory / (1024 * 1024));
+		}
+	}
 
 	// Tier thresholds are approximate VRAM budgets (MB):
 	//   Low:       <4096  MB  (Intel integrated: XeLP/XeHPG at 30fps)
@@ -200,17 +206,13 @@ ECoMScalabilityTier UCoMRHIAbstraction::AutoDetectScalabilityTier() const
 	//   High:      8192   MB  (RTX 3070 / RX 6700 XT @ 60fps)
 	//   Epic:      16384  MB  (RTX 4080+ @ 60fps+)
 	//   Cinematic: >24576 MB  (Enthusiast; RT optional)
-	//
-	// Note: actual VRAM query via UE5 RHI globals is resolved once UE5 is fully
-	// compiled. The thresholds below use the correct field names; the VRAM
-	// value may report 0 before the first frame on some platforms.
 	const int32 VRAM = DedicatedVRAM;
 
 	if (VRAM == 0)
 	{
-		// Cannot determine VRAM — default to High (safe middle ground).
-		UE_LOG(LogCoMRHI, Warning, TEXT("CoMRHI: VRAM query returned 0 — defaulting to High scalability"));
-		return ECoMScalabilityTier::High;
+		// Cannot determine VRAM — default to Medium (conservative fallback).
+		UE_LOG(LogCoMRHI, Warning, TEXT("CoMRHI: VRAM query returned 0 — defaulting to Medium scalability"));
+		return ECoMScalabilityTier::Medium;
 	}
 
 	if (VRAM < 4096)  return ECoMScalabilityTier::Low;

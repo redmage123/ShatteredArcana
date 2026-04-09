@@ -55,6 +55,8 @@ namespace
         case ECoMCommandType::DisbandUnit:        return TEXT("DisbandUnit");
         case ECoMCommandType::MergeArmies:        return TEXT("MergeArmies");
         case ECoMCommandType::SplitArmy:          return TEXT("SplitArmy");
+        // Settlement
+        case ECoMCommandType::FoundCity:          return TEXT("FoundCity");
         // Turn control
         case ECoMCommandType::EndTurn:            return TEXT("EndTurn");
         case ECoMCommandType::Surrender:          return TEXT("Surrender");
@@ -125,7 +127,7 @@ void UCoMReplayRecorder::Deinitialize()
 // Public API
 // ─────────────────────────────────────────────────────────────────────────────
 
-void UCoMReplayRecorder::StartRecording(int32 InitialTurn, int64 Seed)
+void UCoMReplayRecorder::StartRecording(int32 InitialTurn, uint64 Seed)
 {
     if (bRecording)
     {

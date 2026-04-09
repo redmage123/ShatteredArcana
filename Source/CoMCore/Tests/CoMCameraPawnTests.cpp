@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMCameraPawnTests.cpp — Unit tests for ACoMCameraPawn. COM-029 / Policy: every class needs tests.
 //
@@ -26,14 +25,18 @@ bool FCoMCameraZoomClampMin::RunTest(const FString& /*Params*/)
 
 	// Drive target below min by repeatedly calling ZoomIn via reflection
 	const float StartLength = Pawn->MinArmLength;
-	for (int32 i = 0; i < 50; ++i)
+	FProperty* TargetProp = ACoMCameraPawn::StaticClass()->FindPropertyByName(FName("TargetArmLength"));
+	if (TestNotNull(TEXT("TargetArmLength property found"), TargetProp))
 	{
-		// Simulate ZoomIn: decrease TargetArmLength by ZoomStep, clamped to Min
-		float& Target = *reinterpret_cast<float*>(
-			reinterpret_cast<uint8*>(Pawn) +
-			ACoMCameraPawn::StaticClass()->FindPropertyByName(FName("TargetArmLength"))->GetOffset_ForUFunction());
+		for (int32 i = 0; i < 50; ++i)
+		{
+			// Simulate ZoomIn: decrease TargetArmLength by ZoomStep, clamped to Min
+			float& Target = *reinterpret_cast<float*>(
+				reinterpret_cast<uint8*>(Pawn) +
+				TargetProp->GetOffset_ForInternal());
 
-		Target = FMath::Clamp(Target - Pawn->ZoomStep, Pawn->MinArmLength, Pawn->MaxArmLength);
+			Target = FMath::Clamp(Target - Pawn->ZoomStep, Pawn->MinArmLength, Pawn->MaxArmLength);
+		}
 	}
 
 	// TargetArmLength is private — verify indirectly: SpringArm reflects it on Tick.

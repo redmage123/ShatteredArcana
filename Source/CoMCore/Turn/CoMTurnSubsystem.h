@@ -119,6 +119,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "TurnSubsystem")
 	void AdvanceGlobalPhase();
 
+	/**
+	 * Runs a complete turn cycle: world processing, all subsystem ticks
+	 * (movement, combat, production, magic, heroes, dragons, diplomacy,
+	 * espionage, quests, fog-of-war, victory), then advances the turn counter.
+	 *
+	 * This is the single-call entry point that replaces UCoMTurnManager::ProcessFullTurn().
+	 */
+	UFUNCTION(BlueprintCallable, Category = "TurnSubsystem")
+	void ProcessFullTurn();
+
 	// ── Queries ───────────────────────────────────────────────────────────
 
 	UFUNCTION(BlueprintPure, Category = "TurnSubsystem")
@@ -140,6 +150,10 @@ public:
 	/** Returns true if the game has started (StartGame has been called). */
 	UFUNCTION(BlueprintPure, Category = "TurnSubsystem")
 	bool HasGameStarted() const { return bGameStarted; }
+
+	/** Returns the number of non-eliminated wizards still in the game. */
+	UFUNCTION(BlueprintPure, Category = "TurnSubsystem")
+	int32 GetActiveWizardCount() const;
 
 	// ── Delegates ─────────────────────────────────────────────────────────
 
@@ -185,6 +199,9 @@ private:
 
 	/** Called once per turn during WorldProcessing phase (weather, rituals, Ley Lines, etc.). */
 	void ProcessWorldPhase();
+
+	/** Tick all gameplay subsystems in canonical phase order (movement, combat, production, magic, etc.). */
+	void ProcessAllSubsystemTurns();
 
 	/** Begins a specific wizard's turn (sets active index, resets sub-phase to Planning). */
 	void BeginWizardTurn(int32 WizardIndex);

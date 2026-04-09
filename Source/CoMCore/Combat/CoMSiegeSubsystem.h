@@ -53,6 +53,8 @@ public:
 	const FCoMSiegeState* GetSiege(int32 SiegeID) const;
 
 	/** Return all active siege states. */
+	UFUNCTION(BlueprintPure, Category = "Siege")
+	TArray<FCoMSiegeState> GetAllSieges() const;
 
 	/** True if the given city is currently under siege. */
 	bool IsCityUnderSiege(int32 CityID) const;

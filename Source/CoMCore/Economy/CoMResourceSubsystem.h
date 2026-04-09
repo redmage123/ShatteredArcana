@@ -39,7 +39,7 @@ public:
 	 * Returns the new MineID, or -1 on failure (no resource, tile occupied).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Resources")
-	int32 BuildMine(int32 CityID, ECoMPlane Plane, FIntPoint Position);
+	int32 BuildMine(int32 CityID, ECoMPlane Plane, FIntPoint Position, ECoMResource TileResource = ECoMResource::Iron);
 
 	/** Advance mine construction, extract resources, check depletion. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Resources")
@@ -139,7 +139,7 @@ private:
 	FFixed64 ComputeRaidChance(const FCoMTradeRoute& Route) const;
 
 	/** Check whether a level-3 surface mine near mountains should breach. */
-	bool CheckUnderdarkBreach(const FCoMMineData& Mine) const;
+	bool CheckUnderdarkBreach(const FCoMMineData& Mine);
 
 	/** Get the base spread chance for a disease type. */
 	static FFixed64 GetBaseDiseaseSpreadChance(ECoMDiseaseType Type);

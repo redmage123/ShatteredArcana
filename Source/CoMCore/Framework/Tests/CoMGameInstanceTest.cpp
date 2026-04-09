@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMGameInstanceTest.cpp — Unit tests for UCoMGameInstance, FCoMCombatContext,
 //                           FCoMExplorationContext, FCoMNewGameSettings. COM-032
@@ -8,8 +7,6 @@
 #include "Framework/CoMGameInstance.h"
 #include "CoreTypes/CoMConstants.h"
 
-
-#if WITH_DEV_AUTOMATION_TESTS
 
 // ─── FCoMCombatContext ────────────────────────────────────────────────────────
 
@@ -193,8 +190,5 @@ bool FCoMGameInstanceShutdownClearsContextsTest::RunTest(const FString& Paramete
 
 	return true;
 }
-
-#endif // WITH_DEV_AUTOMATION_TESTS
-
 
 #endif

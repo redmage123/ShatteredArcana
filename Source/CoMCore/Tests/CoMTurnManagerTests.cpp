@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "CoreMinimal.h"

@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMSiegeSubsystemTests.cpp — Unit and regression tests
 // Phase 7 tests — Shattered Arcana
@@ -7,9 +6,6 @@
 #include "CoreMinimal.h"
 #include "Misc/AutomationTest.h"
 #include "CoMCore/Combat/CoMSiegeSubsystem.h"
-
-#if WITH_AUTOMATION_TESTS
-
 
 namespace CoMSiegeTests
 {
@@ -35,11 +31,11 @@ bool FSiegeBeginSiege::RunTest(const FString& Parameters)
 	TestTrue("Siege ID is positive", SiegeID > 0);
 	const FCoMSiegeState* Siege = Sub->GetSiege(SiegeID);
 	TestNotNull("Siege state exists", Siege);
-	TestEqual("Attacker army ID", Siege->AttackerArmyID, 1);
+	TestEqual("Attacker army ID", Siege->AttackerArmyGroupID, 1);
 	TestEqual("Defender city ID", Siege->DefenderCityID, 10);
 	TestTrue("City is under siege", Sub->IsCityUnderSiege(10));
-	TestTrue("Food reserves initialized", Siege->FoodReserves > 0);
-	TestTrue("Morale initialized", Siege->Morale > 0);
+	TestTrue("Food reserves initialized", Siege->CityFoodReserves > 0);
+	TestTrue("Morale initialized", Siege->CityMorale > 0);
 	TestTrue("Wall HP initialized", Siege->WallHP > 0);
 	return true;
 }
@@ -82,14 +78,14 @@ bool FSiegeProcessTurn::RunTest(const FString& Parameters)
 	auto* Sub = CreateTestSubsystem();
 	int32 SiegeID = Sub->BeginSiege(1, 10);
 	const FCoMSiegeState* Siege = Sub->GetSiege(SiegeID);
-	int32 InitialFood = Siege->FoodReserves;
+	int32 InitialFood = Siege->CityFoodReserves;
 	// Process a turn — food should decrease
 	Sub->ProcessSiegeTurn();
 	Siege = Sub->GetSiege(SiegeID);
 	if (Siege)
 	{
-		TestTrue("Food reserves decreased", Siege->FoodReserves < InitialFood);
-		TestEqual("Turns elapsed incremented", Siege->TurnsElapsed, 1);
+		TestTrue("Food reserves decreased", Siege->CityFoodReserves < InitialFood);
+		TestEqual("Turns elapsed incremented", Siege->TurnsUnderSiege, 1);
 	}
 	return true;
 }
@@ -111,12 +107,12 @@ bool FSiegeCutSupplyLines::RunTest(const FString& Parameters)
 	Siege = Sub->GetSiege(SiegeID);
 	TestTrue("Supply lines are cut", Siege->bSupplyLinesCut);
 	// With cut supply lines, starvation should be faster
-	int32 FoodBefore = Siege->FoodReserves;
+	int32 FoodBefore = Siege->CityFoodReserves;
 	Sub->ProcessSiegeTurn();
 	Siege = Sub->GetSiege(SiegeID);
 	if (Siege)
 	{
-		int32 FoodLost = FoodBefore - Siege->FoodReserves;
+		int32 FoodLost = FoodBefore - Siege->CityFoodReserves;
 		TestTrue("Food loss is accelerated", FoodLost >= 3);
 	}
 	return true;
@@ -149,7 +145,5 @@ bool FSiegeAutoSurrender::RunTest(const FString& Parameters)
 }
 
 } // namespace CoMSiegeTests
-
-#endif // WITH_AUTOMATION_TESTS
 
 #endif

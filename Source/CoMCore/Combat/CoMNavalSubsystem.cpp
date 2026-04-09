@@ -18,6 +18,10 @@ void UCoMNavalSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		CachedWorldMap = GI->GetSubsystem<UCoMWorldMapSubsystem>();
 	}
+
+	// Sea monsters are spawned lazily on the first ProcessNavalTurn call,
+	// after the world map layers have been fully initialized.
+	bMonstersSpawned = false;
 }
 
 void UCoMNavalSubsystem::Deinitialize()
@@ -237,6 +241,13 @@ bool UCoMNavalSubsystem::IsPortBlockaded(int32 CityID) const
 
 void UCoMNavalSubsystem::ProcessNavalTurn()
 {
+	// Lazy initialization: spawn sea monsters on first turn when map is ready.
+	if (!bMonstersSpawned)
+	{
+		SpawnInitialSeaMonsters();
+		bMonstersSpawned = true;
+	}
+
 	CurrentTurn++;
 
 	// 1. Move fleets along their routes (one tile per turn per speed).

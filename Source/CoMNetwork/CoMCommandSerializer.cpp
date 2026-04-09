@@ -16,7 +16,7 @@
 //   19      2      uint16 — AssetRef UTF-8 byte length (0 = NAME_None)
 //   21      N      utf8   — AssetRef string bytes (variable, may be 0)
 //   21+N    4      int32  — Quantity
-//   25+N    4      uint32 — PayloadChecksum
+//   25+N    4      int32  — PayloadChecksum
 //
 // FName is serialized as a length-prefixed UTF-8 string for cross-machine
 // portability. Never use FArchive << FName directly on the wire — FName indices
@@ -26,6 +26,7 @@
 
 #include "CoMCommandSerializer.h"
 #include "CoMCore/Turn/CoMCommandQueue.h"
+#include "CoMCore/CoreTypes/CoMConstants.h"
 #include "Serialization/MemoryWriter.h"
 #include "Serialization/MemoryReader.h"
 #include "Internationalization/Text.h"
@@ -100,7 +101,7 @@ TArray<uint8> UCoMCommandSerializer::Serialize(const FCoMCommandPayload& Payload
 
     // ── Remaining integer fields ──────────────────────────────────────────────
     int32  Qty      = Payload.Quantity;
-    uint32 Checksum = Payload.PayloadChecksum;
+    int32  Checksum = Payload.PayloadChecksum;
     Writer << Qty;
     Writer << Checksum;
 
@@ -113,8 +114,8 @@ TArray<uint8> UCoMCommandSerializer::Serialize(const FCoMCommandPayload& Payload
 
 bool UCoMCommandSerializer::Deserialize(const TArray<uint8>& Wire, FCoMCommandPayload& OutPayload)
 {
-    // Minimum possible packet: version(1) + cmdtype(1) + 4×int32(16) + plane(1) + strlen(2) = 21
-    static constexpr int32 MinPacketBytes = 21;
+    // Minimum possible packet: version(1) + cmdtype(1) + 4×int32(16) + plane(1) + strlen(2) + quantity(4) + checksum(4) = 29
+    static constexpr int32 MinPacketBytes = 29;
     if (Wire.Num() < MinPacketBytes)
     {
         UE_LOG(LogCoMSerializer, Warning,
@@ -151,6 +152,11 @@ bool UCoMCommandSerializer::Deserialize(const TArray<uint8>& Wire, FCoMCommandPa
 
     // ── Integer fields ────────────────────────────────────────────────────────
     Reader << OutPayload.WizardIndex;
+    if (OutPayload.WizardIndex < 0 || OutPayload.WizardIndex >= CoM::MAX_WIZARDS)
+    {
+        UE_LOG(LogCoMSerializer, Warning, TEXT("Invalid WizardIndex %d"), OutPayload.WizardIndex);
+        return false;
+    }
     Reader << OutPayload.TurnNumber;
     Reader << OutPayload.TargetID_A;
     Reader << OutPayload.TargetID_B;
@@ -158,6 +164,11 @@ bool UCoMCommandSerializer::Deserialize(const TArray<uint8>& Wire, FCoMCommandPa
     // ── Plane ─────────────────────────────────────────────────────────────────
     uint8 Plane = 0;
     Reader << Plane;
+    if (Plane >= static_cast<uint8>(ECoMPlane::MAX))
+    {
+        UE_LOG(LogCoMSerializer, Warning, TEXT("Invalid plane value %d in deserialized packet"), Plane);
+        return false;
+    }
     OutPayload.TargetPlane = static_cast<ECoMPlane>(Plane);
 
     // ── AssetRef (length-prefixed UTF-8) ──────────────────────────────────────

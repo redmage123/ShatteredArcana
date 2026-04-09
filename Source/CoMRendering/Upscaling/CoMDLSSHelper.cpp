@@ -31,3 +31,8 @@ int32 UCoMDLSSHelper::GetActiveQualityPreset()
 	static const auto CVar = IConsoleManager::Get().FindConsoleVariable(TEXT("r.NGX.DLSS.Quality"));
 	return CVar ? CVar->GetInt() : -1;
 }
+
+bool UCoMDLSSHelper::ProbePlugin()
+{
+	return IsDLSSAvailable();
+}

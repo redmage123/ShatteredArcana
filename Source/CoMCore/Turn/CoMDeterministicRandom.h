@@ -68,7 +68,7 @@ struct COMCORE_API FCoMDeterministicRandom
     /** Uniform [0, 1) as a fixed-point fraction (scaled to int32 0–1000000). */
     int32 NextFraction_1M()
     {
-        return static_cast<int32>(NextUInt32_Internal() % 1000001u);
+        return static_cast<int32>(NextUInt32_Internal() % 1000000u);
     }
 
     /** True with probability Percent/100 (integer, e.g. 30 = 30%). */

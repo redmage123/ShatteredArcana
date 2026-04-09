@@ -47,7 +47,7 @@ public:
 
 	/** Home race — determines starting city units and race-specific bonuses. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wizard|Identity")
-	ECoMRace WizardRace = ECoMRace::Human;
+	FGameplayTag WizardRaceTag;
 
 	/** Banner colour shown on units, cities, and the diplomacy screen. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wizard|Identity")

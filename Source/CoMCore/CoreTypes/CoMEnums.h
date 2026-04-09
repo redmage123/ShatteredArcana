@@ -14,7 +14,7 @@
 /** The eight planes of existence.
  *  NOTE (2026-04-04): Infernal plane merged into Infernyx.
  *  Infernyx now contains both volcanic/elemental terrain AND devil/iron-city terrain.
- *  Infernyx has two magic schools: Magma (primary) + Binding/Pact (secondary).
+ *  Infernyx has two magic schools: Chaos (primary) + Binding/Pact (secondary).
  *  NOTE (2026-04-04): Feywild added as Plane 8. Magic school: Glamour. */
 UENUM(BlueprintType)
 enum class ECoMPlane : uint8
@@ -214,8 +214,8 @@ enum class ECoMPactTermType : uint8
 // MAGIC / SPELL SYSTEM
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** The eight spell schools / magic realms.
- *  NOTE: 7 planes, but 8 spell schools — Infernyx has two (Magma + Binding). */
+/** The nine spell schools / magic realms.
+ *  NOTE: 8 planes, but 9 spell schools — Infernyx has two (Chaos + Binding). */
 UENUM(BlueprintType)
 enum class ECoMSpellRealm : uint8
 {
@@ -228,7 +228,7 @@ enum class ECoMSpellRealm : uint8
 	Arcane  UMETA(DisplayName = "Arcane"),   // Universal / ritual / rune spells (no plane bonus)
 
 	// ── New Schools (Three-Plane Expansion) ──────────────────────────────────
-	Binding UMETA(DisplayName = "Binding"),  // Soul contracts, domination, compulsion — Infernyx second school (alongside Magma)
+	Binding UMETA(DisplayName = "Binding"),  // Soul contracts, domination, compulsion — Infernyx second school (alongside Chaos)
 	Spirit  UMETA(DisplayName = "Spirit"),   // Ghosts, dreams, illusion, thought — Ethereal bonus
 
 	// ── Feywild School ───────────────────────────────────────────────────────
@@ -241,13 +241,13 @@ enum class ECoMSpellRealm : uint8
 
 /** Distinguishes plane-native spell schools from universal ones.
  *  Universal schools: Life, Death, Nature, Arcane — no plane bonus/penalty.
- *  PlaneNative schools: Radiance, Shadow, Primal, Magma, Crystal, Chaos, Binding, Spirit, Glamour
+ *  PlaneNative schools: Chaos, Sorcery, Binding, Spirit, Glamour
  *  — cheaper on home plane, expensive cross-plane (see FCoMPlaneSpellData). */
 UENUM(BlueprintType)
 enum class ECoMSpellSchoolType : uint8
 {
 	Universal   UMETA(DisplayName = "Universal"),    // Life, Death, Nature, Arcane — no plane restriction
-	PlaneNative UMETA(DisplayName = "Plane-Native"), // Radiance, Shadow, Primal, Magma, Crystal, Chaos, Binding, Spirit
+	PlaneNative UMETA(DisplayName = "Plane-Native"), // Chaos, Sorcery, Binding, Spirit, Glamour
 
 	MAX UMETA(Hidden)
 };
@@ -492,6 +492,7 @@ enum class ECoMResource : uint8
 UENUM(BlueprintType)
 enum class ECoMCorruptionType : uint8
 {
+	None                UMETA(DisplayName = "None"),                  // No corruption — default for uncorrupted tiles
 	InfernyxCorruption  UMETA(DisplayName = "Infernyx Corruption"),  // Lava/ash/soulfire spread, fire dmg; devil-taint variant converts cities to pact-bound (tribute to nearest Archdevil)
 	ShadowCorruption    UMETA(DisplayName = "Shadow Corruption"),    // Terrain darkens, undead spawn
 	WildGrowth          UMETA(DisplayName = "Wild Growth"),          // Jungle spreads, entangle
@@ -544,6 +545,7 @@ enum class ECoMWorldEventType : uint8
 	// ── Abyssal-specific ─────────────────────────────────────────────────────
 	ChaosStorm UMETA(DisplayName = "Chaos Storm"),  // Abyssal: random devastation, corruption spread
 
+	None UMETA(DisplayName = "None"),  // No event — default sentinel
 	MAX UMETA(Hidden)
 };
 
@@ -595,7 +597,7 @@ enum class ECoMBreathType : uint8
 {
 	Fire, Lightning, Poison, Acid, Cold, Psychic, Explosive, Sand,
 	Death, Void, Prismatic, Ash, Nature, Radiant, Paralyzing, Repulsion,
-	Sleep, Force, HellFire, Pollen, Hellfire, Sonic,
+	Sleep, Force, HellFire, Pollen, Sonic,
 	Time   UMETA(DisplayName = "Time Breath"),  // Ages/rejuvenates targets
 	None,
 
@@ -763,6 +765,7 @@ UENUM(BlueprintType)
 enum class ECoMTreatyType : uint8
 {
 	None,
+	War                 UMETA(DisplayName = "War"),
 	NonAggression       UMETA(DisplayName = "Non-Aggression Pact"),
 	OpenBorders         UMETA(DisplayName = "Open Borders"),
 	TradeAgreement      UMETA(DisplayName = "Trade Agreement"),
@@ -1069,69 +1072,6 @@ enum class ECoMSaveSlotState : uint8
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RACE SYSTEM
-// Added by QA 2026-04-04 — fixes AS-03-BUG / AS-08-BUG compile blockers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** All playable and NPC races across all 8 planes. */
-UENUM(BlueprintType)
-enum class ECoMRace : uint8
-{
-    // Aurelith — Plane I (Surface)
-    HighMen         UMETA(DisplayName = "High Men"),
-    Barbarians      UMETA(DisplayName = "Barbarians"),
-    Gnolls          UMETA(DisplayName = "Gnolls"),
-    Halflings       UMETA(DisplayName = "Halflings"),
-    Nomads          UMETA(DisplayName = "Nomads"),
-    Klackons        UMETA(DisplayName = "Klackons"),
-    Dwarves         UMETA(DisplayName = "Dwarves"),
-    Gnomes          UMETA(DisplayName = "Gnomes"),
-    Beastmen        UMETA(DisplayName = "Beastmen"),
-    // Noctharion — Plane II (Shadow)
-    DarkElves       UMETA(DisplayName = "Dark Elves"),
-    Draconians      UMETA(DisplayName = "Draconians"),
-    Undead          UMETA(DisplayName = "Undead"),
-    Zombies         UMETA(DisplayName = "Zombies"),
-    Skeletons       UMETA(DisplayName = "Skeletons"),
-    Wraiths         UMETA(DisplayName = "Wraiths"),
-    Liches          UMETA(DisplayName = "Liches"),
-    Vampires        UMETA(DisplayName = "Vampires"),
-    // Verdantis — Plane III (Nature)
-    Elves           UMETA(DisplayName = "Elves"),
-    Treants         UMETA(DisplayName = "Treants"),
-    Lizardmen       UMETA(DisplayName = "Lizardmen"),
-    Trolls          UMETA(DisplayName = "Trolls"),
-    Sprites         UMETA(DisplayName = "Sprites"),
-    Centaurs        UMETA(DisplayName = "Centaurs"),
-    // Infernyx — Plane IV (Fire)
-    Demons          UMETA(DisplayName = "Demons"),
-    Efreeti         UMETA(DisplayName = "Efreeti"),
-    Djinn           UMETA(DisplayName = "Djinn"),           // Air genie — Aethermist native, flying magic units
-    FireGiants      UMETA(DisplayName = "Fire Giants"),
-    ChaosWarriors   UMETA(DisplayName = "Chaos Warriors"),
-    Minotaurs       UMETA(DisplayName = "Minotaurs"),
-    // Aethermist — Plane V (Air)
-    SkyElves        UMETA(DisplayName = "Sky Elves"),
-    StormGiants     UMETA(DisplayName = "Storm Giants"),
-    Harpies         UMETA(DisplayName = "Harpies"),
-    Wyverns         UMETA(DisplayName = "Wyverns"),
-    // Abyssal — Plane VI (Deep/Aquatic)
-    Merfolk         UMETA(DisplayName = "Merfolk"),
-    Krakens         UMETA(DisplayName = "Krakens"),
-    Leviathans      UMETA(DisplayName = "Leviathans"),
-    SeaSerpents     UMETA(DisplayName = "Sea Serpents"),
-    AquaticElves    UMETA(DisplayName = "Aquatic Elves"),
-    // Infernal — Plane VII
-    FallenAngels    UMETA(DisplayName = "Fallen Angels"),
-    HellKnights     UMETA(DisplayName = "Hell Knights"),
-    // Ethereal — Plane VIII
-    Phantoms        UMETA(DisplayName = "Phantoms"),
-
-    Human           UMETA(DisplayName = "Human"),       // Generic/unset race used as default
-    None            UMETA(DisplayName = "None"),
-    MAX             UMETA(Hidden)
-};
-
 /** Unit role categories for unit spec DataAssets. */
 UENUM(BlueprintType)
 enum class ECoMUnitCategory : uint8

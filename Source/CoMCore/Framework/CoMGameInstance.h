@@ -146,7 +146,7 @@ struct COMCORE_API FCoMNewGameSettings
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game",
 	          meta = (ClampMin = 0, ClampMax = 4))
-	int32 DifficultyLevel = 2;
+	int32 DifficultyLevel = 1; // 0=Easy, 1=Normal, 2=Hard, 3=Lunatic, 4=Impossible
 
 	bool IsValid() const
 	{
@@ -224,4 +224,10 @@ public:
 	/** Returns true if the session was started by loading an existing save. */
 	UFUNCTION(BlueprintPure, Category = "Save")
 	bool IsLoadedGame() const { return !LoadedSaveSlotName.IsEmpty(); }
+
+	// ─── UI delegates ─────────────────────────────────────────────────────────
+
+	/** Fired when a game mode requests the main menu be shown (e.g. title screen). */
+	DECLARE_MULTICAST_DELEGATE(FOnMainMenuRequested);
+	FOnMainMenuRequested OnMainMenuRequested;
 };

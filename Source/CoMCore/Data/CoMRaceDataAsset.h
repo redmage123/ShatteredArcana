@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "GameplayTagContainer.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
 #include "CoMRaceDataAsset.generated.h"
@@ -33,7 +34,7 @@ public:
 	FText Description;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Race")
-	ECoMRace RaceEnum;
+	FGameplayTag RaceTag;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Race|Plane")
 	ECoMPlane NativePlane;

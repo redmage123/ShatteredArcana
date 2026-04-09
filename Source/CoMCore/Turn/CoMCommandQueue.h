@@ -51,6 +51,9 @@ enum class ECoMCommandType : uint8
     MergeArmies,
     SplitArmy,
 
+    // Settlement
+    FoundCity,
+
     // Turn control
     EndTurn,
     Surrender,
@@ -149,7 +152,7 @@ public:
  * Stored as a UPROPERTY TArray — serializes cleanly via FArchive.
  * Never use TMap or TSet here; insertion order must be deterministic.
  */
-UCLASS(BlueprintType, Within=CoMTurnSubsystem)
+UCLASS(BlueprintType)
 class COMCORE_API UCoMCommandQueue : public UObject
 {
     GENERATED_BODY()

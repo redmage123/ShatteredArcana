@@ -48,8 +48,6 @@
   .rot-row input[type=range] { flex: 1; accent-color: #e94560; }
   .rot-row span { width: 50px; text-align: right; font-size: 12px; }
 </style>
-
-<!-- Import map so bare "three" specifier resolves -->
 <script type="importmap">
 {
   "imports": {
@@ -58,7 +56,6 @@
   }
 }
 </script>
-
 </head>
 <body>
 
@@ -85,7 +82,8 @@
   </div>
   <div style="margin-top:8px;">
     <button id="btn-reset-bone">Reset Bone</button>
-    <button id="btn-copy-pose">Copy Pose</button>
+    <button id="btn-undo">Undo</button>
+    <button id="btn-redo">Redo</button>
   </div>
 </div>
 
@@ -106,515 +104,240 @@
   <span style="font-size:12px;">360</span>
   <button id="btn-export">Export JSON</button>
   <button id="btn-import">Import JSON</button>
-  <button id="btn-render-frames">Render Frames</button>
 </div>
 
 <script type="module">
-import * as THREE from 'three';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+// ============================================================
+// IMPORTS — thin shell wiring modules to UI
+// ============================================================
+import { THREE, canvas, camera, controls, renderer, scene, boneHelperGroup, registerUpdatable, animate } from './js/core.js';
+import * as rig from './js/rig.js';
+import * as kfe from './js/keyframe-engine.js';
+import './js/api.js';  // registers all window.* functions
+
+const statusEl = document.getElementById('status');
 
 // ============================================================
-// SCENE SETUP
+// LOAD MODEL
 // ============================================================
+statusEl.textContent = 'Loading X Bot...';
 
-const canvas = document.getElementById('viewport');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
+rig.loadModel('/model/Knight D Pelegrini.fbx').then(({ boneCount }) => {
+  buildBoneList();
+  statusEl.textContent = `Loaded: ${boneCount} bones. Click bone to select, right-drag to rotate.`;
+}).catch(err => {
+  statusEl.textContent = `Error: ${err.message}`;
+  console.error(err);
+});
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0a1a);
+// Register bone visual updates in render loop
+registerUpdatable(() => rig.updateBoneVisuals());
 
-const camera = new THREE.PerspectiveCamera(35, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
-camera.position.set(0, 1.2, 3.5);
-camera.lookAt(0, 1.0, 0);
-
-const controls = new OrbitControls(camera, canvas);
-controls.target.set(0, 1.0, 0);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-
-// Lighting — dramatic golden
-const ambientLight = new THREE.AmbientLight(0x2a2a4a, 0.4);
-scene.add(ambientLight);
-
-const keyLight = new THREE.DirectionalLight(0xfff0d0, 2.0);
-keyLight.position.set(3, 5, 4);
-keyLight.castShadow = true;
-keyLight.shadow.mapSize.set(2048, 2048);
-scene.add(keyLight);
-
-const fillLight = new THREE.DirectionalLight(0x4060a0, 0.6);
-fillLight.position.set(-3, 2, -2);
-scene.add(fillLight);
-
-const rimLight = new THREE.DirectionalLight(0xffc040, 1.0);
-rimLight.position.set(-1, 3, -4);
-scene.add(rimLight);
-
-// Ground
-const groundGeo = new THREE.PlaneGeometry(10, 10);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.8 });
-const ground = new THREE.Mesh(groundGeo, groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
-
-const boneHelperGroup = new THREE.Group();
-scene.add(boneHelperGroup);
-
-// Environment map for metallic reflections
-const pmremGenerator = new THREE.PMREMGenerator(renderer);
-const envScene = new THREE.Scene();
-envScene.background = new THREE.Color(0x1a1a2e);
-const el1 = new THREE.PointLight(0xfff0d0, 10, 20); el1.position.set(3, 5, 4); envScene.add(el1);
-const el2 = new THREE.PointLight(0x4060a0, 5, 20); el2.position.set(-3, 2, -2); envScene.add(el2);
-const el3 = new THREE.PointLight(0xffc040, 8, 20); el3.position.set(-1, 3, -4); envScene.add(el3);
-const envMap = pmremGenerator.fromScene(envScene).texture;
-
-// ============================================================
-// MATERIALS — Shining Steel with Gold Inlays
-// ============================================================
-
-function createKnightMaterials() {
-  const steelMat = new THREE.MeshStandardMaterial({
-    color: 0x8899aa, metalness: 0.95, roughness: 0.15,
-    envMap, envMapIntensity: 1.5,
-  });
-  const goldMat = new THREE.MeshStandardMaterial({
-    color: 0xdaa520, metalness: 1.0, roughness: 0.1,
-    emissive: 0x332200, emissiveIntensity: 0.15, envMap, envMapIntensity: 1.5,
-  });
-  const darkSteelMat = new THREE.MeshStandardMaterial({
-    color: 0x2a2a3a, metalness: 0.9, roughness: 0.25, envMap,
-  });
-  const eyeMat = new THREE.MeshStandardMaterial({
-    color: 0x60c0ff, emissive: 0x2080ff, emissiveIntensity: 0.8,
-  });
-  return { steelMat, goldMat, darkSteelMat, eyeMat };
-}
-
-function applyKnightTextures(fbxModel) {
-  const mats = createKnightMaterials();
-  fbxModel.traverse((child) => {
-    if (child.isMesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
-      const name = (child.name || '').toLowerCase();
-      if (name.includes('joint') || name.includes('ball')) {
-        child.material = mats.goldMat;
-      } else if (name.includes('eye') || name.includes('visor')) {
-        child.material = mats.eyeMat;
-      } else {
-        child.material = mats.steelMat;
-      }
-    }
-  });
-}
-
-// ============================================================
-// STATE
-// ============================================================
-
-const FPS = 24;
-const TOTAL_FRAMES = 360;
-let currentFrame = 1;
-let isPlaying = false;
-let selectedBone = null;
-let model = null;
-let bones = [];
-let boneMap = {};
-const keyframes = {};
-const restPose = {};
-
-// ============================================================
-// FBX LOADING
-// ============================================================
-
-const loader = new FBXLoader();
-
-function loadModel() {
-  document.getElementById('status').textContent = 'Loading X Bot...';
-  loader.load('/model/X Bot.fbx',
-    (fbx) => {
-      model = fbx;
-      model.scale.setScalar(0.01);
-      applyKnightTextures(model);
-      scene.add(model);
-
-      model.traverse((child) => {
-        if (child.isBone) {
-          bones.push(child);
-          boneMap[child.name] = child;
-          restPose[child.name] = {
-            rx: THREE.MathUtils.radToDeg(child.rotation.x),
-            ry: THREE.MathUtils.radToDeg(child.rotation.y),
-            rz: THREE.MathUtils.radToDeg(child.rotation.z),
-          };
-        }
-      });
-
-      // Kill any embedded animations
-      if (fbx.animations) fbx.animations.length = 0;
-
-      buildBoneList();
-      createBoneVisuals();
-      document.getElementById('status').textContent =
-        `Loaded: ${bones.length} bones. Click bone to select, right-drag to rotate.`;
-    },
-    (p) => {
-      const pct = p.total > 0 ? Math.round(p.loaded / p.total * 100) : '?';
-      document.getElementById('status').textContent = `Loading... ${pct}%`;
-    },
-    (err) => {
-      document.getElementById('status').textContent = `Error: ${err.message}`;
-      console.error(err);
-    }
-  );
-}
-
-// ============================================================
-// BONE VISUALS
-// ============================================================
-
-const boneSpheres = {};
-
-function createBoneVisuals() {
-  boneHelperGroup.clear();
-  const geo = new THREE.SphereGeometry(0.025, 8, 8);
-
-  bones.forEach(bone => {
-    const mat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.5 });
-    const sphere = new THREE.Mesh(geo.clone(), mat);
-    sphere.userData.boneName = bone.name;
-    boneSpheres[bone.name] = sphere;
-    boneHelperGroup.add(sphere);
-  });
-}
-
-function updateBoneVisuals() {
-  const wp = new THREE.Vector3();
-  bones.forEach(bone => {
-    const sphere = boneSpheres[bone.name];
-    if (sphere) { bone.getWorldPosition(wp); sphere.position.copy(wp); }
-  });
-}
-
-// ============================================================
-// BONE SELECTION
-// ============================================================
-
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-function onCanvasClick(event) {
-  const rect = canvas.getBoundingClientRect();
-  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(Object.values(boneSpheres));
-  if (hits.length > 0) selectBone(hits[0].object.userData.boneName);
-}
-
-function selectBone(boneName) {
-  if (selectedBone && boneSpheres[selectedBone]) {
-    boneSpheres[selectedBone].material.color.setHex(0x00ff88);
-    boneSpheres[selectedBone].material.opacity = 0.5;
+// Playback tick
+let lastPlayTime = 0;
+registerUpdatable((dt) => {
+  if (!kfe.getIsPlaying()) return;
+  const now = performance.now();
+  if (now - lastPlayTime > 1000 / kfe.getFPS()) {
+    const next = kfe.getCurrentFrame() + 1;
+    window.goToFrame(next > kfe.getTotalFrames() ? 1 : next);
+    lastPlayTime = now;
   }
-  selectedBone = boneName;
-  if (boneSpheres[boneName]) {
-    boneSpheres[boneName].material.color.setHex(0xff4444);
-    boneSpheres[boneName].material.opacity = 0.8;
-  }
-  document.getElementById('bone-label').textContent = boneName;
-  document.querySelectorAll('#bone-list div').forEach(el => {
-    el.classList.toggle('selected', el.dataset.bone === boneName);
-  });
-  const bone = boneMap[boneName];
-  if (bone) {
-    const rx = THREE.MathUtils.radToDeg(bone.rotation.x);
-    const ry = THREE.MathUtils.radToDeg(bone.rotation.y);
-    const rz = THREE.MathUtils.radToDeg(bone.rotation.z);
-    document.getElementById('rot-x').value = rx;
-    document.getElementById('rot-y').value = ry;
-    document.getElementById('rot-z').value = rz;
-    document.getElementById('rot-x-val').textContent = rx.toFixed(1);
-    document.getElementById('rot-y-val').textContent = ry.toFixed(1);
-    document.getElementById('rot-z-val').textContent = rz.toFixed(1);
-  }
-}
+});
 
-canvas.addEventListener('click', onCanvasClick);
-window.selectBone = selectBone;
+// Mixer update for clip playback
+registerUpdatable((dt) => {
+  const mixer = rig.getMixer();
+  if (mixer) mixer.update(dt);
+});
 
 // ============================================================
-// BONE LIST
+// BONE LIST UI
 // ============================================================
-
 function buildBoneList() {
   const el = document.getElementById('bone-list');
   el.innerHTML = '<div style="font-weight:bold;padding:4px 8px;margin-bottom:4px;">Bones</div>';
-  const important = bones.filter(b => {
+  const important = rig.getBones().filter(b => {
     const n = b.name.toLowerCase();
     return n.includes('spine') || n.includes('arm') || n.includes('hand') ||
       n.includes('head') || n.includes('neck') || n.includes('hip') ||
       n.includes('leg') || n.includes('foot') || n.includes('shoulder') ||
-      n.includes('thigh') || n.includes('calf') || n.includes('toe') ||
-      n.includes('thumb') || n.includes('index') || n.includes('middle') ||
-      n.includes('ring') || n.includes('pinky');
+      n.includes('thigh') || n.includes('calf') || n.includes('toe');
   });
-  (important.length > 0 ? important : bones).forEach(bone => {
+  // Deduplicate
+  const seen = new Set();
+  const unique = (important.length > 0 ? important : rig.getBones()).filter(b => {
+    if (seen.has(b.name)) return false;
+    seen.add(b.name);
+    return true;
+  });
+  unique.forEach(bone => {
     const div = document.createElement('div');
     div.textContent = bone.name;
     div.dataset.bone = bone.name;
-    div.addEventListener('click', () => selectBone(bone.name));
+    div.addEventListener('click', () => {
+      rig.selectBone(bone.name);
+      refreshBoneUI(bone.name);
+    });
     el.appendChild(div);
   });
 }
 
+function refreshBoneUI(boneName) {
+  document.getElementById('bone-label').textContent = boneName;
+  document.querySelectorAll('#bone-list div').forEach(el => {
+    el.classList.toggle('selected', el.dataset.bone === boneName);
+  });
+  const rot = rig.getBoneRotation(boneName);
+  if (rot) {
+    document.getElementById('rot-x').value = rot.x;
+    document.getElementById('rot-y').value = rot.y;
+    document.getElementById('rot-z').value = rot.z;
+    document.getElementById('rot-x-val').textContent = rot.x.toFixed(1);
+    document.getElementById('rot-y-val').textContent = rot.y.toFixed(1);
+    document.getElementById('rot-z-val').textContent = rot.z.toFixed(1);
+  }
+}
+
+// ============================================================
+// BONE CLICK SELECTION (raycaster)
+// ============================================================
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(Object.values(rig.boneSpheres));
+  if (hits.length > 0) {
+    const name = hits[0].object.userData.boneName;
+    rig.selectBone(name);
+    refreshBoneUI(name);
+  }
+});
+
 // ============================================================
 // ROTATION SLIDERS
 // ============================================================
-
 ['x', 'y', 'z'].forEach(axis => {
   document.getElementById(`rot-${axis}`).addEventListener('input', (e) => {
-    if (!selectedBone) return;
-    const bone = boneMap[selectedBone];
-    if (!bone) return;
+    const sel = rig.getSelectedBone();
+    if (!sel) return;
     const deg = parseFloat(e.target.value);
     document.getElementById(`rot-${axis}-val`).textContent = deg.toFixed(1);
-    bone.rotation[axis] = THREE.MathUtils.degToRad(deg);
+    const cur = rig.getBoneRotation(sel);
+    if (cur) {
+      const rx = axis === 'x' ? deg : cur.x;
+      const ry = axis === 'y' ? deg : cur.y;
+      const rz = axis === 'z' ? deg : cur.z;
+      window.setBoneRotation(sel, rx, ry, rz);
+    }
   });
 });
 
-document.getElementById('btn-reset-bone').addEventListener('click', () => {
-  if (!selectedBone) return;
-  const bone = boneMap[selectedBone];
-  const rest = restPose[selectedBone];
-  if (!bone || !rest) return;
-  bone.rotation.set(THREE.MathUtils.degToRad(rest.rx), THREE.MathUtils.degToRad(rest.ry), THREE.MathUtils.degToRad(rest.rz));
-  selectBone(selectedBone);
-});
-
 // ============================================================
-// KEYFRAME SYSTEM
+// RIGHT-CLICK DRAG TO ROTATE
 // ============================================================
-
-function setKeyframe() {
-  if (!selectedBone) {
-    bones.forEach(bone => {
-      if (!keyframes[bone.name]) keyframes[bone.name] = {};
-      keyframes[bone.name][currentFrame] = {
-        rx: THREE.MathUtils.radToDeg(bone.rotation.x),
-        ry: THREE.MathUtils.radToDeg(bone.rotation.y),
-        rz: THREE.MathUtils.radToDeg(bone.rotation.z),
-      };
-    });
-    document.getElementById('status').textContent = `Keyframe ALL @ frame ${currentFrame}`;
-  } else {
-    const bone = boneMap[selectedBone];
-    if (!bone) return;
-    if (!keyframes[selectedBone]) keyframes[selectedBone] = {};
-    keyframes[selectedBone][currentFrame] = {
-      rx: THREE.MathUtils.radToDeg(bone.rotation.x),
-      ry: THREE.MathUtils.radToDeg(bone.rotation.y),
-      rz: THREE.MathUtils.radToDeg(bone.rotation.z),
-    };
-    document.getElementById('status').textContent = `Key: ${selectedBone} @ ${currentFrame}`;
-  }
-}
-
-function deleteKeyframe() {
-  if (selectedBone && keyframes[selectedBone]) {
-    delete keyframes[selectedBone][currentFrame];
-  }
-}
-
-function interpolateFrame(frame) {
-  for (const boneName of Object.keys(keyframes)) {
-    const bone = boneMap[boneName];
-    if (!bone) continue;
-    const bk = keyframes[boneName];
-    const frames = Object.keys(bk).map(Number).sort((a, b) => a - b);
-    if (frames.length === 0) continue;
-    let prev = null, next = null;
-    for (let i = 0; i < frames.length; i++) {
-      if (frames[i] <= frame) prev = frames[i];
-      if (frames[i] >= frame && next === null) next = frames[i];
-    }
-    if (prev !== null && next !== null && prev !== next) {
-      const t = (frame - prev) / (next - prev);
-      const s = t * t * (3 - 2 * t);
-      const p = bk[prev], n = bk[next];
-      bone.rotation.x = THREE.MathUtils.degToRad(p.rx + (n.rx - p.rx) * s);
-      bone.rotation.y = THREE.MathUtils.degToRad(p.ry + (n.ry - p.ry) * s);
-      bone.rotation.z = THREE.MathUtils.degToRad(p.rz + (n.rz - p.rz) * s);
-    } else if (prev !== null) {
-      const kf = bk[prev];
-      bone.rotation.x = THREE.MathUtils.degToRad(kf.rx);
-      bone.rotation.y = THREE.MathUtils.degToRad(kf.ry);
-      bone.rotation.z = THREE.MathUtils.degToRad(kf.rz);
-    }
-  }
-}
-
-document.getElementById('btn-set-key').addEventListener('click', setKeyframe);
-document.getElementById('btn-del-key').addEventListener('click', deleteKeyframe);
-window.setKeyframe = setKeyframe;
-window.deleteKeyframe = deleteKeyframe;
-
-// ============================================================
-// FRAME NAVIGATION
-// ============================================================
-
-function goToFrame(frame) {
-  currentFrame = Math.max(1, Math.min(TOTAL_FRAMES, frame));
-  document.getElementById('frame-display').textContent = `Frame ${currentFrame} / ${TOTAL_FRAMES}`;
-  document.getElementById('frame-slider').value = currentFrame;
-  interpolateFrame(currentFrame);
-  if (selectedBone) selectBone(selectedBone);
-}
-
-document.getElementById('btn-prev-frame').addEventListener('click', () => goToFrame(currentFrame - 1));
-document.getElementById('btn-next-frame').addEventListener('click', () => goToFrame(currentFrame + 1));
-document.getElementById('frame-slider').addEventListener('input', (e) => goToFrame(parseInt(e.target.value)));
-document.getElementById('btn-play').addEventListener('click', () => {
-  isPlaying = !isPlaying;
-  document.getElementById('btn-play').textContent = isPlaying ? '|| Pause' : '> Play';
-});
-
-window.goToFrame = goToFrame;
-window.getCurrentFrame = () => currentFrame;
-window.getTotalFrames = () => TOTAL_FRAMES;
-
-// ============================================================
-// DRAG-TO-ROTATE (right-click drag)
-// ============================================================
-
-let isDragging = false, dragStartX = 0, dragStartY = 0, dragBoneStartRot = null;
+let isDragging = false, dragStartX = 0, dragStartY = 0, dragStart = null;
 
 canvas.addEventListener('mousedown', (e) => {
-  if (!selectedBone || e.button !== 2) return;
+  const sel = rig.getSelectedBone();
+  if (!sel || e.button !== 2) return;
   e.preventDefault();
   isDragging = true;
   dragStartX = e.clientX; dragStartY = e.clientY;
-  const bone = boneMap[selectedBone];
-  if (bone) dragBoneStartRot = {
-    x: THREE.MathUtils.radToDeg(bone.rotation.x),
-    y: THREE.MathUtils.radToDeg(bone.rotation.y),
-    z: THREE.MathUtils.radToDeg(bone.rotation.z),
-  };
+  dragStart = rig.getBoneRotation(sel);
   controls.enabled = false;
 });
 
 canvas.addEventListener('mousemove', (e) => {
-  if (!isDragging || !selectedBone || !dragBoneStartRot) return;
-  const bone = boneMap[selectedBone];
-  if (!bone) return;
+  if (!isDragging || !dragStart) return;
+  const sel = rig.getSelectedBone();
+  if (!sel) return;
   const dx = (e.clientX - dragStartX) * 0.5;
   const dy = (e.clientY - dragStartY) * 0.5;
-  bone.rotation.x = THREE.MathUtils.degToRad(dragBoneStartRot.x + dy);
-  bone.rotation.y = THREE.MathUtils.degToRad(dragBoneStartRot.y + dx);
-  document.getElementById('rot-x').value = dragBoneStartRot.x + dy;
-  document.getElementById('rot-y').value = dragBoneStartRot.y + dx;
-  document.getElementById('rot-x-val').textContent = (dragBoneStartRot.x + dy).toFixed(1);
-  document.getElementById('rot-y-val').textContent = (dragBoneStartRot.y + dx).toFixed(1);
+  rig.setBoneRotation(sel, dragStart.x + dy, dragStart.y + dx, dragStart.z);
+  refreshBoneUI(sel);
 });
 
-window.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; controls.enabled = true; } });
+window.addEventListener('mouseup', () => {
+  if (isDragging) { isDragging = false; controls.enabled = true; }
+});
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowRight') goToFrame(currentFrame + 1);
-  if (e.key === 'ArrowLeft') goToFrame(currentFrame - 1);
-  if (e.key === 'k' || e.key === 'K') setKeyframe();
-  if (e.key === ' ') { isPlaying = !isPlaying; e.preventDefault(); }
+// ============================================================
+// BUTTONS
+// ============================================================
+document.getElementById('btn-prev-frame').addEventListener('click', () => window.goToFrame(kfe.getCurrentFrame() - 1));
+document.getElementById('btn-next-frame').addEventListener('click', () => window.goToFrame(kfe.getCurrentFrame() + 1));
+document.getElementById('frame-slider').addEventListener('input', (e) => window.goToFrame(parseInt(e.target.value)));
+document.getElementById('btn-set-key').addEventListener('click', () => {
+  const result = window.setKeyframe(rig.getSelectedBone());
+  statusEl.textContent = `Keyframe: ${result}`;
 });
+document.getElementById('btn-del-key').addEventListener('click', () => window.deleteKeyframe(rig.getSelectedBone()));
+document.getElementById('btn-play').addEventListener('click', () => {
+  kfe.setIsPlaying(!kfe.getIsPlaying());
+  document.getElementById('btn-play').textContent = kfe.getIsPlaying() ? '|| Pause' : '> Play';
+});
+document.getElementById('btn-reset-bone').addEventListener('click', () => {
+  const sel = rig.getSelectedBone();
+  if (sel) { rig.resetBone(sel); refreshBoneUI(sel); }
+});
+document.getElementById('btn-undo').addEventListener('click', () => window.undo());
+document.getElementById('btn-redo').addEventListener('click', () => window.redo());
 
-// ============================================================
-// EXPORT / IMPORT
-// ============================================================
-
+// Export / Import
 document.getElementById('btn-export').addEventListener('click', () => {
-  const data = JSON.stringify({ fps: FPS, totalFrames: TOTAL_FRAMES, keyframes, restPose }, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = 'aurelith-knight-keyframes.json'; a.click();
+  const data = JSON.stringify({
+    fps: kfe.getFPS(), totalFrames: kfe.getTotalFrames(),
+    keyframes: JSON.parse(kfe.exportJSON()),
+    camera: JSON.parse(window.getCameraKeyframes ? window.getCameraKeyframes() : '{}'),
+    restPose: rig.getRestPose(),
+  }, null, 2);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+  a.download = 'animation-keyframes.json';
+  a.click();
 });
 
 document.getElementById('btn-import').addEventListener('click', () => {
-  const input = document.createElement('input'); input.type = 'file'; input.accept = '.json';
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
   input.onchange = (e) => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const data = JSON.parse(ev.target.result);
-      Object.assign(keyframes, data.keyframes || {});
-      goToFrame(1);
+      if (data.keyframes) window.importKeyframes(JSON.stringify(data.keyframes));
+      if (data.camera) window.importCameraKeyframes(JSON.stringify(data.camera));
+      window.goToFrame(1);
+      statusEl.textContent = 'Imported keyframes';
     };
     reader.readAsText(e.target.files[0]);
   };
   input.click();
 });
 
-// Playwright API
-window.getKeyframes = () => JSON.stringify(keyframes);
-window.importKeyframes = (jsonStr) => {
-  const data = JSON.parse(jsonStr);
-  const kf = data.keyframes || data;
-  Object.keys(kf).forEach(k => keyframes[k] = kf[k]);
-  goToFrame(currentFrame);
-};
-window.getBoneRotation = (name) => {
-  const b = boneMap[name]; if (!b) return null;
-  return { x: THREE.MathUtils.radToDeg(b.rotation.x), y: THREE.MathUtils.radToDeg(b.rotation.y), z: THREE.MathUtils.radToDeg(b.rotation.z) };
-};
-window.setBoneRotation = (name, rx, ry, rz) => {
-  const b = boneMap[name]; if (!b) return false;
-  b.rotation.x = THREE.MathUtils.degToRad(rx);
-  b.rotation.y = THREE.MathUtils.degToRad(ry);
-  b.rotation.z = THREE.MathUtils.degToRad(rz);
-  if (selectedBone === name) selectBone(name);
-  return true;
-};
-window.getBoneNames = () => bones.map(b => b.name);
-window.getBonesState = () => {
-  const s = {};
-  bones.forEach(b => { s[b.name] = { x: THREE.MathUtils.radToDeg(b.rotation.x), y: THREE.MathUtils.radToDeg(b.rotation.y), z: THREE.MathUtils.radToDeg(b.rotation.z) }; });
-  return s;
-};
-
-// ============================================================
-// RENDER LOOP
-// ============================================================
-
-let lastPlayTime = 0;
-function animate(time) {
-  requestAnimationFrame(animate);
-  if (isPlaying && time - lastPlayTime > 1000 / FPS) {
-    goToFrame(currentFrame + 1 > TOTAL_FRAMES ? 1 : currentFrame + 1);
-    lastPlayTime = time;
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight') window.goToFrame(kfe.getCurrentFrame() + 1);
+  if (e.key === 'ArrowLeft') window.goToFrame(kfe.getCurrentFrame() - 1);
+  if (e.key === 'k' || e.key === 'K') window.setKeyframeAll();
+  if (e.key === 'z' && e.ctrlKey) { e.preventDefault(); window.undo(); }
+  if (e.key === 'y' && e.ctrlKey) { e.preventDefault(); window.redo(); }
+  if (e.key === ' ') {
+    e.preventDefault();
+    kfe.setIsPlaying(!kfe.getIsPlaying());
+    document.getElementById('btn-play').textContent = kfe.getIsPlaying() ? '|| Pause' : '> Play';
   }
-  updateBoneVisuals();
-  controls.update();
-  renderer.render(scene, camera);
-}
+});
 
-function resize() {
-  const w = window.innerWidth, h = window.innerHeight - 120;
-  renderer.setSize(w, h);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-}
-window.addEventListener('resize', resize);
-resize();
-
-loadModel();
-animate(0);
+// ============================================================
+// START
+// ============================================================
+animate();
 </script>
 </body>
 </html>

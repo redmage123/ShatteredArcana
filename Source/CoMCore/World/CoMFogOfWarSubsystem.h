@@ -7,6 +7,8 @@
 #include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMFogOfWarSubsystem.generated.h"
 
+class UCoMWorldMapSubsystem;
+
 /**
  * Fog of War subsystem.
  *
@@ -66,11 +68,11 @@ public:
 
 	/** True if the wizard can currently see the tile (this turn). */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|FogOfWar")
-	bool IsTileVisible(int32 WizardIndex, ECoMPlane Plane, FIntPoint Tile) const;
+	bool IsTileVisible(int32 WizardIndex, ECoMPlane Plane, FIntPoint Tile, ECoMMapLayer Layer = ECoMMapLayer::Surface) const;
 
 	/** True if the wizard has ever seen the tile. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|FogOfWar")
-	bool IsTileExplored(int32 WizardIndex, ECoMPlane Plane, FIntPoint Tile) const;
+	bool IsTileExplored(int32 WizardIndex, ECoMPlane Plane, FIntPoint Tile, ECoMMapLayer Layer = ECoMMapLayer::Surface) const;
 
 	// -----------------------------------------------------------------
 	// Direct manipulation
@@ -81,14 +83,14 @@ public:
 	 * Used by armies, scouts, spells, etc.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "CoM|FogOfWar")
-	void RevealTile(int32 WizardIndex, ECoMPlane Plane, FIntPoint Tile);
+	void RevealTile(int32 WizardIndex, ECoMPlane Plane, FIntPoint Tile, ECoMMapLayer Layer = ECoMMapLayer::Surface);
 
 	/**
 	 * Reveal all tiles within Manhattan distance <= Radius around Center
-	 * for the given wizard on the given plane.
+	 * for the given wizard on the given plane and layer.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "CoM|FogOfWar")
-	void RevealArea(int32 WizardIndex, ECoMPlane Plane, FIntPoint Center, int32 Radius);
+	void RevealArea(int32 WizardIndex, ECoMPlane Plane, FIntPoint Center, int32 Radius, ECoMMapLayer Layer = ECoMMapLayer::Surface);
 
 	// -----------------------------------------------------------------
 	// Sight radius
@@ -105,33 +107,9 @@ public:
 
 private:
 	// -----------------------------------------------------------------
-	// Bitmask storage
+	// Delegation target — all fog state lives on WorldMapSubsystem tiles
 	// -----------------------------------------------------------------
 
-	/**
-	 * Per-plane explored masks.
-	 * Key: ECoMPlane -> TMap<FIntPoint, uint32>
-	 * Bit N of the uint32 = wizard N has explored this tile.
-	 */
 	UPROPERTY()
-	TMap<ECoMPlane, FIntPoint> ExploredMaskDummy; // UPROPERTY placeholder for reflection
-
-	// Actual storage (not UPROPERTY — TMap<TMap> is not supported by UHT).
-	TMap<uint8, TMap<FIntPoint, uint32>> ExploredMask;
-	TMap<uint8, TMap<FIntPoint, uint32>> VisibleMask;
-
-	// -----------------------------------------------------------------
-	// Helpers
-	// -----------------------------------------------------------------
-
-	/** Get or create the explored mask for a plane. */
-	TMap<FIntPoint, uint32>& GetExploredMap(ECoMPlane Plane);
-	const TMap<FIntPoint, uint32>& GetExploredMapConst(ECoMPlane Plane) const;
-
-	/** Get or create the visible mask for a plane. */
-	TMap<FIntPoint, uint32>& GetVisibleMap(ECoMPlane Plane);
-	const TMap<FIntPoint, uint32>& GetVisibleMapConst(ECoMPlane Plane) const;
-
-	/** Return the bit for a given wizard index. */
-	static uint32 WizardBit(int32 WizardIndex);
+	TObjectPtr<UCoMWorldMapSubsystem> WorldMapSub;
 };

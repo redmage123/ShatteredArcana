@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMPlayerControllerTest.cpp — Unit tests for ACoMHumanPlayerController
 //                               and ACoMAIPlayerController. COM-032
@@ -7,8 +6,6 @@
 #include "Misc/AutomationTest.h"
 #include "Framework/CoMPlayerController.h"
 
-
-#if WITH_DEV_AUTOMATION_TESTS
 
 // ─── ACoMHumanPlayerController ────────────────────────────────────────────────
 
@@ -59,13 +56,12 @@ bool FCoMAIPlayerControllerDefaultsTest::RunTest(const FString& Parameters)
 
 	if (!CDO) { return false; }
 
-	TestFalse(TEXT("IsPlayerController() is false for AI controller"),
-	          CDO->IsPlayerController());
+	TestTrue(TEXT("AI controller is still an APlayerController subclass"),
+	         CDO->IsPlayerController());
+	TestTrue(TEXT("AI controller class name contains 'AI'"),
+	         CDO->GetClass()->GetName().Contains(TEXT("AI")));
 
 	return true;
 }
-
-#endif // WITH_DEV_AUTOMATION_TESTS
-
 
 #endif

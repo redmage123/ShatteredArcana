@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "GameplayTagContainer.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
 #include "CoMUnitSpecDataAsset.generated.h"
@@ -32,7 +33,7 @@ public:
 	FText Description;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Unit|Classification")
-	ECoMRace Race;
+	FGameplayTag RaceTag;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Unit|Classification")
 	ECoMUnitCategory Category;

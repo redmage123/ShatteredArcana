@@ -6,10 +6,6 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "CoMTurnManager.generated.h"
 
-// Forward declarations — subsystems are fetched at call time, never cached.
-class UCoMSeasonSubsystem;
-class UCoMHeroSubsystem;
-
 // ═══════════════════════════════════════════════════════════════════════════
 // Turn Phases — the fixed sequence in which subsystems are processed
 // each global turn.  Matches Master of Magic / Caster of Magic phase order

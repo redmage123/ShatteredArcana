@@ -8,6 +8,10 @@ public class CoMAI : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
+		// Expose module root so subdirs (Strategic/, Tactical/, Difficulty/) can use
+		// relative includes and other modules can include "CoMAI/CoMAISubsystem.h".
+		PublicIncludePaths.Add(ModuleDirectory);
+
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			"Core",

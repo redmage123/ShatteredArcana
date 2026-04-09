@@ -2,7 +2,7 @@
 
 #include "CoMTerritorySubsystem.h"
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
-#include "Containers/Queue.h"
+#include "Algo/Sort.h"
 
 // ============================================================================
 // Subsystem lifecycle
@@ -253,7 +253,10 @@ void UCoMTerritorySubsystem::RecalculatePlane(UCoMWorldMapSubsystem* Map, ECoMPl
 			continue;
 		}
 
-		TQueue<FBFSNode> Queue;
+		// Priority queue (min-heap) — needed because mountain tiles cost > 1.
+		auto CostPredicate = [](const FBFSNode& A, const FBFSNode& B) { return A.Cost > B.Cost; };
+		TArray<FBFSNode> OpenList;
+
 		// Local visited set to avoid re-enqueuing within this seed's BFS.
 		TArray<int32> LocalBest;
 		LocalBest.SetNumUninitialized(MAP_SIZE);
@@ -281,12 +284,12 @@ void UCoMTerritorySubsystem::RecalculatePlane(UCoMWorldMapSubsystem* Map, ECoMPl
 		StartNode.X    = SeedX;
 		StartNode.Y    = SeedY;
 		StartNode.Cost = 0;
-		Queue.Enqueue(StartNode);
+		OpenList.HeapPush(StartNode, CostPredicate);
 
-		while (!Queue.IsEmpty())
+		while (OpenList.Num() > 0)
 		{
 			FBFSNode Current;
-			Queue.Dequeue(Current);
+			OpenList.HeapPop(Current, CostPredicate);
 
 			// Skip if we already found a cheaper local path to this tile.
 			const int32 CurIdx = TileIndex(Current.X, Current.Y);
@@ -351,7 +354,7 @@ void UCoMTerritorySubsystem::RecalculatePlane(UCoMWorldMapSubsystem* Map, ECoMPl
 				Next.X    = NX;
 				Next.Y    = NY;
 				Next.Cost = NewCost;
-				Queue.Enqueue(Next);
+				OpenList.HeapPush(Next, CostPredicate);
 			}
 		}
 	}
@@ -364,8 +367,8 @@ void UCoMTerritorySubsystem::RecalculatePlane(UCoMWorldMapSubsystem* Map, ECoMPl
 int32 UCoMTerritorySubsystem::GetTileOwner(ECoMPlane Plane, ECoMMapLayer Layer, int32 X,
                                             int32 Y) const
 {
-	// WrapX applied in caller % CoM::MAP_WIDTH) + CoM::MAP_WIDTH) % CoM::MAP_WIDTH;
-	if (X < 0 || X >= MAP_WIDTH || Y < 0 || Y >= MAP_HEIGHT)
+	X = ((X % CoM::MAP_WIDTH) + CoM::MAP_WIDTH) % CoM::MAP_WIDTH;
+	if (Y < 0 || Y >= MAP_HEIGHT)
 	{
 		return CoM::WIZARD_INDEX_NONE;
 	}
@@ -383,7 +386,8 @@ int32 UCoMTerritorySubsystem::GetTileOwner(ECoMPlane Plane, ECoMMapLayer Layer, 
 bool UCoMTerritorySubsystem::IsTileContested(ECoMPlane Plane, ECoMMapLayer Layer, int32 X,
                                               int32 Y) const
 {
-	if (X < 0 || X >= MAP_WIDTH || Y < 0 || Y >= MAP_HEIGHT)
+	X = ((X % CoM::MAP_WIDTH) + CoM::MAP_WIDTH) % CoM::MAP_WIDTH;
+	if (Y < 0 || Y >= MAP_HEIGHT)
 	{
 		return false;
 	}

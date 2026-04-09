@@ -87,7 +87,7 @@ void UCoMDiplomacySubsystem::ModifyReputation(int32 WizardA, int32 WizardB, int3
 
 bool UCoMDiplomacySubsystem::AreAtWar(int32 WizardA, int32 WizardB) const
 {
-    return GetTreatyBetween(WizardA, WizardB) == ECoMTreatyType::None;
+    return GetTreatyBetween(WizardA, WizardB) == ECoMTreatyType::War;
 }
 
 bool UCoMDiplomacySubsystem::AreAllied(int32 WizardA, int32 WizardB) const
@@ -101,7 +101,7 @@ TArray<int32> UCoMDiplomacySubsystem::GetEnemies(int32 WizardId) const
     TArray<int32> Enemies;
     for (const auto& Pair : Relations)
     {
-        if (Pair.Value.CurrentTreaty == ECoMTreatyType::None)
+        if (Pair.Value.CurrentTreaty == ECoMTreatyType::War)
         {
             if (Pair.Value.WizardA == WizardId) Enemies.Add(Pair.Value.WizardB);
             else if (Pair.Value.WizardB == WizardId) Enemies.Add(Pair.Value.WizardA);
@@ -159,10 +159,9 @@ bool UCoMDiplomacySubsystem::AcceptTreaty(int32 ProposalId)
                 TEXT("Treaty accepted"));
 
             // If peace treaty, end war
-            if (Prop.ProposedTreaty == ECoMTreatyType::None ||
-                Prop.ProposedTreaty == ECoMTreatyType::NonAggression)
+            if (Prop.ProposedTreaty == ECoMTreatyType::NonAggression)
             {
-                if (OldTreaty == ECoMTreatyType::None)
+                if (OldTreaty == ECoMTreatyType::War)
                 {
                     Rel.LastWarStartTurn = -1;
                 }
@@ -195,7 +194,7 @@ void UCoMDiplomacySubsystem::BreakTreaty(int32 WizardA, int32 WizardB)
 {
     FCoMDiplomaticRelation& Rel = GetRelation(WizardA, WizardB);
 
-    if (Rel.CurrentTreaty == ECoMTreatyType::None || Rel.CurrentTreaty == ECoMTreatyType::None)
+    if (Rel.CurrentTreaty == ECoMTreatyType::None || Rel.CurrentTreaty == ECoMTreatyType::War)
     {
         return; // Nothing to break
     }
@@ -226,18 +225,18 @@ void UCoMDiplomacySubsystem::DeclareWar(int32 AttackerId, int32 DefenderId)
 {
     FCoMDiplomaticRelation& Rel = GetRelation(AttackerId, DefenderId);
 
-    if (Rel.CurrentTreaty == ECoMTreatyType::None)
+    if (Rel.CurrentTreaty == ECoMTreatyType::War)
     {
         return; // Already at war
     }
 
     // If breaking an existing treaty, apply treaty-break penalties first
-    if (Rel.CurrentTreaty != ECoMTreatyType::None)
+    if (Rel.CurrentTreaty != ECoMTreatyType::None && Rel.CurrentTreaty != ECoMTreatyType::War)
     {
         BreakTreaty(AttackerId, DefenderId);
     }
 
-    Rel.CurrentTreaty = ECoMTreatyType::None;
+    Rel.CurrentTreaty = ECoMTreatyType::War;
     Rel.LastWarStartTurn = 0; // Will be set properly in ProcessTurn
     Rel.TreatyTurns = 0;
 
@@ -283,7 +282,7 @@ void UCoMDiplomacySubsystem::DeclareWar(int32 AttackerId, int32 DefenderId)
             if (GetTreatyBetween(DefenderId, AllyId) == ECoMTreatyType::DefensivePact)
             {
                 FCoMDiplomaticRelation& AllyRel = GetRelation(AttackerId, AllyId);
-                AllyRel.CurrentTreaty = ECoMTreatyType::None;
+                AllyRel.CurrentTreaty = ECoMTreatyType::War;
                 AllyRel.LastWarStartTurn = 0;
                 ModifyReputation(AttackerId, AllyId, -150,
                     TEXT("Attacked our ally (mutual defense triggered)"));
@@ -298,7 +297,7 @@ int32 UCoMDiplomacySubsystem::ProposePeace(int32 ProposerId, int32 TargetId,
     FCoMTreatyProposal Proposal;
     Proposal.ProposerWizardId = ProposerId;
     Proposal.TargetWizardId = TargetId;
-    Proposal.ProposedTreaty = ECoMTreatyType::None;
+    Proposal.ProposedTreaty = ECoMTreatyType::NonAggression;
     Proposal.OfferedResources = Reparations;
     return ProposeTreaty(Proposal);
 }
@@ -315,10 +314,9 @@ void UCoMDiplomacySubsystem::SendGift(int32 SenderId, int32 ReceiverId,
         GiftValue += Pair.Value * 10; // Each resource unit worth ~10 rep points
     }
 
-    // Diminishing returns — each subsequent gift is worth less
+    // Diminishing returns — each subsequent gift is worth less (integer math)
     int32 PriorGifts = (SenderId == Rel.WizardA) ? Rel.GiftsGivenAtoB : Rel.GiftsGivenBtoA;
-    float Multiplier = 1.0f / (1.0f + PriorGifts * 0.2f);
-    int32 RepBonus = FMath::RoundToInt(FMath::Min(GiftValue * Multiplier, 100.0f));
+    int32 RepBonus = FMath::Min(GiftValue * 100 / (100 + PriorGifts * 20), 100);
 
     ModifyReputation(SenderId, ReceiverId, RepBonus,
         FString::Printf(TEXT("Gift worth %d"), GiftValue));
@@ -394,7 +392,7 @@ int32 UCoMDiplomacySubsystem::EvaluateProposal(int32 WizardId, const FCoMTreatyP
             TArray<int32> MyEnemies;
             for (const auto& Pair : Relations)
             {
-                if (Pair.Value.CurrentTreaty == ECoMTreatyType::None)
+                if (Pair.Value.CurrentTreaty == ECoMTreatyType::War)
                 {
                     if (Pair.Value.WizardA == WizardId) MyEnemies.Add(Pair.Value.WizardB);
                     else if (Pair.Value.WizardB == WizardId) MyEnemies.Add(Pair.Value.WizardA);
@@ -402,7 +400,7 @@ int32 UCoMDiplomacySubsystem::EvaluateProposal(int32 WizardId, const FCoMTreatyP
             }
             for (const auto& Pair : Relations)
             {
-                if (Pair.Value.CurrentTreaty == ECoMTreatyType::None)
+                if (Pair.Value.CurrentTreaty == ECoMTreatyType::War)
                 {
                     int32 EnemyId = -1;
                     if (Pair.Value.WizardA == Proposal.ProposerWizardId) EnemyId = Pair.Value.WizardB;
@@ -459,34 +457,34 @@ ECoMDiplomacyAction UCoMDiplomacySubsystem::DecideAIDiplomaticAction(int32 Wizar
     // Too many wars — seek peace
     if (NumWars >= 2 && P.Aggressiveness < 80)
     {
-        return ECoMDiplomacyAction::MAX;
+        return ECoMDiplomacyAction::OfferPeace;
     }
 
     // No allies and aggressive — seek alliance against strong neighbor
     if (NumAllies == 0 && P.TradeAffinity > 30)
     {
-        return ECoMDiplomacyAction::MAX;
+        return ECoMDiplomacyAction::ProposeTreaty;
     }
 
     // High trade affinity — propose trade
     if (P.TradeAffinity > 60 && NumWars == 0)
     {
-        return ECoMDiplomacyAction::MAX;
+        return ECoMDiplomacyAction::ProposeResourceTrade;
     }
 
     // Aggressive with no wars — consider declaring war
     if (P.Aggressiveness > 70 && NumWars == 0)
     {
-        return ECoMDiplomacyAction::MAX;
+        return ECoMDiplomacyAction::DeclareWar;
     }
 
     // Cunning — use espionage instead of diplomacy
     if (P.Cunning > 60)
     {
-        return ECoMDiplomacyAction::MAX;
+        return ECoMDiplomacyAction::ThreatenWar;
     }
 
-    return ECoMDiplomacyAction::MAX;
+    return ECoMDiplomacyAction::OfferGift;
 }
 
 void UCoMDiplomacySubsystem::ProcessAIDiplomacy(int32 CurrentTurn)
@@ -526,7 +524,7 @@ void UCoMDiplomacySubsystem::ProcessTurn(int32 CurrentTurn)
             Pair.Value.TreatyTurns++;
         }
         // Update war start turn if needed
-        if (Pair.Value.CurrentTreaty == ECoMTreatyType::None && Pair.Value.LastWarStartTurn <= 0)
+        if (Pair.Value.CurrentTreaty == ECoMTreatyType::War && Pair.Value.LastWarStartTurn <= 0)
         {
             Pair.Value.LastWarStartTurn = CurrentTurn;
         }
@@ -620,7 +618,7 @@ int32 UCoMDiplomacySubsystem::GetWarWeariness(int32 WizardId, int32 CurrentTurn)
 
     for (const auto& Pair : Relations)
     {
-        if (Pair.Value.CurrentTreaty != ECoMTreatyType::None) continue;
+        if (Pair.Value.CurrentTreaty != ECoMTreatyType::War) continue;
         if (Pair.Value.WizardA != WizardId && Pair.Value.WizardB != WizardId) continue;
 
         int32 WarDuration = CurrentTurn - Pair.Value.LastWarStartTurn;

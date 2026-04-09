@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMDiplomacySubsystemTests.cpp — Unit, regression, and integration tests
 // Phase 7 tests — Shattered Arcana
@@ -7,9 +6,6 @@
 #include "CoreMinimal.h"
 #include "Misc/AutomationTest.h"
 #include "CoMCore/Diplomacy/CoMDiplomacySubsystem.h"
-
-#if WITH_AUTOMATION_TESTS
-
 
 namespace CoMDiplomacyTests
 {
@@ -356,7 +352,5 @@ bool FDiploBreakTreaty::RunTest(const FString& Parameters)
 }
 
 } // namespace CoMDiplomacyTests
-
-#endif // WITH_AUTOMATION_TESTS
 
 #endif

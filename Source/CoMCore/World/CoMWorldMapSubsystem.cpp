@@ -1,6 +1,6 @@
 // Copyright Mythforge Studios 2026. All Rights Reserved.
 // CoMWorldMapSubsystem.cpp — World map storage and query subsystem.
-// COM-026: 15-layer map, WrapX, fog-of-war bitmasks.
+// COM-026: 24-layer map (8 planes x 3 layers), WrapX, fog-of-war bitmasks.
 
 #include "World/CoMWorldMapSubsystem.h"
 
@@ -29,7 +29,7 @@ void UCoMWorldMapSubsystem::Deinitialize()
 void UCoMWorldMapSubsystem::InitializeLayers()
 {
 	Layers.Empty();
-	Layers.SetNum(CoMMap::TOTAL_LAYERS);
+	Layers.SetNum(CoM::TOTAL_MAP_LAYERS);
 
 	const TArray<ECoMPlane> AllPlanes =
 	{
@@ -91,7 +91,7 @@ void UCoMWorldMapSubsystem::InitializeLayers()
 
 	UE_LOG(LogTemp, Log,
 	       TEXT("UCoMWorldMapSubsystem: Initialised %d layers (%d tiles each, %d total)."),
-	       CoMMap::TOTAL_LAYERS, CoM::MAP_TILES_PER_LAYER, TotalTiles());
+	       CoM::TOTAL_MAP_LAYERS, CoM::MAP_TILES_PER_LAYER, TotalTiles());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -344,7 +344,7 @@ bool UCoMWorldMapSubsystem::IsValidWizardIndex(int32 WizardIndex) const
 void UCoMWorldMapSubsystem::DebugRevealAll(int32 WizardIndex)
 {
 	if (!IsValidWizardIndex(WizardIndex)) return;
-	const int32 Bit = 1 << WizardIndex;
+	const uint32 Bit = 1u << WizardIndex;
 	for (FCoMMapLayerData& LayerData : Layers)
 	{
 		for (FCoMTileData& Tile : LayerData.Tiles)
@@ -362,8 +362,8 @@ void UCoMWorldMapSubsystem::DebugRevealEverything()
 	{
 		for (FCoMTileData& Tile : LayerData.Tiles)
 		{
-			Tile.FogRevealed = 0x7FFFFFFF;
-			Tile.CurrentVision = 0x7FFFFFFF;
+			Tile.FogRevealed = static_cast<uint32>(~0u);
+			Tile.CurrentVision = static_cast<uint32>(~0u);
 		}
 	}
 	UE_LOG(LogTemp, Log, TEXT("[WorldMap] Debug: revealed EVERYTHING"));

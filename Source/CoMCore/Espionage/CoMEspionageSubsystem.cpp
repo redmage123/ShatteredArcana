@@ -15,7 +15,7 @@ void UCoMEspionageSubsystem::Initialize(FSubsystemCollectionBase& Collection)
     CounterIntelMap.Empty();
     MissionHistory.Empty();
     NextAgentId = 1;
-    RngStream.Initialize(FPlatformTime::Cycles());
+    RngStream.Initialize(0x45737069);
 }
 
 void UCoMEspionageSubsystem::Deinitialize()
@@ -155,14 +155,13 @@ int32 UCoMEspionageSubsystem::GetMissionDuration(ECoMAgentMission Mission) const
 {
     switch (Mission)
     {
-	// case ECoMAgentMission::Spy: // duplicate removed
-	// case ECoMAgentMission::Sabotage: // duplicate removed
-	// case ECoMAgentMission::Steal: // duplicate removed
-	// case ECoMAgentMission::Assassinate: // duplicate removed
-	// case ECoMAgentMission::InfiltrateCity: // duplicate removed
-	// case ECoMAgentMission::GuardAsset: // duplicate removed
-	// case ECoMAgentMission::PropagandaCampaign: // duplicate removed
-	// case ECoMAgentMission::PropagandaCampaign: // duplicate removed
+    case ECoMAgentMission::Spy:                return 2;
+    case ECoMAgentMission::Sabotage:           return 3;
+    case ECoMAgentMission::Steal:              return 3;
+    case ECoMAgentMission::Assassinate:        return 4;
+    case ECoMAgentMission::InfiltrateCity:     return 3;
+    case ECoMAgentMission::GuardAsset:         return -1;
+    case ECoMAgentMission::PropagandaCampaign: return 2;
     default: return 1;
     }
 }
@@ -336,28 +335,28 @@ FCoMMissionResult UCoMEspionageSubsystem::ResolveMission(FCoMSpyAgent& Agent, in
 
         switch (Agent.CurrentMission)
         {
-	// case ECoMAgentMission::Spy: // duplicate removed
+        case ECoMAgentMission::Spy:
             Result.StolenIntel.Add(TEXT("Army composition revealed"));
             Result.StolenIntel.Add(TEXT("City production visible"));
             Result.ResultDescription = TEXT("Successfully gathered intelligence");
             break;
-	// case ECoMAgentMission::Sabotage: // duplicate removed
+        case ECoMAgentMission::Sabotage:
             Result.DamageDealt = 50 + Agent.SkillLevel;
             Result.ResultDescription = TEXT("Sabotaged enemy infrastructure");
             break;
-	// case ECoMAgentMission::Steal: // duplicate removed
+        case ECoMAgentMission::Steal:
             Result.StolenIntel.Add(TEXT("Spell knowledge acquired"));
             Result.ResultDescription = TEXT("Stole magical research");
-            Agent.Experience += 10; // Bonus XP for hard mission
+            Agent.Experience += 10;
             break;
-	// case ECoMAgentMission::Assassinate: // duplicate removed
+        case ECoMAgentMission::Assassinate:
             Result.ResultDescription = TEXT("Target eliminated");
-            Agent.Experience += 30; // Big XP for hardest mission
+            Agent.Experience += 30;
             break;
-	// case ECoMAgentMission::PropagandaCampaign: // duplicate removed
+        case ECoMAgentMission::PropagandaCampaign:
             Result.ResultDescription = TEXT("Public opinion shifted");
             break;
-	// case ECoMAgentMission::PropagandaCampaign: // duplicate removed
+        case ECoMAgentMission::InfiltrateCity:
             Result.ResultDescription = TEXT("Rebellion incited in target city");
             Agent.Experience += 15;
             break;
@@ -407,7 +406,7 @@ FCoMMissionResult UCoMEspionageSubsystem::ResolveMission(FCoMSpyAgent& Agent, in
     return Result;
 }
 
-bool UCoMEspionageSubsystem::RollDetection(const FCoMSpyAgent& Agent, int32 TargetWizardId) const
+bool UCoMEspionageSubsystem::RollDetection(const FCoMSpyAgent& Agent, int32 TargetWizardId)
 {
     int32 DetectionChance = 30; // Base 30% chance of detection
 
@@ -445,7 +444,7 @@ void UCoMEspionageSubsystem::CheckLevelUp(FCoMSpyAgent& Agent)
     }
 }
 
-FString UCoMEspionageSubsystem::GenerateAgentName() const
+FString UCoMEspionageSubsystem::GenerateAgentName()
 {
     static const TArray<FString> FirstNames = {
         TEXT("Shadow"), TEXT("Whisper"), TEXT("Nightfall"), TEXT("Phantom"),

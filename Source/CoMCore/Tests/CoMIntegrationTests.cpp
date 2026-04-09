@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMIntegrationTests.cpp — Cross-subsystem integration and E2E tests
 // Phase 6+7 — Shattered Arcana
@@ -9,9 +8,6 @@
 #include "CoMCore/Diplomacy/CoMDiplomacySubsystem.h"
 #include "CoMCore/Espionage/CoMEspionageSubsystem.h"
 #include "CoMCore/Magic/CoMMagicSubsystem.h"
-
-#if WITH_AUTOMATION_TESTS
-
 
 namespace CoMIntegrationTests
 {
@@ -25,13 +21,10 @@ struct FPhase7World
 
     FPhase7World()
     {
-        // Auto-initialized
+        // Create subsystems directly — no game instance wiring needed for unit tests.
         Diplomacy = NewObject<UCoMDiplomacySubsystem>();
-        Diplomacy->Initialize(Dummy);
         Espionage = NewObject<UCoMEspionageSubsystem>();
-        Espionage->Initialize(Dummy);
         Magic = NewObject<UCoMMagicSubsystem>();
-        Magic->Initialize(Dummy);
     }
 };
 
@@ -126,7 +119,7 @@ bool FIntSpyMissionLifecycle::RunTest(const FString& Parameters)
     TestTrue("Agent recruited", AgentId > 0);
 
     // Send on spy mission
-    bool Sent = World.Espionage->AssignMission(AgentId, ECoMAgentMission::Spy, 1);
+    bool Sent = World.Espionage->AssignMission(AgentId, ECoMAgentMission::Spy, 1, FIntPoint::ZeroValue);
     TestTrue("Mission assigned", Sent);
 
     // Process turns until mission resolves
@@ -235,7 +228,7 @@ bool FE2EFullTurnSimulation::RunTest(const FString& Parameters)
     TArray<FCoMSpyAgent> Agents1 = World.Espionage->GetAgents(1);
     if (Agents1.Num() > 0)
     {
-        World.Espionage->AssignMission(Agents1[0].AgentId, ECoMAgentMission::Spy, 0);
+        World.Espionage->AssignMission(Agents1[0].AgentId, ECoMAgentMission::Spy, 0, FIntPoint::ZeroValue);
     }
 
     // Wizard 2 starts research
@@ -313,7 +306,5 @@ bool FE2EMultiWizardDiplomacy::RunTest(const FString& Parameters)
 }
 
 } // namespace CoMIntegrationTests
-
-#endif // WITH_AUTOMATION_TESTS
 
 #endif

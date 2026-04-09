@@ -52,6 +52,7 @@ namespace CoMTags
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Arcane);   // CoM.Realm.Arcane
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Binding);  // CoM.Realm.Binding — soul contracts, domination
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Spirit);   // CoM.Realm.Spirit  — ghosts, dreams, thought
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Glamour);  // CoM.Realm.Glamour — illusions, fey magic, enchantments
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────
@@ -146,6 +147,17 @@ namespace CoMTags
 		// ── Ethereal Underdark ───────────────────────────────────────────────
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(EchoWraiths);       // CoM.Race.EchoWraiths
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(MemoryDevourers);   // CoM.Race.MemoryDevourers
+
+		// ── Feywild Surface ─────────────────────────────────────────────────
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Sprites);           // CoM.Race.Sprites
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Pixies);            // CoM.Race.Pixies
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Satyrs);            // CoM.Race.Satyrs
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Dryads);            // CoM.Race.Dryads
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Changelings);       // CoM.Race.Changelings
+
+		// ── Feywild Underdark ────────────────────────────────────────────────
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(FeyRootkin);        // CoM.Race.FeyRootkin
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(MushroomFolk);      // CoM.Race.MushroomFolk
 
 		// ── Aquatic Races ────────────────────────────────────────────────────
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Merfolk);        // CoM.Race.Merfolk
@@ -486,6 +498,8 @@ namespace CoMTags
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Crystallia);
 
 		UE_DECLARE_GAMEPLAY_TAG_EXTERN(Custom); // Human player custom wizard
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(DjinnSorcerer);
+		UE_DECLARE_GAMEPLAY_TAG_EXTERN(EfreetiLord);
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────

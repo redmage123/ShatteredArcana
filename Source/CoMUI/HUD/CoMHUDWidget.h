@@ -1,0 +1,138 @@
+// Copyright Mythforge Studios. All Rights Reserved.
+// CoMHUDWidget.h -- Main HUD overlay for overworld gameplay.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+#include "CoMHUDWidget.generated.h"
+
+class UTextBlock;
+class UButton;
+class UVerticalBox;
+class UHorizontalBox;
+class UScrollBox;
+class UBorder;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEndTurnRequested);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSpellBookRequested);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCityListRequested);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnArmyManagerRequested);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDiplomacyRequested);
+
+/**
+ * UCoMHUDWidget
+ *
+ * Main HUD overlay shown during overworld gameplay.
+ * Displays resource bar (gold, mana, food, production), turn indicator,
+ * minimap frame, action buttons, and a scrolling notification area.
+ */
+UCLASS()
+class COMUI_API UCoMHUDWidget : public UUserWidget
+{
+	GENERATED_BODY()
+
+public:
+	// -- Construction ----------------------------------------------------------
+
+	virtual void NativeConstruct() override;
+
+	// -- Resource Display ------------------------------------------------------
+
+	/** Update the resource bar with current values. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|HUD")
+	void UpdateResources(int32 Gold, int32 Mana, int32 Food, int32 Production);
+
+	// -- Turn Display ----------------------------------------------------------
+
+	/** Update the turn indicator text. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|HUD")
+	void UpdateTurnInfo(int32 TurnNumber, const FString& WizardName);
+
+	// -- Notifications ---------------------------------------------------------
+
+	/** Add a notification message to the scrolling event list. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|HUD")
+	void AddNotification(const FString& Message);
+
+	/** Clear all notifications. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|HUD")
+	void ClearNotifications();
+
+	// -- Delegates (so the UI subsystem can bind) ------------------------------
+
+	UPROPERTY(BlueprintAssignable, Category = "CoM|HUD")
+	FOnEndTurnRequested OnEndTurnRequested;
+
+	UPROPERTY(BlueprintAssignable, Category = "CoM|HUD")
+	FOnSpellBookRequested OnSpellBookRequested;
+
+	UPROPERTY(BlueprintAssignable, Category = "CoM|HUD")
+	FOnCityListRequested OnCityListRequested;
+
+	UPROPERTY(BlueprintAssignable, Category = "CoM|HUD")
+	FOnArmyManagerRequested OnArmyManagerRequested;
+
+	UPROPERTY(BlueprintAssignable, Category = "CoM|HUD")
+	FOnDiplomacyRequested OnDiplomacyRequested;
+
+protected:
+	// -- Button callbacks ------------------------------------------------------
+
+	UFUNCTION()
+	void OnEndTurnClicked();
+
+	UFUNCTION()
+	void OnSpellBookClicked();
+
+	UFUNCTION()
+	void OnCityListClicked();
+
+	UFUNCTION()
+	void OnArmyManagerClicked();
+
+	UFUNCTION()
+	void OnDiplomacyClicked();
+
+	// -- Widget references (bound from UMG or created in C++) ------------------
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> GoldText;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> ManaText;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> FoodText;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> ProductionText;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> TurnInfoText;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> EndTurnButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> SpellBookButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> CityListButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> ArmyManagerButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> DiplomacyButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UScrollBox> NotificationScrollBox;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UBorder> MinimapFrame;
+
+private:
+	/** Maximum notifications to keep in the scroll list before trimming oldest. */
+	static constexpr int32 MaxNotifications = 50;
+};

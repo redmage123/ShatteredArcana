@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "CoreMinimal.h"
@@ -78,8 +77,8 @@ namespace CoMCombatTestHelpers
 		}
 
 		// Find hero bonuses.
-		FFixed64 AtkHeroBonus(0, 0);
-		FFixed64 DefHeroBonus(0, 0);
+		FFixed64 AtkHeroBonus(0);
+		FFixed64 DefHeroBonus(0);
 		for (const auto& U : Attackers)
 		{
 			if (U.bIsHero)
@@ -103,10 +102,10 @@ namespace CoMCombatTestHelpers
 		// We inline the combat loop here so tests don't need the subsystem instance.
 		// This mirrors the algorithm exactly.
 		const int32 MaxRounds = 50;
-		const FFixed64 BaseHit(30, 0);
-		const FFixed64 DefBlockMul(3, 0);
-		const FFixed64 One(1, 0);
-		const FFixed64 Zero(0, 0);
+		const FFixed64 BaseHit(30);
+		const FFixed64 DefBlockMul(3);
+		const FFixed64 One(1);
+		const FFixed64 Zero(0);
 
 		auto AttackPhase = [&](TArray<FCoMCombatUnitState>& Side, TArray<FCoMCombatUnitState>& Targets,
 			FFixed64 HeroBonus, FFixed64 TerrainMod, FFixed64 WeatherMod)

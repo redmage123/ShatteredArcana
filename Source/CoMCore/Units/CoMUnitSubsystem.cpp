@@ -6,6 +6,8 @@
 #include "CoMCore/World/CoMWeatherSubsystem.h"
 #include "CoMCore/Data/CoMUnitSpecDataAsset.h"
 #include "CoMCore/CoreTypes/CoMConstants.h"
+#include "CoMCore/Economy/CoMCitySubsystem.h"
+#include "CoMCore/Audio/CoMAudioSubsystem.h"
 #include "Engine/AssetManager.h"
 
 static constexpr int32 MAP_WIDTH  = CoM::MAP_WIDTH;
@@ -23,6 +25,7 @@ void UCoMUnitSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	WorldMapSubsystem = GI->GetSubsystem<UCoMWorldMapSubsystem>();
 	WeatherSubsystem  = GI->GetSubsystem<UCoMWeatherSubsystem>();
+	Pathfinder = NewObject<UCoMPathfinder>(this);
 }
 
 void UCoMUnitSubsystem::Deinitialize()
@@ -218,6 +221,101 @@ int32 UCoMUnitSubsystem::SplitArmy(int32 ArmyID, const TArray<int32>& UnitIDsToS
 }
 
 // ---------------------------------------------------------------------------
+// Settlement
+// ---------------------------------------------------------------------------
+
+int32 UCoMUnitSubsystem::FoundCityWithSettler(int32 ArmyId, int32 SettlerUnitId)
+{
+	// 1. Find the army.
+	FCoMArmyGroup* Army = AllArmies.Find(ArmyId);
+	if (!Army)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FoundCityWithSettler: invalid ArmyId %d"), ArmyId);
+		return -1;
+	}
+
+	// 2. Verify the settler unit is in this army.
+	if (!Army->UnitIDs.Contains(SettlerUnitId))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FoundCityWithSettler: unit %d not in army %d"), SettlerUnitId, ArmyId);
+		return -1;
+	}
+
+	// 3. Validate bIsSettler.
+	FCoMUnitInstance* Settler = AllUnits.Find(SettlerUnitId);
+	if (!Settler || !Settler->bIsSettler)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FoundCityWithSettler: unit %d is not a settler"), SettlerUnitId);
+		return -1;
+	}
+
+	// 4. Get position, plane, layer from the army.
+	const ECoMPlane Plane = Army->Plane;
+	const ECoMMapLayer Layer = Army->Layer;
+	const FIntPoint Position = Army->Position;
+	const int32 OwnerWizard = Army->OwnerWizardIndex;
+	const FGameplayTag RaceTag = Settler->RaceTag;
+
+	// 5. Get city subsystem.
+	UGameInstance* GI = GetGameInstance();
+	if (!GI)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FoundCityWithSettler: no GameInstance"));
+		return -1;
+	}
+
+	UCoMCitySubsystem* CitySub = GI->GetSubsystem<UCoMCitySubsystem>();
+	if (!CitySub)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FoundCityWithSettler: no CitySubsystem"));
+		return -1;
+	}
+
+	// 6. Check if we can found a city here.
+	if (!CitySub->CanFoundCityAt(Plane, Layer, Position, RaceTag))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FoundCityWithSettler: cannot found city at (%d,%d)"),
+			Position.X, Position.Y);
+		return -1;
+	}
+
+	// 7. Generate a city name and found the city.
+	const FText CityName = FText::FromString(
+		FString::Printf(TEXT("City_%d_%d"), Position.X, Position.Y));
+
+	const int32 NewCityId = CitySub->FoundCity(OwnerWizard, Plane, Layer, Position, RaceTag, CityName);
+	if (NewCityId < 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FoundCityWithSettler: FoundCity failed"));
+		return -1;
+	}
+
+	// 8. Remove the settler from the army.
+	const bool bSettlerWasOnlyUnit = (Army->UnitIDs.Num() == 1);
+	Internal_RemoveUnitFromArmy(SettlerUnitId, *Army);
+	AllUnits.Remove(SettlerUnitId);
+
+	// If the settler was the only unit, disband the army.
+	if (bSettlerWasOnlyUnit)
+	{
+		AllArmies.Remove(ArmyId);
+	}
+
+	// 9. Play audio notification if available.
+	UCoMAudioSubsystem* AudioSub = GI->GetSubsystem<UCoMAudioSubsystem>();
+	if (AudioSub)
+	{
+		AudioSub->PlaySFX(FName(TEXT("CityFounded")),
+			FVector(static_cast<float>(Position.X), static_cast<float>(Position.Y), 0.f));
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("FoundCityWithSettler: wizard %d founded city %d at (%d,%d) on plane %d"),
+		OwnerWizard, NewCityId, Position.X, Position.Y, static_cast<int32>(Plane));
+
+	return NewCityId;
+}
+
+// ---------------------------------------------------------------------------
 // Movement
 // ---------------------------------------------------------------------------
 
@@ -331,6 +429,22 @@ const FCoMUnitInstance* UCoMUnitSubsystem::GetUnit(int32 UnitID) const
 const FCoMArmyGroup* UCoMUnitSubsystem::GetArmy(int32 ArmyID) const
 {
 	return AllArmies.Find(ArmyID);
+}
+
+void UCoMUnitSubsystem::SetUnitSettlerFlag(int32 UnitId, bool bSettler)
+{
+	if (FCoMUnitInstance* Unit = AllUnits.Find(UnitId))
+	{
+		Unit->bIsSettler = bSettler;
+	}
+}
+
+void UCoMUnitSubsystem::SetUnitRaceTag(int32 UnitId, FGameplayTag Tag)
+{
+	if (FCoMUnitInstance* Unit = AllUnits.Find(UnitId))
+	{
+		Unit->RaceTag = Tag;
+	}
 }
 
 TArray<const FCoMArmyGroup*> UCoMUnitSubsystem::GetArmiesAtPosition(ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position) const

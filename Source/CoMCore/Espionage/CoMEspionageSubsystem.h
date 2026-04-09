@@ -5,7 +5,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Subsystems/WorldSubsystem.h"
+#include "Subsystems/GameInstanceSubsystem.h"
+#include "GameplayTagContainer.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
 #include "CoMEspionageSubsystem.generated.h"
@@ -70,7 +71,7 @@ struct FCoMSpyAgent
 
     /** Cover identity — affects detection in certain races/cities. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    ECoMRace CoverRace = ECoMRace::HighMen;
+    FGameplayTag CoverRaceTag;
 
     /** Turn recruited. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -162,7 +163,7 @@ struct FCoMCounterIntel
 // ─────────────────────────────────────────────────────────────────────────────
 
 UCLASS()
-class COMCORE_API UCoMEspionageSubsystem : public UWorldSubsystem
+class COMCORE_API UCoMEspionageSubsystem : public UGameInstanceSubsystem
 {
     GENERATED_BODY()
 
@@ -236,13 +237,13 @@ private:
     FCoMMissionResult ResolveMission(FCoMSpyAgent& Agent, int32 CurrentTurn);
 
     /** Calculate detection roll against target's counter-intelligence. */
-    bool RollDetection(const FCoMSpyAgent& Agent, int32 TargetWizardId) const;
+    bool RollDetection(const FCoMSpyAgent& Agent, int32 TargetWizardId);
 
     /** Level up agent based on experience. */
     void CheckLevelUp(FCoMSpyAgent& Agent);
 
     /** Generate a random agent name. */
-    FString GenerateAgentName() const;
+    FString GenerateAgentName();
 
     UPROPERTY()
     TMap<int32, FCoMSpyAgent> AllAgents;

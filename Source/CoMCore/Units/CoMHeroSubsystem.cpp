@@ -9,7 +9,7 @@
 void UCoMHeroSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	RngStream.Initialize(FPlatformTime::Cycles());
+	RngStream.Initialize(0x4865726F);
 }
 
 void UCoMHeroSubsystem::Deinitialize()
@@ -18,6 +18,7 @@ void UCoMHeroSubsystem::Deinitialize()
 	Relationships.Empty();
 	HeroTiers.Empty();
 	HeroClasses.Empty();
+	HeroOwners.Empty();
 	Super::Deinitialize();
 }
 
@@ -109,6 +110,11 @@ void UCoMHeroSubsystem::SetHeroTier(int32 HeroUnitID, ECoMHeroTier Tier)
 	HeroTiers.Add(HeroUnitID, Tier);
 }
 
+void UCoMHeroSubsystem::SetHeroOwner(int32 HeroUnitID, int32 WizardIndex)
+{
+	HeroOwners.Add(HeroUnitID, WizardIndex);
+}
+
 bool UCoMHeroSubsystem::CanRecruitTier(int32 WizardIndex, ECoMHeroTier Tier, int32 WizardFame) const
 {
 	const FCoMHeroTierConfig Config = GetTierConfig(Tier);
@@ -194,7 +200,7 @@ void UCoMHeroSubsystem::InitializeHeroPersonality(int32 HeroUnitID, FRandomStrea
 	FCoMHeroPersonality P;
 
 	// Pick two distinct personality traits.
-	const int32 TraitCount = static_cast<int32>(ECoMPersonalityTrait::Protective) + 1;
+	const int32 TraitCount = static_cast<int32>(ECoMPersonalityTrait::MAX);
 	P.PrimaryTrait = static_cast<ECoMPersonalityTrait>(Rng.RandRange(0, TraitCount - 1));
 	P.SecondaryTrait = P.PrimaryTrait;
 	while (P.SecondaryTrait == P.PrimaryTrait)
@@ -203,7 +209,7 @@ void UCoMHeroSubsystem::InitializeHeroPersonality(int32 HeroUnitID, FRandomStrea
 	}
 
 	// Random realm preference.
-	const int32 RealmCount = static_cast<int32>(ECoMSpellRealm::Glamour) + 1;
+	const int32 RealmCount = static_cast<int32>(ECoMSpellRealm::None);
 	P.PreferredRealm = static_cast<ECoMSpellRealm>(Rng.RandRange(0, RealmCount - 1));
 
 	// Loyalty is int32 (0-100), starts at 100. Ambition is random [30..90].
@@ -240,7 +246,7 @@ void UCoMHeroSubsystem::ModifyLoyalty(int32 HeroUnitID, FFixed64 Delta)
 	}
 
 	const int32 NewLoyalty = Found->Loyalty + Delta.ToInt32();
-	Found->Loyalty = FMath::Clamp(NewLoyalty, 0, 200);
+	Found->Loyalty = FMath::Clamp(NewLoyalty, 0, 100);
 }
 
 bool UCoMHeroSubsystem::CheckDesertion(int32 HeroUnitID)
@@ -399,8 +405,11 @@ int32 UCoMHeroSubsystem::CountHeroesOfTier(int32 WizardIndex, ECoMHeroTier Tier)
 	{
 		if (Pair.Value == Tier)
 		{
-			// TODO: verify ownership via UCoMUnitSubsystem
-			Count++;
+			const int32* Owner = HeroOwners.Find(Pair.Key);
+			if (Owner && *Owner == WizardIndex)
+			{
+				Count++;
+			}
 		}
 	}
 	return Count;

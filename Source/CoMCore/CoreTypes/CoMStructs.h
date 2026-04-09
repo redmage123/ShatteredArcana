@@ -53,13 +53,13 @@ struct COMCORE_API FCoMTileData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 RoadLevel = 0;
 
 	/** Per-wizard fog-revealed bitmask (bit N = wizard N has ever seen this tile). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 FogRevealed = 0;
+	UPROPERTY(EditAnywhere) uint32 FogRevealed = 0;
 
 	/** Per-wizard current-vision bitmask (bit N = wizard N sees this tile now). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 CurrentVision = 0;
+	UPROPERTY(EditAnywhere) uint32 CurrentVision = 0;
 
 	/** Active corruption type on this tile (None = uncorrupted). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMCorruptionType Corruption = ECoMCorruptionType::InfernyxCorruption;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMCorruptionType Corruption = ECoMCorruptionType::None;
 
 	/** Ley line presence: bitmask of ley line IDs passing through (compact encoding). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<int32> LeyLineIDs;
@@ -123,7 +123,7 @@ struct COMCORE_API FCoMMapLayerData
 };
 
 /**
- * All map data for one of the seven planes:
+ * All map data for one of the eight planes:
  * a surface layer, an Underdark layer, and a set of underwater zones.
  */
 USTRUCT(BlueprintType)
@@ -259,7 +259,8 @@ struct COMCORE_API FCoMWeatherZone
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMWeatherType   Type           = ECoMWeatherType::Clear;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FFixed64          Intensity      = FFixed64::Half(); // 0.0–1.0
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32             TurnsRemaining = 5;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) FVector2D         MovementDirection = FVector2D(1.0f, 0.0f);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FFixed64          MovementDirX     = FFixed64(1);   // Deterministic replacement for FVector2D
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FFixed64          MovementDirY     = FFixed64(0);
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FFixed64          MovementSpeed  = FFixed64(1);      // Tiles/turn
 };
 
@@ -405,12 +406,14 @@ struct COMCORE_API FCoMUnitInstance
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32             OwnerWizardIndex  = CoM::WIZARD_INDEX_NONE;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FGameplayTag      RaceTag;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32             CurrentHP         = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32             MaxHP             = 1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32             Experience        = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32             Level             = 1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<FCoMSkillEntry>         Skills;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<FCoMEnchantmentInstance> Enchantments;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool              bIsHero           = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool              bFlying           = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool              bIsSettler        = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMovementType  MovementType      = ECoMMovementType::Walking;
 
 	// COM-056a: plane-restricted units (Three Planes expansion).
@@ -871,6 +874,8 @@ struct COMCORE_API FCoMActiveRitual
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<int32>    ParticipantUnitIDs;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32            TurnsRemaining      = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32            ManaInvested        = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32            ManaCostTotal       = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32            ManaChannelPerTurn  = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FFixed64          Stability           = FFixed64(100); // 0–100
 };
 
@@ -905,7 +910,7 @@ struct COMCORE_API FCoMWorldEvent
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32                     EventID         = -1;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMWorldEventType        Type            = ECoMWorldEventType::MAX;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMWorldEventType        Type            = ECoMWorldEventType::None;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32                     TurnTriggered   = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32                     Duration        = 5; // Turns
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<ECoMPlane>         AffectedPlanes;
@@ -1126,16 +1131,16 @@ struct COMCORE_API FCoMGameStateSnapshot
 	UPROPERTY(SaveGame) int32    TurnNumber       = 0;
 	UPROPERTY(SaveGame) int64   DeterministicSeed = 0;
 
-	// ── World state (all 7 planes × 2 layers = 14 map layers) ────────────────
+	// ── World state (all 8 planes × 2 layers = 16 map layers) ────────────────
 	// FCoMWorldMapState defined in World/CoMWorldMapSubsystem.h
 	// TArray of per-plane tile arrays — never TMap, never TSet.
 
-	// ── Per-wizard state (max 8 players; sub-structs TBD in CoMPlayerState.h) ─
+	// ── Per-wizard state (max 14 players; sub-structs TBD in CoMPlayerState.h) ─
 	UPROPERTY(SaveGame) int32 ActiveWizardCount = 0;
 
 	// ── Pending commands (per wizard slot, for replay) ────────────────────────
 	// Stored as flat payload arrays (not UObject refs) for FArchive compat.
-	// Index matches wizard slot 0–47.
+	// Index matches wizard slot 0–13 (MAX_WIZARDS=14).
 	// NOT UPROPERTY — nested TArrays are not allowed in UPROPERTY (UHT restriction).
 	// Serialized manually via FArchive in UCoMSaveSubsystem. See BV02-FIX-001.
 	TArray<TArray<FCoMCommandPayload>> PendingCommandsByWizard;

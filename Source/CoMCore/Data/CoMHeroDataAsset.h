@@ -2,7 +2,9 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "GameplayTagContainer.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
+#include "CoMCore/Units/CoMHeroSubsystem.h"
 #include "CoMHeroDataAsset.generated.h"
 
 // Forward declarations
@@ -35,11 +37,10 @@ public:
 	FText BackstorySnippet;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hero|Classification")
-	ECoMRace Race;
+	FGameplayTag RaceTag;
 
-	// TODO: Add ECoMHeroClass to CoMEnums.h
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hero|Classification")
-	int32 HeroClass;
+	ECoMHeroClass HeroClass = ECoMHeroClass::Fighter;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hero|Stats")
 	int32 BaseAttack;

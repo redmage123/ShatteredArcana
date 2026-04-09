@@ -183,6 +183,79 @@ UCoMTerrainWeightTable* UCoMTerrainWeightTable::BuildDefaultWeightTable(ECoMPlan
 		AddW(Table->UnderdarkWeights, ECoMTerrain::ThoughtCorridor,  0.02f);
 		break;
 
+	case ECoMPlane::Abyssal:
+		// Surface: demon realm — chaotic, destructive (sum=1.0)
+		AddW(Table->SurfaceWeights, ECoMTerrain::BonePlains,       0.20f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::ScreamingChasms,  0.15f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::CarrionDesert,    0.14f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::GoreMarshes,      0.12f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::LivingWalls,      0.10f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::DemonPillars,     0.08f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::AbyssalMires,     0.07f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::FleshCitadels,    0.05f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::ChaosStormfield,  0.05f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::BloodRivers,      0.02f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::VoidFissures,     0.02f);
+		// Underdark: The Endless Chasms (sum=1.0)
+		AddW(Table->UnderdarkWeights, ECoMTerrain::ChasmFloor,      0.25f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::BoneLabyrinth,   0.20f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::FleshCorridor,   0.15f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::DemonNest,       0.15f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::BloodPool_Aby,   0.10f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::SoulMeatCavern,  0.07f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::VoidPocket_Aby,  0.05f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::ChaosCore,       0.03f);
+		break;
+
+	case ECoMPlane::Ethereal:
+		// Surface: spirit realm — alien, unknowable (sum=1.0)
+		AddW(Table->SurfaceWeights, ECoMTerrain::MistSeas,              0.18f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::CrystallizedMemories,  0.15f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::MemoryLandscape,       0.14f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::DreamDeserts,          0.12f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::EchoRuins,             0.10f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::PhaseShores,           0.08f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::SpiritArchipelagos,    0.07f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::ThoughtStorms,         0.06f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::VoidWhisperFields,     0.05f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::ReflectionMirrors,     0.03f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::FadeZones,             0.02f);
+		// Underdark: The Memory Deep (sum=1.0)
+		AddW(Table->UnderdarkWeights, ECoMTerrain::EchoTunnel,          0.25f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::PhaseLabyrinth,      0.20f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::MistCavern,          0.15f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::MemoryPool,          0.12f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::DreamChamber,        0.10f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::ThoughtCorridor_Eth, 0.08f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::SpiritWell,          0.05f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::ForgottenRealm,      0.05f);
+		break;
+
+	case ECoMPlane::Feywild:
+		// Surface: ever-shifting fey realm — glamour magic (sum=1.0)
+		AddW(Table->SurfaceWeights, ECoMTerrain::EternalForest,         0.18f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::ShiftingGlades,        0.15f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::TwilightMeadows,       0.12f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::SilverMistPlains,      0.10f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::BlossomPeaks,          0.10f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::MushroomRings,         0.08f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::MirrorLakes,           0.07f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::ThorncraftHollow,      0.06f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::WildHuntGrounds,       0.05f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::FeyMarketCrossroads,   0.04f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::AncientStandingStones, 0.03f);
+		AddW(Table->SurfaceWeights, ECoMTerrain::FeyWastes,             0.02f);
+		// Underdark: The Roots of Wonder (sum=1.0)
+		AddW(Table->UnderdarkWeights, ECoMTerrain::FeyRootLair,        0.25f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::MushroomCave_Fey,   0.20f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::CobwebHalls,        0.15f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::GlowwormDen,        0.12f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::CrystalSpring_Fey,  0.10f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::AncientBurrow,      0.08f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::FeyUndermarket,     0.05f);
+		AddW(Table->UnderdarkWeights, ECoMTerrain::FeyVault,           0.05f);
+		break;
+
 	default:
 		AddW(Table->SurfaceWeights,   ECoMTerrain::Grassland,   1.0f);
 		AddW(Table->UnderdarkWeights, ECoMTerrain::CavernFloor, 1.0f);
@@ -233,8 +306,8 @@ static int32 ClassifyBiome(float Elevation, float Moisture, float Temperature)
 {
 	if (Elevation < 0.30f) return 0;  // Ocean
 	if (Elevation < 0.33f) return 10; // Shore/Coast
-	if (Elevation > 0.85f) return 8;  // Mountains
 	if (Elevation > 0.92f) return 11; // Volcano (rare peaks)
+	if (Elevation > 0.85f) return 8;  // Mountains
 	if (Elevation > 0.72f) return 9;  // Hills
 
 	// Land biomes: moisture × temperature → biome
@@ -433,9 +506,9 @@ static ECoMTerrain BiomeToUnderdarkTerrain(int32 SurfaceBiome, ECoMPlane Plane)
 		if (bWet) return ECoMTerrain::BloodPool_Aby;
 		return ECoMTerrain::ChasmFloor;
 	case ECoMPlane::Ethereal:
-		if (bDeep) return ECoMTerrain::DeepChasm;
-		if (bWet) return ECoMTerrain::UndergroundLake;
-		return ECoMTerrain::CavernFloor;
+		if (bDeep) return ECoMTerrain::PhaseLabyrinth;
+		if (bWet) return ECoMTerrain::MemoryPool;
+		return ECoMTerrain::EchoTunnel;
 	case ECoMPlane::Feywild:
 		if (bDeep) return ECoMTerrain::CrystalCavern_Arc;
 		if (bWet) return ECoMTerrain::UndergroundLake;
@@ -891,7 +964,7 @@ void UCoMWorldGenerator::PlaceResources(UCoMWorldMapSubsystem* MapSubsystem, ECo
 			         T == ECoMTerrain::EnchantedForest || T == ECoMTerrain::Jungle ||
 			         T == ECoMTerrain::ScorchedForest)
 			{
-				Tile->Resource = ECoMResource::Iron;
+				Tile->Resource = ECoMResource::Lifewood;
 			}
 			// Hills → Gold/Gems
 			else if (T == ECoMTerrain::Hills || T == ECoMTerrain::TwilightHills ||
@@ -910,7 +983,7 @@ void UCoMWorldGenerator::PlaceResources(UCoMWorldMapSubsystem* MapSubsystem, ECo
 				}
 			}
 			// Volcano → special
-			else if (T == ECoMTerrain::Mountains || T == ECoMTerrain::VolcanicChain)
+			else if (T == ECoMTerrain::VolcanicChain)
 			{
 				Tile->Resource = ECoMResource::Adamantium;
 			}
@@ -1058,6 +1131,30 @@ void UCoMWorldGenerator::GenerateUnderdark(UCoMWorldMapSubsystem* MapSubsystem, 
 		FeatureZones.Add({ECoMTerrain::GravityWell,      3, 3});
 		FeatureZones.Add({ECoMTerrain::MirrorCavern,     2, 2});
 		FeatureZones.Add({ECoMTerrain::StarlightPool,    2, 2});
+		break;
+	case ECoMPlane::Abyssal:     // The Endless Chasms
+		FeatureZones.Add({ECoMTerrain::ChasmFloor,      6, 4});
+		FeatureZones.Add({ECoMTerrain::BoneLabyrinth,    4, 3});
+		FeatureZones.Add({ECoMTerrain::DemonNest,        3, 3});
+		FeatureZones.Add({ECoMTerrain::FleshCorridor,    3, 3});
+		FeatureZones.Add({ECoMTerrain::BloodPool_Aby,    2, 2});
+		FeatureZones.Add({ECoMTerrain::ChaosCore,        2, 2});
+		break;
+	case ECoMPlane::Ethereal:    // The Memory Deep
+		FeatureZones.Add({ECoMTerrain::MemoryPool,       6, 4});
+		FeatureZones.Add({ECoMTerrain::EchoTunnel,       4, 3});
+		FeatureZones.Add({ECoMTerrain::PhaseLabyrinth,   3, 3});
+		FeatureZones.Add({ECoMTerrain::DreamChamber,     3, 3});
+		FeatureZones.Add({ECoMTerrain::SpiritWell,       2, 2});
+		FeatureZones.Add({ECoMTerrain::MistCavern,       2, 2});
+		break;
+	case ECoMPlane::Feywild:     // The Roots of Wonder
+		FeatureZones.Add({ECoMTerrain::FeyRootLair,      6, 4});
+		FeatureZones.Add({ECoMTerrain::FeyUndermarket,   4, 3});
+		FeatureZones.Add({ECoMTerrain::MushroomCave_Fey, 3, 3});
+		FeatureZones.Add({ECoMTerrain::CrystalSpring_Fey,3, 3});
+		FeatureZones.Add({ECoMTerrain::AncientBurrow,    2, 2});
+		FeatureZones.Add({ECoMTerrain::GlowwormDen,      2, 2});
 		break;
 	default:
 		FeatureZones.Add({ECoMTerrain::CavernFloor, 4, 3});

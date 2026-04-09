@@ -5,7 +5,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Subsystems/WorldSubsystem.h"
+#include "Subsystems/GameInstanceSubsystem.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
 #include "CoMQuestSubsystem.generated.h"
@@ -280,7 +280,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnQuestRewardGranted, int32, Quest
 // ─────────────────────────────────────────────────────────────────────────────
 
 UCLASS()
-class COMCORE_API UCoMQuestSubsystem : public UWorldSubsystem
+class COMCORE_API UCoMQuestSubsystem : public UGameInstanceSubsystem
 {
     GENERATED_BODY()
 
@@ -395,7 +395,7 @@ public:
 
     /** Process quests for the turn: generate new, expire old, check time limits. */
     UFUNCTION(BlueprintCallable, Category = "Quests")
-    void ProcessTurn(int32 CurrentTurn);
+    void ProcessTurn(int32 CurrentTurn, int32 ActiveWizardCount);
 
     // ── Delegates ────────────────────────────────────────────────────────────
 

@@ -2,4 +2,13 @@
 #include "CoMCore.h"
 #include "Modules/ModuleManager.h"
 
-IMPLEMENT_MODULE(FDefaultModuleImpl, CoMCore);
+class FCoMCoreModule : public FDefaultGameModuleImpl
+{
+public:
+	virtual void StartupModule() override
+	{
+		UE_LOG(LogTemp, Log, TEXT("[CoMCore] Module loaded — UObjects registered."));
+	}
+};
+
+IMPLEMENT_GAME_MODULE(FCoMCoreModule, CoMCore);

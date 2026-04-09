@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMMagicSubsystemTests.cpp — Unit and regression tests
 // Phase 7 tests — Shattered Arcana
@@ -7,9 +6,6 @@
 #include "CoreMinimal.h"
 #include "Misc/AutomationTest.h"
 #include "CoMCore/Magic/CoMMagicSubsystem.h"
-
-#if WITH_AUTOMATION_TESTS
-
 
 namespace CoMMagicTests
 {
@@ -372,7 +368,5 @@ bool FMagicCounterSpell::RunTest(const FString& Parameters)
 }
 
 } // namespace CoMMagicTests
-
-#endif // WITH_AUTOMATION_TESTS
 
 #endif

@@ -1,0 +1,48 @@
+{
+  "generated_at": "2026-04-08T20:17:25+0200",
+  "total_files": 1007,
+  "processed_ok": 1007,
+  "errors": 0,
+  "total_raw_bytes": 1676753456,
+  "total_processed_bytes": 384040116,
+  "savings_pct": 77.1,
+  "per_category": {
+    "terrain": {
+      "count": 160,
+      "raw_bytes": 288219738,
+      "processed_bytes": 5301637,
+      "savings_pct": 98.16
+    },
+    "units": {
+      "count": 126,
+      "raw_bytes": 159645829,
+      "processed_bytes": 41873454,
+      "savings_pct": 73.77
+    },
+    "buildings": {
+      "count": 34,
+      "raw_bytes": 52043877,
+      "processed_bytes": 14635321,
+      "savings_pct": 71.88
+    },
+    "heroes": {
+      "count": 26,
+      "raw_bytes": 43848601,
+      "processed_bytes": 2826825,
+      "savings_pct": 93.55
+    },
+    "spells": {
+      "count": 636,
+      "raw_bytes": 1088751585,
+      "processed_bytes": 306917523,
+      "savings_pct": 71.81
+    },
+    "map_features": {
+      "count": 25,
+      "raw_bytes": 44243826,
+      "processed_bytes": 12485356,
+      "savings_pct": 71.78
+    }
+  },
+  "warnings": []
+}

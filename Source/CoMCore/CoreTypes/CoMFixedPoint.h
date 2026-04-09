@@ -8,6 +8,9 @@
 
 #pragma once
 #include "CoreMinimal.h"
+#if PLATFORM_WINDOWS
+#include <intrin.h>
+#endif
 #include "CoMFixedPoint.generated.h"
 
 /**
@@ -92,29 +95,62 @@ struct COMCORE_API FFixed64
 	FORCEINLINE FFixed64 operator-(const FFixed64& O) const { return FromRaw(RawValue - O.RawValue); }
 	FORCEINLINE FFixed64 operator-() const { return FromRaw(-RawValue); }
 
-	/** Multiply: result = (a * b) with correct fractional scaling. */
-	FORCEINLINE FFixed64 operator*( // WARNING: overflow possible for values > 2^24. Use checked multiply for large values.
-	const FFixed64& O) const
+	/** Multiply: result = (a * b) with correct fractional scaling.
+	 *  Uses 128-bit intermediate to avoid overflow on supported platforms.
+	 *  (Original int64 multiply overflowed for values > 2^24; now handled on GCC/Clang/MSVC.)
+	 */
+	FORCEINLINE FFixed64 operator*(const FFixed64& O) const
 	{
+#if PLATFORM_COMPILER_CLANG || PLATFORM_COMPILER_GCC
+		// GCC/Clang: native __int128 support
+		const __int128 Wide = static_cast<__int128>(RawValue) * static_cast<__int128>(O.RawValue);
+		return FromRaw(static_cast<int64>(Wide >> FRAC_BITS));
+#elif PLATFORM_WINDOWS
+		// MSVC: use _mul128 intrinsic
+		int64 High = 0;
+		const int64 Low = _mul128(RawValue, O.RawValue, &High);
+		// Combine: result = (High << (64 - FRAC_BITS)) | (Low >> FRAC_BITS)
+		return FromRaw((High << (64 - FRAC_BITS)) | (static_cast<uint64>(Low) >> FRAC_BITS));
+#else
+		// Fallback: original behavior (overflow possible for values > 2^24)
 		return FromRaw((RawValue * O.RawValue) >> FRAC_BITS);
+#endif
 	}
 
-	/** Divide: safe (returns 0 on divide-by-zero). */
+	/** Divide: safe (returns 0 on divide-by-zero).
+	 *  Uses 128-bit intermediate to avoid overflow on supported platforms.
+	 *  (Original int64 left-shift overflowed for large numerators; now handled on GCC/Clang/MSVC.)
+	 */
 	FORCEINLINE FFixed64 operator/(const FFixed64& O) const
 	{
-		return FromRaw(O.RawValue != 0 ? (RawValue << FRAC_BITS) / O.RawValue : 0);
+		if (O.RawValue == 0) { return FromRaw(0); }
+#if PLATFORM_COMPILER_CLANG || PLATFORM_COMPILER_GCC
+		const __int128 Wide = static_cast<__int128>(RawValue) << FRAC_BITS;
+		return FromRaw(static_cast<int64>(Wide / static_cast<__int128>(O.RawValue)));
+#elif PLATFORM_WINDOWS
+		// Build 128-bit (RawValue << FRAC_BITS) manually from two 64-bit halves.
+		const int64 High = RawValue >> (64 - FRAC_BITS);               // arithmetic shift keeps sign
+		const uint64 Low  = static_cast<uint64>(RawValue) << FRAC_BITS;
+		// _div128 divides 128-bit numerator (High:Low) by 64-bit denominator.
+		int64 Remainder = 0;
+		const int64 Quotient = _div128(High, Low, O.RawValue, &Remainder);
+		return FromRaw(Quotient);
+#else
+		// Fallback: original behavior (overflow possible for large numerators)
+		return FromRaw((RawValue << FRAC_BITS) / O.RawValue);
+#endif
 	}
 
 	FORCEINLINE FFixed64& operator+=(const FFixed64& O) { RawValue += O.RawValue; return *this; }
 	FORCEINLINE FFixed64& operator-=(const FFixed64& O) { RawValue -= O.RawValue; return *this; }
 	FORCEINLINE FFixed64& operator*=(const FFixed64& O)
 	{
-		RawValue = (RawValue * O.RawValue) >> FRAC_BITS;
+		*this = *this * O;
 		return *this;
 	}
 	FORCEINLINE FFixed64& operator/=(const FFixed64& O)
 	{
-		RawValue = O.RawValue != 0 ? (RawValue << FRAC_BITS) / O.RawValue : 0;
+		*this = *this / O;
 		return *this;
 	}
 

@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMQuestSubsystemTests.cpp -- Automation tests for the quest subsystem
 // Phase 8 -- Shattered Arcana
@@ -268,7 +267,7 @@ bool FCoMQuestExpireTest::RunTest(const FString& Parameters)
     }
 
     // Process turn at exactly the expiry turn.
-    World.QS->ProcessTurn(CurrentTurn + 5);
+    World.QS->ProcessTurn(CurrentTurn + 5, CoM::MAX_WIZARDS);
 
     const FCoMQuest* ExpiredQuest = World.QS->GetQuest(QuestId);
     TestNotNull(TEXT("Quest still exists after expiry"), ExpiredQuest);
@@ -280,7 +279,7 @@ bool FCoMQuestExpireTest::RunTest(const FString& Parameters)
     // An accepted quest should not expire (it should fail if over time limit).
     const int32 QuestId2 = World.QS->GenerateQuest(WizardId, CurrentTurn + 6);
     World.QS->AcceptQuest(QuestId2, WizardId);
-    World.QS->ProcessTurn(CurrentTurn + 30);
+    World.QS->ProcessTurn(CurrentTurn + 30, CoM::MAX_WIZARDS);
 
     const FCoMQuest* ActiveQuest = World.QS->GetQuest(QuestId2);
     if (ActiveQuest)

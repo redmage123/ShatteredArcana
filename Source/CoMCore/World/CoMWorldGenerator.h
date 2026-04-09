@@ -143,8 +143,11 @@ private:
 	/** Sample 2D noise at the given tile position, returning a deterministic value in [0, 1]. */
 	FFixed64 SampleNoise(FIntPoint Position, FFixed64 Frequency, FFixed64 Amplitude) const;
 
+public:
 	/** Pick a terrain type from a weight array using the internal random stream. */
 	ECoMTerrain PickWeightedTerrain(const TArray<FCoMTerrainWeight>& Weights);
+
+private:
 
 	/** Check whether a feature can be placed at Position without overlapping existing features. */
 	bool CanPlaceFeature(UCoMWorldMapSubsystem* MapSubsystem, ECoMPlane Plane, FIntPoint Position, int32 Radius) const;

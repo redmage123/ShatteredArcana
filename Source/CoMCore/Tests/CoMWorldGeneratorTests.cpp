@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios 2026. All Rights Reserved.
 // CoMWorldGeneratorTests.cpp — Unit tests for world generation.
 // Tests biome coherence, rain shadow, determinism, layer population.

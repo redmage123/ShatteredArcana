@@ -3,7 +3,9 @@
 #include "CoMCitySubsystem.h"
 #include "CoMCore/World/CoMSeasonSubsystem.h"
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
+#include "CoMCore/Units/CoMUnitSubsystem.h"
 #include "CoMCore/CoreTypes/CoMConstants.h"
+#include "CoMCore/CoreTypes/CoMGameplayTags.h"
 
 // =====================================================================
 // Subsystem lifecycle
@@ -27,7 +29,7 @@ void UCoMCitySubsystem::Deinitialize()
 // =====================================================================
 
 int32 UCoMCitySubsystem::FoundCity(int32 OwnerWizard, ECoMPlane Plane,
-	ECoMMapLayer Layer, FIntPoint Position, ECoMRace Race, FText Name)
+	ECoMMapLayer Layer, FIntPoint Position, FGameplayTag RaceTag, FText Name)
 {
 	// Validate map bounds.
 	if (Position.X < 0 || Position.X >= MapWidth || Position.Y < 0 || Position.Y >= MapHeight)
@@ -37,7 +39,7 @@ int32 UCoMCitySubsystem::FoundCity(int32 OwnerWizard, ECoMPlane Plane,
 	}
 
 	// Underwater cities require aquatic races.
-	if (Layer == ECoMMapLayer::Underwater && !IsAquaticRace(Race))
+	if (Layer == ECoMMapLayer::Underwater && !IsAquaticRace(RaceTag))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("FoundCity: non-aquatic race cannot found underwater city."));
 		return -1;
@@ -62,7 +64,7 @@ int32 UCoMCitySubsystem::FoundCity(int32 OwnerWizard, ECoMPlane Plane,
 	City.Layer             = Layer;
 	City.Position          = Position;
 	City.Population        = 1;
-	City.PrimaryRace       = Race;
+	City.PrimaryRaceTag    = RaceTag;
 	City.CurrentBuildingID = -1;
 	City.BuildingProgress  = 0;
 	City.GarrisonArmyID    = -1;
@@ -90,6 +92,136 @@ void UCoMCitySubsystem::DestroyCity(int32 CityID)
 		AllCities.Remove(CityID);
 		OnCityDestroyed.Broadcast(CityID, FormerOwner);
 	}
+}
+
+// =====================================================================
+// Settler Production
+// =====================================================================
+
+int32 UCoMCitySubsystem::ProduceSettler(int32 CityId)
+{
+	FCoMCityData* City = AllCities.Find(CityId);
+	if (!City)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ProduceSettler: invalid CityId %d"), CityId);
+		return -1;
+	}
+
+	// Population must be at least 2 (can't depopulate below 1).
+	if (City->Population < 2)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ProduceSettler: city %d population %d is too low (need >= 2)"),
+			CityId, City->Population);
+		return -1;
+	}
+
+	UGameInstance* GI = GetGameInstance();
+	if (!GI)
+	{
+		return -1;
+	}
+
+	UCoMUnitSubsystem* UnitSub = GI->GetSubsystem<UCoMUnitSubsystem>();
+	if (!UnitSub)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ProduceSettler: no UnitSubsystem"));
+		return -1;
+	}
+
+	// Spawn a settler unit (SpecID 0 = generic settler placeholder).
+	const int32 SettlerUnitId = UnitSub->SpawnUnit(
+		0, City->Plane, City->Layer, City->Position, City->OwnerWizardIndex);
+
+	if (SettlerUnitId == INDEX_NONE)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ProduceSettler: SpawnUnit failed for city %d"), CityId);
+		return -1;
+	}
+
+	// Mark the spawned unit as a settler and set its race tag via the subsystem's public API.
+	UnitSub->SetUnitSettlerFlag(SettlerUnitId, true);
+	UnitSub->SetUnitRaceTag(SettlerUnitId, City->PrimaryRaceTag);
+
+	// Create a new army at the city's position containing just the settler.
+	const int32 ArmyId = UnitSub->CreateArmy(
+		City->OwnerWizardIndex, City->Plane, City->Layer, City->Position);
+	UnitSub->AddUnitToArmy(SettlerUnitId, ArmyId);
+
+	// Reduce city population by 1.
+	const int32 OldPop = City->Population;
+	City->Population -= 1;
+	OnCityPopulationChanged.Broadcast(City->CityID, OldPop, City->Population);
+
+	UE_LOG(LogTemp, Log, TEXT("ProduceSettler: city %d produced settler unit %d in army %d (pop %d -> %d)"),
+		CityId, SettlerUnitId, ArmyId, OldPop, City->Population);
+
+	return SettlerUnitId;
+}
+
+// =====================================================================
+// Validation
+// =====================================================================
+
+bool UCoMCitySubsystem::CanFoundCityAt(ECoMPlane Plane, ECoMMapLayer Layer,
+	FIntPoint Position, FGameplayTag RaceTag) const
+{
+	// Check map bounds.
+	if (Position.X < 0 || Position.X >= MapWidth || Position.Y < 0 || Position.Y >= MapHeight)
+	{
+		return false;
+	}
+
+	// Underwater requires aquatic race.
+	if (Layer == ECoMMapLayer::Underwater && !IsAquaticRace(RaceTag))
+	{
+		return false;
+	}
+
+	// Check minimum distance from existing cities.
+	if (IsTooCloseToExistingCity(Plane, Layer, Position))
+	{
+		return false;
+	}
+
+	// Check terrain suitability.
+	const UCoMWorldMapSubsystem* MapSub = GetGameInstance()->GetSubsystem<UCoMWorldMapSubsystem>();
+	if (MapSub)
+	{
+		const FCoMTileData* Tile = MapSub->GetTileAtPos(Plane, Layer, Position);
+		if (Tile)
+		{
+			// Cannot found cities on ocean (unless aquatic), mountains, or volcanic terrain.
+			if (Tile->Terrain == ECoMTerrain::Ocean || Tile->Terrain == ECoMTerrain::VoidOcean ||
+				Tile->Terrain == ECoMTerrain::MistOcean || Tile->Terrain == ECoMTerrain::SulfurSeas)
+			{
+				// Ocean tiles: only aquatic races can found here (and only on Underwater layer).
+				if (!IsAquaticRace(RaceTag))
+				{
+					return false;
+				}
+			}
+
+			if (Tile->Terrain == ECoMTerrain::Mountains || Tile->Terrain == ECoMTerrain::DarkMountains ||
+				Tile->Terrain == ECoMTerrain::RootMountains || Tile->Terrain == ECoMTerrain::BasaltMountains)
+			{
+				return false;
+			}
+
+			if (Tile->Terrain == ECoMTerrain::Volcano || Tile->Terrain == ECoMTerrain::UnderwaterVolcano ||
+				Tile->Terrain == ECoMTerrain::VolcanicChain)
+			{
+				return false;
+			}
+
+			if (Tile->Terrain == ECoMTerrain::DeepTrench || Tile->Terrain == ECoMTerrain::VoidRifts ||
+				Tile->Terrain == ECoMTerrain::DeepChasm || Tile->Terrain == ECoMTerrain::ShadowRift)
+			{
+				return false;
+			}
+		}
+	}
+
+	return true;
 }
 
 // =====================================================================
@@ -307,15 +439,13 @@ int32 UCoMCitySubsystem::WrappedDistance(FIntPoint A, FIntPoint B)
 	return DX + DY;
 }
 
-bool UCoMCitySubsystem::IsAquaticRace(ECoMRace Race)
+bool UCoMCitySubsystem::IsAquaticRace(FGameplayTag RaceTag)
 {
-	switch (Race)
-	{
-	case ECoMRace::Merfolk:
-		return true;
-	default:
-		return false;
-	}
+	return RaceTag == CoMTags::Race::Merfolk
+		|| RaceTag == CoMTags::Race::DeepOnes
+		|| RaceTag == CoMTags::Race::Tideshifters
+		|| RaceTag == CoMTags::Race::LavaNaga
+		|| RaceTag == CoMTags::Race::EtherSwimmers;
 }
 
 // =====================================================================
@@ -448,7 +578,7 @@ int32 UCoMCitySubsystem::ComputeUnrest(const FCoMCityData& City) const
 {
 	int32 UnrestLevel = 0;
 
-	UnrestLevel += City.MinorityRaces.Num();
+	UnrestLevel += City.MinorityRaceTags.Num();
 
 	const int32 Cap = GetCityPopulationCap(City.CityID);
 	if (City.Population > Cap)
@@ -522,7 +652,7 @@ void UCoMCitySubsystem::ProcessBuilding(FCoMCityData& City)
 
 	City.BuildingProgress += City.ProductionOutput;
 
-	const int32 BuildingCost = FMath::Max(10, City.CurrentBuildingID * 10);
+	const int32 BuildingCost = 50; // TODO: look up from building data asset
 
 	if (City.BuildingProgress >= BuildingCost)
 	{

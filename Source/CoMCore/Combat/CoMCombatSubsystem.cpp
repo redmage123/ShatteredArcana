@@ -21,25 +21,24 @@ namespace CoMCombatConstants
 	static const int32    XPPerKill = 2;
 
 	// Hero tier attack bonuses (additive to attack rolls)
-	static const FFixed64 BonusAdventurer = FFixed64::FromRaw(500);   // +5%  (0.05)
-	static const FFixed64 BonusHero = FFixed64::FromRaw(1000);         // +10% (0.10)
-	static const FFixed64 BonusChampion = FFixed64::FromRaw(1500);      // +15% (0.15)
-	static const FFixed64 BonusDemigod = FFixed64::FromRaw(2500);       // +25% (0.25)
+	static const FFixed64 BonusAdventurer = FFixed64::FromRaw(3277);    // +5%  (0.05)
+	static const FFixed64 BonusHero = FFixed64::FromRaw(6554);          // +10% (0.10)
+	static const FFixed64 BonusChampion = FFixed64::FromRaw(9830);      // +15% (0.15)
+	static const FFixed64 BonusDemigod = FFixed64::FromRaw(16384);      // +25% (0.25)
 
 	// Terrain defense modifiers
-	static const FFixed64 TerrainMountain = FFixed64::FromRaw(3000);    // +30% defense
-	static const FFixed64 TerrainForest = FFixed64::FromRaw(2000);      // +20% defense
-	static const FFixed64 TerrainHills = FFixed64::FromRaw(1500);       // +15% defense
-	static const FFixed64 TerrainSwamp = FFixed64::FromRaw(-1000);      // -10% defense (unstable ground)
-	static const FFixed64 TerrainDesert = FFixed64::FromRaw(500);       // +5% defense (elevation)
+	static const FFixed64 TerrainMountain = FFixed64::FromRaw(19661);   // +30% defense
+	static const FFixed64 TerrainForest = FFixed64::FromRaw(6554);      // +10% defense
+	static const FFixed64 TerrainHills = FFixed64::FromRaw(9830);       // +15% defense
+	static const FFixed64 TerrainSwamp = FFixed64::FromRaw(-6554);      // -10% defense (unstable ground)
+	static const FFixed64 TerrainDesert = FFixed64::FromRaw(3277);      // +5% defense (elevation)
 
 	// Weather modifiers (applied to ranged attack chance)
-	static const FFixed64 WeatherStorm = FFixed64::FromRaw(-3000);      // -30% ranged
-	static const FFixed64 WeatherRain = FFixed64::FromRaw(-1500);       // -15% ranged
-	static const FFixed64 WeatherFog = FFixed64::FromRaw(-2000);        // -20% ranged
+	static const FFixed64 WeatherStorm = FFixed64::FromRaw(-19661);     // -30% ranged
+	static const FFixed64 WeatherRain = FFixed64::FromRaw(-9830);       // -15% ranged
+	static const FFixed64 WeatherFog = FFixed64::FromRaw(-13107);       // -20% ranged
 
 	// Percentage constants
-	static const FFixed64 Hundred = FFixed64::FromRaw(6553600);
 	static const FFixed64 Zero = FFixed64::FromRaw(0);
 	static const FFixed64 One = FFixed64::FromRaw(65536);
 }
@@ -70,7 +69,7 @@ FFixed64 UCoMCombatSubsystem::GetTerrainModifier(ECoMTerrain TerrainType)
 	case ECoMTerrain::Mountains:    return CoMCombatConstants::TerrainMountain;
 	case ECoMTerrain::Forest:      return CoMCombatConstants::TerrainForest;
 	case ECoMTerrain::Hills:       return CoMCombatConstants::TerrainHills;
-	case ECoMTerrain::Swamp:       return FFixed64(0) - FFixed64::FromRaw(1000); // -10%
+	case ECoMTerrain::Swamp:       return CoMCombatConstants::TerrainSwamp;
 	case ECoMTerrain::Desert:      return CoMCombatConstants::TerrainDesert;
 	default:                       return CoMCombatConstants::Zero;
 	}
@@ -80,10 +79,51 @@ FFixed64 UCoMCombatSubsystem::GetWeatherModifier(ECoMWeatherType WeatherType)
 {
 	switch (WeatherType)
 	{
-	case ECoMWeatherType::Clear:   return FFixed64(0) - FFixed64::FromRaw(3000); // -30%
-	case ECoMWeatherType::Rain:    return FFixed64(0) - FFixed64::FromRaw(1500); // -15%
-	case ECoMWeatherType::HeavyRain:     return FFixed64(0) - FFixed64::FromRaw(2000); // -20%
-	default:                       return CoMCombatConstants::Zero;
+	// --- Standard weather ---
+	case ECoMWeatherType::Clear:        return CoMCombatConstants::Zero;
+	case ECoMWeatherType::Rain:         return CoMCombatConstants::WeatherRain;
+	case ECoMWeatherType::HeavyRain:    return CoMCombatConstants::WeatherStorm;
+	case ECoMWeatherType::Thunderstorm: return CoMCombatConstants::WeatherStorm;
+	case ECoMWeatherType::Snow:         return CoMCombatConstants::WeatherRain;   // moderate visibility reduction
+	case ECoMWeatherType::Blizzard:     return CoMCombatConstants::WeatherStorm;
+	case ECoMWeatherType::Fog:          return CoMCombatConstants::WeatherFog;
+	case ECoMWeatherType::DenseFog:     return CoMCombatConstants::WeatherFog;    // heavy visibility loss
+	case ECoMWeatherType::Sandstorm:    return CoMCombatConstants::WeatherFog;
+	case ECoMWeatherType::Monsoon:      return CoMCombatConstants::WeatherStorm;  // extreme conditions
+
+	// --- No combat penalty (cosmetic / event / non-obscuring) ---
+	case ECoMWeatherType::Drought:      return CoMCombatConstants::Zero;
+	case ECoMWeatherType::WildHunt:     return CoMCombatConstants::Zero;          // event, not weather
+	case ECoMWeatherType::BlossomGale:  return CoMCombatConstants::Zero;          // cosmetic
+
+	// --- Infernyx plane ---
+	case ECoMWeatherType::AshStorm:     return CoMCombatConstants::WeatherStorm;  // severe ash obscuration
+	case ECoMWeatherType::AshFall_Inf:  return CoMCombatConstants::WeatherFog;    // ash reduces visibility
+	case ECoMWeatherType::FireRain:     return CoMCombatConstants::WeatherFog;    // fire haze
+	case ECoMWeatherType::SoulSmog:     return CoMCombatConstants::WeatherFog;    // smog reduces visibility
+	case ECoMWeatherType::HellGust:     return CoMCombatConstants::WeatherStorm;  // ranged attacks -2
+
+	// --- Aethermist / Ethereal planes ---
+	case ECoMWeatherType::VoidRift:     return CoMCombatConstants::WeatherFog;    // spatial distortion
+
+	// --- Verdantis plane ---
+	case ECoMWeatherType::SporeCloud:   return CoMCombatConstants::WeatherFog;    // spore haze
+	case ECoMWeatherType::LivingStorm:  return CoMCombatConstants::WeatherStorm;  // animate storm
+
+	// --- Noctharion plane ---
+	case ECoMWeatherType::ShadowVeil:   return CoMCombatConstants::WeatherFog;    // supernatural darkness
+	case ECoMWeatherType::CrystalRain:  return CoMCombatConstants::WeatherRain;   // crystal shards
+
+	// --- Abyssal plane ---
+	case ECoMWeatherType::ChaosStorm:   return CoMCombatConstants::WeatherStorm;  // wild magic surges
+	case ECoMWeatherType::BloodRain:    return CoMCombatConstants::WeatherRain;   // visibility -3
+	case ECoMWeatherType::FleshGale:    return CoMCombatConstants::WeatherFog;    // morale + visibility
+
+	// --- Feywild plane ---
+	case ECoMWeatherType::FeyMist:      return CoMCombatConstants::WeatherRain;   // light obscuring
+	case ECoMWeatherType::TrueNamingStorm: return CoMCombatConstants::WeatherStorm; // magical storm
+
+	default:                            return CoMCombatConstants::Zero;
 	}
 }
 
@@ -380,7 +420,7 @@ void UCoMCombatSubsystem::ExecuteAttackRound(
 		// Defender block chance: (defense * 3) %
 		// Terrain modifier: defense * (1 + terrainMod)
 		FFixed64 EffectiveDefense = Target.Defense;
-		if (DefenseTerrainMod > CoMCombatConstants::Zero)
+		if (DefenseTerrainMod != CoMCombatConstants::Zero)
 		{
 			EffectiveDefense = EffectiveDefense * (CoMCombatConstants::One + DefenseTerrainMod);
 		}

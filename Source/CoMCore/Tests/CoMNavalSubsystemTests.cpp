@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMNavalSubsystemTests.cpp — Unit and regression tests
 // Phase 7 tests — Shattered Arcana
@@ -7,9 +6,6 @@
 #include "CoreMinimal.h"
 #include "Misc/AutomationTest.h"
 #include "CoMCore/Combat/CoMNavalSubsystem.h"
-
-#if WITH_AUTOMATION_TESTS
-
 
 namespace CoMNavalTests
 {
@@ -151,7 +147,5 @@ bool FNavalProcessTurn::RunTest(const FString& Parameters)
 }
 
 } // namespace CoMNavalTests
-
-#endif // WITH_AUTOMATION_TESTS
 
 #endif

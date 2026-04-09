@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMGameModeTest.cpp — Unit tests for CoMOverworldGameMode, CoMGameMode
 //                       (ACoMCombatGameMode, ACoMExplorationGameMode). COM-032
@@ -14,8 +13,6 @@
 #include "Camera/CoMCameraPawn.h"
 #include "Framework/CoMGameState.h"
 
-
-#if WITH_DEV_AUTOMATION_TESTS
 
 // ─── ACoMOverworldGameMode ────────────────────────────────────────────────────
 
@@ -34,17 +31,14 @@ bool FCoMOverworldGameModeDefaultsTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("ACoMOverworldGameMode CDO is non-null"), CDO);
 	if (!CDO) { return false; }
 
-	TestEqual(TEXT("PlayerControllerClass is ACoMHumanPlayerController"),
-	          CDO->PlayerControllerClass,
-	          ACoMHumanPlayerController::StaticClass());
+	TestTrue(TEXT("PlayerControllerClass is ACoMHumanPlayerController"),
+	         CDO->PlayerControllerClass == ACoMHumanPlayerController::StaticClass());
 
-	TestEqual(TEXT("DefaultPawnClass is ACoMCameraPawn"),
-	          CDO->DefaultPawnClass,
-	          ACoMCameraPawn::StaticClass());
+	TestTrue(TEXT("DefaultPawnClass is ACoMCameraPawn"),
+	         CDO->DefaultPawnClass == ACoMCameraPawn::StaticClass());
 
-	TestEqual(TEXT("GameStateClass is ACoMGameState"),
-	          CDO->GameStateClass,
-	          ACoMGameState::StaticClass());
+	TestTrue(TEXT("GameStateClass is ACoMGameState"),
+	         CDO->GameStateClass == ACoMGameState::StaticClass());
 
 	return true;
 }
@@ -62,9 +56,8 @@ bool FCoMCombatGameModeDefaultsTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("ACoMCombatGameMode CDO is non-null"), CDO);
 	if (!CDO) { return false; }
 
-	TestEqual(TEXT("PlayerControllerClass is ACoMHumanPlayerController"),
-	          CDO->PlayerControllerClass,
-	          ACoMHumanPlayerController::StaticClass());
+	TestTrue(TEXT("PlayerControllerClass is ACoMHumanPlayerController"),
+	         CDO->PlayerControllerClass == ACoMHumanPlayerController::StaticClass());
 
 	// Combat mode uses no free-roaming pawn; the combat subsystem assigns pawns.
 	TestNull(TEXT("DefaultPawnClass is null for combat mode"), CDO->DefaultPawnClass);
@@ -89,8 +82,5 @@ bool FCoMExplorationGameModeDefaultsTest::RunTest(const FString& Parameters)
 
 	return true;
 }
-
-#endif // WITH_DEV_AUTOMATION_TESTS
-
 
 #endif

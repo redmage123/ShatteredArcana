@@ -160,6 +160,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
 	void SetHeroTier(int32 HeroUnitID, ECoMHeroTier Tier);
 
+	/** Register hero ownership (called during recruitment). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
+	void SetHeroOwner(int32 HeroUnitID, int32 WizardIndex);
+
 	/** Check if a wizard qualifies to recruit a hero of the given tier. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
 	bool CanRecruitTier(int32 WizardIndex, ECoMHeroTier Tier, int32 WizardFame) const;
@@ -197,7 +201,7 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
 	FFixed64 GetLoyalty(int32 HeroUnitID) const;
 
-	/** Add (or subtract) loyalty. Clamped to [0, 200]. */
+	/** Add (or subtract) loyalty. Clamped to [0, 100]. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
 	void ModifyLoyalty(int32 HeroUnitID, FFixed64 Delta);
 
@@ -258,6 +262,10 @@ private:
 	/** Hero class assignments. */
 	UPROPERTY()
 	TMap<int32, ECoMHeroClass> HeroClasses;
+
+	/** Maps HeroUnitID -> OwnerWizardIndex for per-wizard hero counting. */
+	UPROPERTY()
+	TMap<int32, int32> HeroOwners;
 
 	UPROPERTY()
 	TArray<FCoMHeroRelationship> Relationships;

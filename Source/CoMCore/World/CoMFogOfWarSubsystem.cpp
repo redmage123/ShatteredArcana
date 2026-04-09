@@ -1,6 +1,8 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "CoMFogOfWarSubsystem.h"
+#include "CoMWorldMapSubsystem.h"
+#include "CoMCore/CoreTypes/CoMConstants.h"
 
 // =====================================================================
 // Constants
@@ -20,14 +22,12 @@ namespace CoMFogConstants
 void UCoMFogOfWarSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	ExploredMask.Empty();
-	VisibleMask.Empty();
+	WorldMapSub = GetGameInstance()->GetSubsystem<UCoMWorldMapSubsystem>();
 }
 
 void UCoMFogOfWarSubsystem::Deinitialize()
 {
-	ExploredMask.Empty();
-	VisibleMask.Empty();
+	WorldMapSub = nullptr;
 	Super::Deinitialize();
 }
 
@@ -39,12 +39,9 @@ void UCoMFogOfWarSubsystem::UpdateAllVision()
 {
 	ClearCurrentVision();
 
-	// TODO: Query the TurnManager for the list of active wizard indices.
-	// For now, iterate wizards 0..31 and rely on the fact that
+	// Placeholder: update vision for wizards 0..MAX_WIZARDS-1.
 	// UpdateVisionForWizard is a no-op when there are no armies.
-
-	// Placeholder: update vision for wizards 0..7 (typical max game size).
-	for (int32 i = 0; i < 8; ++i)
+	for (int32 i = 0; i < CoM::MAX_WIZARDS; ++i)
 	{
 		UpdateVisionForWizard(i);
 	}
@@ -58,7 +55,15 @@ void UCoMFogOfWarSubsystem::UpdateAllVision()
 
 void UCoMFogOfWarSubsystem::ClearCurrentVision()
 {
-	VisibleMask.Empty();
+	if (!WorldMapSub)
+	{
+		return;
+	}
+
+	for (int32 WizIdx = 0; WizIdx < CoM::MAX_WIZARDS; ++WizIdx)
+	{
+		WorldMapSub->ClearAllCurrentVision(WizIdx);
+	}
 }
 
 void UCoMFogOfWarSubsystem::UpdateVisionForWizard(int32 WizardIndex)
@@ -78,53 +83,54 @@ void UCoMFogOfWarSubsystem::UpdateVisionForWizard(int32 WizardIndex)
 // Queries
 // =====================================================================
 
-bool UCoMFogOfWarSubsystem::IsTileVisible(int32 WizardIndex, ECoMPlane Plane, FIntPoint Tile) const
+bool UCoMFogOfWarSubsystem::IsTileVisible(int32 WizardIndex, ECoMPlane Plane, FIntPoint Tile, ECoMMapLayer Layer) const
 {
-	const TMap<FIntPoint, uint32>& Map = GetVisibleMapConst(Plane);
-	if (const uint32* Mask = Map.Find(Tile))
+	if (!WorldMapSub)
 	{
-		return (*Mask & WizardBit(WizardIndex)) != 0;
+		return false;
 	}
-	return false;
+	return WorldMapSub->IsTileVisible(Plane, Layer, Tile.X, Tile.Y, WizardIndex);
 }
 
-bool UCoMFogOfWarSubsystem::IsTileExplored(int32 WizardIndex, ECoMPlane Plane, FIntPoint Tile) const
+bool UCoMFogOfWarSubsystem::IsTileExplored(int32 WizardIndex, ECoMPlane Plane, FIntPoint Tile, ECoMMapLayer Layer) const
 {
-	const TMap<FIntPoint, uint32>& Map = GetExploredMapConst(Plane);
-	if (const uint32* Mask = Map.Find(Tile))
+	if (!WorldMapSub)
 	{
-		return (*Mask & WizardBit(WizardIndex)) != 0;
+		return false;
 	}
-	return false;
+	return WorldMapSub->IsTileRevealed(Plane, Layer, Tile.X, Tile.Y, WizardIndex);
 }
 
 // =====================================================================
 // Direct manipulation
 // =====================================================================
 
-void UCoMFogOfWarSubsystem::RevealTile(int32 WizardIndex, ECoMPlane Plane, FIntPoint Tile)
+void UCoMFogOfWarSubsystem::RevealTile(int32 WizardIndex, ECoMPlane Plane, FIntPoint Tile, ECoMMapLayer Layer)
 {
-	const uint32 Bit = WizardBit(WizardIndex);
-
-	// Set explored (permanent).
-	uint32& ExploredBits = GetExploredMap(Plane).FindOrAdd(Tile, 0);
-	ExploredBits |= Bit;
-
-	// Set visible (cleared each turn).
-	uint32& VisibleBits = GetVisibleMap(Plane).FindOrAdd(Tile, 0);
-	VisibleBits |= Bit;
+	if (!WorldMapSub)
+	{
+		return;
+	}
+	WorldMapSub->RevealTile(Plane, Layer, Tile.X, Tile.Y, WizardIndex);
+	WorldMapSub->SetCurrentVision(Plane, Layer, Tile.X, Tile.Y, WizardIndex, true);
 }
 
-void UCoMFogOfWarSubsystem::RevealArea(int32 WizardIndex, ECoMPlane Plane, FIntPoint Center, int32 Radius)
+void UCoMFogOfWarSubsystem::RevealArea(int32 WizardIndex, ECoMPlane Plane, FIntPoint Center, int32 Radius, ECoMMapLayer Layer)
 {
+	if (!WorldMapSub)
+	{
+		return;
+	}
+
 	// Reveal all tiles within Manhattan distance <= Radius.
 	for (int32 DX = -Radius; DX <= Radius; ++DX)
 	{
 		const int32 RemainingY = Radius - FMath::Abs(DX);
 		for (int32 DY = -RemainingY; DY <= RemainingY; ++DY)
 		{
-			const FIntPoint Tile(Center.X + DX, Center.Y + DY);
-			RevealTile(WizardIndex, Plane, Tile);
+			const int32 WrappedX = ((Center.X + DX) % CoM::MAP_WIDTH + CoM::MAP_WIDTH) % CoM::MAP_WIDTH;
+			const int32 ClampedY = FMath::Clamp(Center.Y + DY, 0, CoM::MAP_HEIGHT - 1);
+			RevealTile(WizardIndex, Plane, FIntPoint(WrappedX, ClampedY), Layer);
 		}
 	}
 }
@@ -143,44 +149,4 @@ int32 UCoMFogOfWarSubsystem::GetSightRadius(int32 ArmyID) const
 	//
 	// Placeholder: return the default until unit data is wired.
 	return CoMFogConstants::DefaultSightRadius;
-}
-
-// =====================================================================
-// Internal helpers
-// =====================================================================
-
-TMap<FIntPoint, uint32>& UCoMFogOfWarSubsystem::GetExploredMap(ECoMPlane Plane)
-{
-	return ExploredMask.FindOrAdd(static_cast<uint8>(Plane));
-}
-
-const TMap<FIntPoint, uint32>& UCoMFogOfWarSubsystem::GetExploredMapConst(ECoMPlane Plane) const
-{
-	static const TMap<FIntPoint, uint32> EmptyMap;
-	if (const TMap<FIntPoint, uint32>* Found = ExploredMask.Find(static_cast<uint8>(Plane)))
-	{
-		return *Found;
-	}
-	return EmptyMap;
-}
-
-TMap<FIntPoint, uint32>& UCoMFogOfWarSubsystem::GetVisibleMap(ECoMPlane Plane)
-{
-	return VisibleMask.FindOrAdd(static_cast<uint8>(Plane));
-}
-
-const TMap<FIntPoint, uint32>& UCoMFogOfWarSubsystem::GetVisibleMapConst(ECoMPlane Plane) const
-{
-	static const TMap<FIntPoint, uint32> EmptyMap;
-	if (const TMap<FIntPoint, uint32>* Found = VisibleMask.Find(static_cast<uint8>(Plane)))
-	{
-		return *Found;
-	}
-	return EmptyMap;
-}
-
-uint32 UCoMFogOfWarSubsystem::WizardBit(int32 WizardIndex)
-{
-	check(WizardIndex >= 0 && WizardIndex < 32);
-	return 1u << static_cast<uint32>(WizardIndex);
 }

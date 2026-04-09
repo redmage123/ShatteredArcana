@@ -24,15 +24,16 @@ namespace CoM
 	/** Number of planes (Aurelith, Noctharion, Verdantis, Infernyx, Aethermist, Abyssal, Ethereal, Feywild).
 	 *  NOTE (2026-04-04): Infernal merged into Infernyx — plane count was temporarily 7.
 	 *  NOTE (2026-04-04): Feywild added as Plane 8. Magic school: Glamour.
-	 *  Infernyx has 2 magic schools (Magma + Binding); all other planes have 1. */
+	 *  Infernyx has 2 magic schools (Chaos + Binding); all other planes have 1. */
 	constexpr int32 NUM_PLANES = 8;
 
-	/** Named layers per plane: Surface + Underdark = 2 full-tile layers.
-	 *  Underwater is a zone network beneath ocean tiles, not a full grid. */
-	constexpr int32 FULL_LAYERS_PER_PLANE = 2;
+	/** Named layers per plane: 3 full layers (Surface, Underdark, Underwater).
+	 *  Underwater layers use the same grid but default to impassable; the ocean
+	 *  tile network uses sparse SiteID/PortalID references on top of the grid. */
+	constexpr int32 FULL_LAYERS_PER_PLANE = 3;
 
 	/** Total full-tile map layers across all planes. */
-	constexpr int32 TOTAL_MAP_LAYERS = NUM_PLANES * FULL_LAYERS_PER_PLANE; // 16 (8 planes × 2)
+	constexpr int32 TOTAL_MAP_LAYERS = NUM_PLANES * FULL_LAYERS_PER_PLANE; // 24 (8 planes × 3)
 
 	/** Total full-tile tiles across all layers. */
 	constexpr int32 TOTAL_MAP_TILES = TOTAL_MAP_LAYERS * MAP_TILES_PER_LAYER; // 256,000

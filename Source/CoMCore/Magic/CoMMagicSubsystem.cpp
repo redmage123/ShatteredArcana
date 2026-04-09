@@ -23,7 +23,7 @@ void UCoMMagicSubsystem::Initialize(FSubsystemCollectionBase& Collection)
     ActiveRituals.Empty();
     ActiveRunes.Empty();
     NextRuneInstanceId = 1;
-    RngStream.Initialize(FPlatformTime::Cycles());
+    RngStream.Initialize(0x4D616769);
 }
 void UCoMMagicSubsystem::Deinitialize()
 {
@@ -221,10 +221,10 @@ bool UCoMMagicSubsystem::BeginRitual(int32 WizardId, FName RitualId, int32 ManaC
     FCoMActiveRitual Ritual;
     Ritual.RitualSpellID = RitualId;
     Ritual.WizardIndex = WizardId;
-    Ritual.ManaInvested = 500; // Would come from data asset
+    Ritual.ManaCostTotal = 500;
     Ritual.ManaInvested = 0;
-    Ritual.TurnsRemaining = ManaChannelPerTurn;
-    Ritual.ManaInvested = 0;
+    Ritual.ManaChannelPerTurn = ManaChannelPerTurn;
+    Ritual.TurnsRemaining = (ManaChannelPerTurn > 0) ? ((500 + ManaChannelPerTurn - 1) / ManaChannelPerTurn) : 1;
     ActiveRituals.Add(Ritual);
     return true;
 }
@@ -377,9 +377,18 @@ void UCoMMagicSubsystem::ProcessTurn(int32 CurrentTurn)
         int32 ResearchSpend = FMath::Clamp(FMath::Min(State.ResearchAllocation, Income - Maintenance), 0, Income);
         // 4. Net mana gain
         int32 NetMana = Income - Maintenance - ResearchSpend;
-        State.CurrentMana = FMath::Clamp(State.CurrentMana + NetMana, 0, State.MaxMana);
+        int32 ProjectedMana = State.CurrentMana + NetMana;
         State.ManaPerTurn = Income;
-        // 5. Advance research
+        // 5. Force-dismiss enchantments if mana would go negative
+        while (ProjectedMana < 0 && State.ActiveEnchantments.Num() > 0)
+        {
+            State.ActiveEnchantments.RemoveAt(State.ActiveEnchantments.Num() - 1);
+            Maintenance -= 5;
+            ProjectedMana += 5;
+        }
+        State.CurrentMana = FMath::Clamp(ProjectedMana, 0, State.MaxMana);
+        State.MaintenanceCost = Maintenance;
+        // 6. Advance research
         if (ResearchSpend > 0 && !State.CurrentResearchSpell.IsNone())
         {
             State.ResearchProgress += ResearchSpend;
@@ -391,17 +400,6 @@ void UCoMMagicSubsystem::ProcessTurn(int32 CurrentTurn)
                 State.CurrentResearchSpell = NAME_None;
                 State.ResearchProgress = 0;
             }
-        }
-        // 6. Can't maintain enchantments if not enough mana
-        if (State.CurrentMana < 0)
-        {
-            // Force-dismiss enchantments until solvent
-            while (State.CurrentMana < 0 && State.ActiveEnchantments.Num() > 0)
-            {
-                State.ActiveEnchantments.RemoveAt(State.ActiveEnchantments.Num() - 1);
-                State.CurrentMana += 5;
-            }
-            State.CurrentMana = FMath::Max(0, State.CurrentMana);
         }
     }
     // 7. Advance multi-turn castings
@@ -425,10 +423,14 @@ void UCoMMagicSubsystem::ProcessTurn(int32 CurrentTurn)
     {
         FCoMActiveRitual& Ritual = ActiveRituals[i];
         FCoMWizardMagicState& State = GetWizardMagic(Ritual.WizardIndex);
-        int32 ChannelAmount = FMath::Min(Ritual.TurnsRemaining, State.CurrentMana);
+        int32 ChannelAmount = FMath::Min(Ritual.ManaChannelPerTurn, State.CurrentMana);
         State.CurrentMana -= ChannelAmount;
         Ritual.ManaInvested += ChannelAmount;
-        if (Ritual.ManaInvested >= Ritual.ManaInvested)
+        if (ChannelAmount > 0)
+        {
+            Ritual.TurnsRemaining--;
+        }
+        if (Ritual.ManaInvested >= Ritual.ManaCostTotal)
         {
             ResolveRitual(Ritual);
             ActiveRituals.RemoveAt(i);

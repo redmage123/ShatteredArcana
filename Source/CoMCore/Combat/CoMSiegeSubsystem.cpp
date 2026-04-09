@@ -76,7 +76,12 @@ void UCoMSiegeSubsystem::ProcessSiegeTurn()
 		Siege->TurnsUnderSiege++;
 
 		// Phase progression
-		if (Siege->Phase == ECoMSiegePhase::Approach && Siege->TurnsUnderSiege >= 1)
+		if (Siege->Phase == ECoMSiegePhase::Approach && Siege->TurnsUnderSiege >= 2)
+		{
+			Siege->Phase = ECoMSiegePhase::Encirclement;
+			OnSiegePhaseChanged.Broadcast(SiegeID, ECoMSiegePhase::Encirclement);
+		}
+		else if (Siege->Phase == ECoMSiegePhase::Encirclement && Siege->TurnsUnderSiege >= 4)
 		{
 			Siege->Phase = ECoMSiegePhase::Bombardment;
 			OnSiegePhaseChanged.Broadcast(SiegeID, ECoMSiegePhase::Bombardment);
@@ -159,6 +164,13 @@ const FCoMSiegeState* UCoMSiegeSubsystem::GetSiege(int32 SiegeID) const
 	return AllSieges.Find(SiegeID);
 }
 
+TArray<FCoMSiegeState> UCoMSiegeSubsystem::GetAllSieges() const
+{
+	TArray<FCoMSiegeState> Result;
+	AllSieges.GenerateValueArray(Result);
+	return Result;
+}
+
 bool UCoMSiegeSubsystem::IsCityUnderSiege(int32 CityID) const
 {
 	for (const auto& Pair : AllSieges)
@@ -198,33 +210,30 @@ void UCoMSiegeSubsystem::AttemptAssault(int32 SiegeID)
 	OnSiegePhaseChanged.Broadcast(SiegeID, ECoMSiegePhase::Assault);
 
 	// Determine defender advantage multiplier
-	float DefenderMult = 1.0f;
+	FFixed64 DefenderMult = FFixed64(1);
 
 	if (Siege->BreachPoints.Num() == 0 && Siege->GatehouseHP > 0)
 	{
-		// No breach, no gatehouse down -- 3x defender advantage (very costly assault)
-		DefenderMult = 3.0f;
+		DefenderMult = FFixed64(3);
 	}
 	else if (Siege->BreachPoints.Num() == 0)
 	{
-		// Gatehouse down but walls up -- siege towers might help
 		if (Siege->SiegeEquipmentIDs.Num() > 2)
 		{
-			DefenderMult = 1.5f;
+			DefenderMult = FFixed64::FromRaw(98304); // 1.5
 		}
 		else
 		{
-			DefenderMult = 2.5f;
+			DefenderMult = FFixed64::FromRaw(163840); // 2.5
 		}
 	}
 	else
 	{
-		// Breach exists -- normal combat
-		DefenderMult = 1.0f;
+		DefenderMult = FFixed64(1);
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d: assault attempted! Defender mult=%.1f, breaches=%d"),
-		SiegeID, DefenderMult, Siege->BreachPoints.Num());
+	UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d: assault attempted! Defender mult=%d, breaches=%d"),
+		SiegeID, DefenderMult.ToInt32(), Siege->BreachPoints.Num());
 
 	// TODO: trigger tactical combat with DefenderMult applied to defender stats
 }
@@ -238,27 +247,27 @@ bool UCoMSiegeSubsystem::OfferSurrender(int32 SiegeID)
 	}
 
 	// Surrender acceptance based on morale and food
-	float AcceptChance = 0.0f;
+	int32 AcceptChance = 0;
 
 	if (Siege->CityMorale < 10)
 	{
-		AcceptChance = 0.80f;
+		AcceptChance = 80;
 	}
 	else if (Siege->CityMorale < 20 && Siege->CityFoodReserves < 5)
 	{
-		AcceptChance = 0.50f;
+		AcceptChance = 50;
 	}
 	else if (Siege->CityMorale < 30 && Siege->CityFoodReserves <= 0)
 	{
-		AcceptChance = 0.30f;
+		AcceptChance = 30;
 	}
 
 	// Roll
-	const float Roll = RngStream.FRand();
+	int32 Roll = RngStream.RandRange(0, 99);
 	const bool bAccepted = Roll < AcceptChance;
 
-	UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d: surrender offered. Morale=%d, Food=%d, Chance=%.0f%%, %s"),
-		SiegeID, Siege->CityMorale, Siege->CityFoodReserves, AcceptChance * 100.0f,
+	UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d: surrender offered. Morale=%d, Food=%d, Chance=%d%%, %s"),
+		SiegeID, Siege->CityMorale, Siege->CityFoodReserves, AcceptChance,
 		bAccepted ? TEXT("ACCEPTED") : TEXT("REJECTED"));
 
 	if (bAccepted)

@@ -5,7 +5,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Subsystems/WorldSubsystem.h"
+#include "Subsystems/GameInstanceSubsystem.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
 #include "CoMMagicSubsystem.generated.h"
@@ -177,7 +177,7 @@ struct FCoMActiveRune
 // ─────────────────────────────────────────────────────────────────────────────
 
 UCLASS()
-class COMCORE_API UCoMMagicSubsystem : public UWorldSubsystem
+class COMCORE_API UCoMMagicSubsystem : public UGameInstanceSubsystem
 {
     GENERATED_BODY()
 

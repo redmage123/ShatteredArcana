@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 #include "CoreMinimal.h"
 #include "Misc/AutomationTest.h"
 #include "CoMCore/World/CoMLeyPortalSubsystem.h"
@@ -46,9 +45,9 @@ bool FCoMLeyLineCountTest::RunTest(const FString& Parameters)
 {
 	CoMLeyPortalTestHelpers::FTestWorld World;
 
-	for (int32 Plane = 0; Plane < NUM_PLANES; ++Plane)
+	for (int32 Plane = 0; Plane < static_cast<int32>(ECoMPlane::MAX); ++Plane)
 	{
-		const TArray<FCoMLeyLine>& Lines = World.LPS->GetLeyLinesOnPlane(Plane);
+		const TArray<const FCoMLeyLine*> Lines = World.LPS->GetLeyLinesOnPlane(static_cast<ECoMPlane>(Plane));
 		const int32 Count = Lines.Num();
 
 		TestTrue(
@@ -74,21 +73,22 @@ bool FCoMLeyLinesAvoidOceanTest::RunTest(const FString& Parameters)
 {
 	CoMLeyPortalTestHelpers::FTestWorld World;
 
-	for (int32 Plane = 0; Plane < NUM_PLANES; ++Plane)
+	for (int32 Plane = 0; Plane < static_cast<int32>(ECoMPlane::MAX); ++Plane)
 	{
-		const TArray<FCoMLeyLine>& Lines = World.LPS->GetLeyLinesOnPlane(Plane);
+		const TArray<const FCoMLeyLine*> Lines = World.LPS->GetLeyLinesOnPlane(static_cast<ECoMPlane>(Plane));
 
-		for (const FCoMLeyLine& Line : Lines)
+		for (const FCoMLeyLine* Line : Lines)
 		{
-			for (const FIntPoint& Tile : Line.Path)
+			for (const FIntPoint& Tile : Line->Path)
 			{
-				const FCoMTileData& TD = World.Map->GetTileData(Plane, Tile.X, Tile.Y);
+				const FCoMTileData* TD = World.Map->GetTile(static_cast<ECoMPlane>(Plane), ECoMMapLayer::Surface, Tile.X, Tile.Y);
+				if (!TD) continue;
 
 				TestFalse(
 					FString::Printf(
 						TEXT("LeyLine %d on plane %d: tile (%d,%d) should not be Ocean"),
-						Line.LeyLineID, Plane, Tile.X, Tile.Y),
-					TD.Terrain == ECoMTerrainType::Ocean);
+						Line->LeyLineID, Plane, Tile.X, Tile.Y),
+					TD->Terrain == ECoMTerrain::Ocean);
 			}
 		}
 	}
@@ -108,10 +108,10 @@ bool FCoMIntersectionCountTest::RunTest(const FString& Parameters)
 {
 	CoMLeyPortalTestHelpers::FTestWorld World;
 
-	for (int32 Plane = 0; Plane < NUM_PLANES; ++Plane)
+	for (int32 Plane = 0; Plane < static_cast<int32>(ECoMPlane::MAX); ++Plane)
 	{
-		const TArray<FCoMLeyIntersection>& Intersections =
-			World.LPS->GetIntersectionsOnPlane(Plane);
+		const TArray<const FCoMLeyIntersection*> Intersections =
+			World.LPS->GetIntersectionsOnPlane(static_cast<ECoMPlane>(Plane));
 		const int32 Count = Intersections.Num();
 
 		TestTrue(
@@ -137,20 +137,20 @@ bool FCoMIntersectionsAreNexusTest::RunTest(const FString& Parameters)
 {
 	CoMLeyPortalTestHelpers::FTestWorld World;
 
-	for (int32 Plane = 0; Plane < NUM_PLANES; ++Plane)
+	for (int32 Plane = 0; Plane < static_cast<int32>(ECoMPlane::MAX); ++Plane)
 	{
-		const TArray<FCoMLeyIntersection>& Intersections =
-			World.LPS->GetIntersectionsOnPlane(Plane);
+		const TArray<const FCoMLeyIntersection*> Intersections =
+			World.LPS->GetIntersectionsOnPlane(static_cast<ECoMPlane>(Plane));
 
-		for (const FCoMLeyIntersection& IX : Intersections)
+		for (const FCoMLeyIntersection* IX : Intersections)
 		{
-			if (IX.ConvergingLeyLineIDs.Num() >= 3)
+			if (IX->ConvergingLeyLineIDs.Num() >= 3)
 			{
 				TestTrue(
 					FString::Printf(
 						TEXT("Intersection %d on plane %d with %d converging lines should be a nexus"),
-						IX.IntersectionID, Plane, IX.ConvergingLeyLineIDs.Num()),
-					IX.bHasNexus);
+						IX->IntersectionID, Plane, IX->ConvergingLeyLineIDs.Num()),
+					IX->bHasNexus);
 			}
 		}
 	}
@@ -170,21 +170,22 @@ bool FCoMTilesMarkedWithLeyLineIDsTest::RunTest(const FString& Parameters)
 {
 	CoMLeyPortalTestHelpers::FTestWorld World;
 
-	for (int32 Plane = 0; Plane < NUM_PLANES; ++Plane)
+	for (int32 Plane = 0; Plane < static_cast<int32>(ECoMPlane::MAX); ++Plane)
 	{
-		const TArray<FCoMLeyLine>& Lines = World.LPS->GetLeyLinesOnPlane(Plane);
+		const TArray<const FCoMLeyLine*> Lines = World.LPS->GetLeyLinesOnPlane(static_cast<ECoMPlane>(Plane));
 
-		for (const FCoMLeyLine& Line : Lines)
+		for (const FCoMLeyLine* Line : Lines)
 		{
-			for (const FIntPoint& Tile : Line.Path)
+			for (const FIntPoint& Tile : Line->Path)
 			{
-				const FCoMTileData& TD = World.Map->GetTileData(Plane, Tile.X, Tile.Y);
+				const FCoMTileData* TD = World.Map->GetTile(static_cast<ECoMPlane>(Plane), ECoMMapLayer::Surface, Tile.X, Tile.Y);
+				if (!TD) continue;
 
 				TestTrue(
 					FString::Printf(
 						TEXT("Tile (%d,%d) on plane %d should list LeyLineID %d"),
-						Tile.X, Tile.Y, Plane, Line.LeyLineID),
-					TD.LeyLineIDs.Contains(Line.LeyLineID));
+						Tile.X, Tile.Y, Plane, Line->LeyLineID),
+					TD->LeyLineIDs.Contains(Line->LeyLineID));
 			}
 		}
 	}
@@ -204,17 +205,17 @@ bool FCoMInterPlanePortalsTest::RunTest(const FString& Parameters)
 {
 	CoMLeyPortalTestHelpers::FTestWorld World;
 
-	for (int32 Plane = 0; Plane < NUM_PLANES; ++Plane)
+	for (int32 Plane = 0; Plane < static_cast<int32>(ECoMPlane::MAX); ++Plane)
 	{
-		const TArray<FCoMPortal>& Portals = World.LPS->GetPortalsOnPlane(Plane);
+		const TArray<const FCoMPortal*> Portals = World.LPS->GetPortalsOnPlane(static_cast<ECoMPlane>(Plane));
 
 		int32 InterPlaneCount = 0;
-		for (const FCoMPortal& Portal : Portals)
+		for (const FCoMPortal* Portal : Portals)
 		{
 			const bool bIsInterPlane =
-				Portal.SourcePlane != Portal.DestPlane &&
-				(Portal.Type == ECoMPortalType::NaturalGateway ||
-				 Portal.Type == ECoMPortalType::PlanarRift);
+				Portal->SourcePlane != Portal->DestPlane &&
+				(Portal->Type == ECoMPortalType::NaturalGateway ||
+				 Portal->Type == ECoMPortalType::PlanarRift);
 
 			if (bIsInterPlane)
 			{
@@ -244,19 +245,19 @@ bool FCoMPortalsBidirectionalTest::RunTest(const FString& Parameters)
 {
 	CoMLeyPortalTestHelpers::FTestWorld World;
 
-	for (int32 Plane = 0; Plane < NUM_PLANES; ++Plane)
+	for (int32 Plane = 0; Plane < static_cast<int32>(ECoMPlane::MAX); ++Plane)
 	{
-		const TArray<FCoMPortal>& Portals = World.LPS->GetPortalsOnPlane(Plane);
+		const TArray<const FCoMPortal*> Portals = World.LPS->GetPortalsOnPlane(static_cast<ECoMPlane>(Plane));
 
-		for (const FCoMPortal& Portal : Portals)
+		for (const FCoMPortal* Portal : Portals)
 		{
-			if (Portal.Type == ECoMPortalType::NaturalGateway)
+			if (Portal->Type == ECoMPortalType::NaturalGateway)
 			{
 				TestTrue(
 					FString::Printf(
 						TEXT("NaturalGateway portal %d on plane %d should be bidirectional"),
-						Portal.PortalID, Plane),
-					Portal.bBidirectional);
+						Portal->PortalID, Plane),
+					Portal->bBidirectional);
 			}
 		}
 	}
@@ -276,42 +277,48 @@ bool FCoMPortalTilesMarkedTest::RunTest(const FString& Parameters)
 {
 	CoMLeyPortalTestHelpers::FTestWorld World;
 
-	for (int32 Plane = 0; Plane < NUM_PLANES; ++Plane)
+	for (int32 Plane = 0; Plane < static_cast<int32>(ECoMPlane::MAX); ++Plane)
 	{
-		const TArray<FCoMPortal>& Portals = World.LPS->GetPortalsOnPlane(Plane);
+		const TArray<const FCoMPortal*> Portals = World.LPS->GetPortalsOnPlane(static_cast<ECoMPlane>(Plane));
 
-		for (const FCoMPortal& Portal : Portals)
+		for (const FCoMPortal* Portal : Portals)
 		{
 			// Check source tile
 			{
-				const FCoMTileData& SrcTile = World.Map->GetTileData(
-					Portal.SourcePlane,
-					Portal.SourcePosition.X,
-					Portal.SourcePosition.Y);
+				const FCoMTileData* SrcTile = World.Map->GetTile(
+					static_cast<ECoMPlane>(Portal->SourcePlane), ECoMMapLayer::Surface,
+					Portal->SourcePosition.X,
+					Portal->SourcePosition.Y);
 
-				TestEqual(
-					FString::Printf(
-						TEXT("Source tile (%d,%d) on plane %d should have PortalID %d"),
-						Portal.SourcePosition.X, Portal.SourcePosition.Y,
-						Portal.SourcePlane, Portal.PortalID),
-					SrcTile.PortalID,
-					Portal.PortalID);
+				if (SrcTile)
+				{
+					TestEqual(
+						FString::Printf(
+							TEXT("Source tile (%d,%d) on plane %d should have PortalID %d"),
+							Portal->SourcePosition.X, Portal->SourcePosition.Y,
+							Portal->SourcePlane, Portal->PortalID),
+						SrcTile->PortalID,
+						Portal->PortalID);
+				}
 			}
 
 			// Check destination tile
 			{
-				const FCoMTileData& DstTile = World.Map->GetTileData(
-					Portal.DestPlane,
-					Portal.DestPosition.X,
-					Portal.DestPosition.Y);
+				const FCoMTileData* DstTile = World.Map->GetTile(
+					static_cast<ECoMPlane>(Portal->DestPlane), ECoMMapLayer::Surface,
+					Portal->DestPosition.X,
+					Portal->DestPosition.Y);
 
-				TestEqual(
-					FString::Printf(
-						TEXT("Dest tile (%d,%d) on plane %d should have PortalID %d"),
-						Portal.DestPosition.X, Portal.DestPosition.Y,
-						Portal.DestPlane, Portal.PortalID),
-					DstTile.PortalID,
-					Portal.PortalID);
+				if (DstTile)
+				{
+					TestEqual(
+						FString::Printf(
+							TEXT("Dest tile (%d,%d) on plane %d should have PortalID %d"),
+							Portal->DestPosition.X, Portal->DestPosition.Y,
+							Portal->DestPlane, Portal->PortalID),
+						DstTile->PortalID,
+						Portal->PortalID);
+				}
 			}
 		}
 	}

@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "Misc/AutomationTest.h"
@@ -11,8 +10,7 @@
 
 static UCoMDragonSubsystem* GetTestDragonSubsystem()
 {
-	UGameInstance* GI = NewObject<UGameInstance>();
-	return GI->GetSubsystem<UCoMDragonSubsystem>();
+	return NewObject<UCoMDragonSubsystem>();
 }
 
 // =====================================================================
@@ -39,10 +37,10 @@ bool FCoMDragonSpawnTest::RunTest(const FString& Parameters)
 
 	if (Dragon)
 	{
-		TestEqual(TEXT("TypeID"), Dragon->DragonTypeID, 1);
-		TestEqual(TEXT("LairPosition"), Dragon->LairPosition, FIntPoint(10, 20));
-		TestEqual(TEXT("Role should be Wild"), Dragon->Role, ECoMDragonRole::Wild);
-		TestEqual(TEXT("Age should be 0"), Dragon->Age, 0);
+		TestTrue(TEXT("TypeID"), Dragon->DragonTypeID == FName(*FString::FromInt(1)));
+		TestTrue(TEXT("LairPosition"), Dragon->LairPosition == FIntPoint(10, 20));
+		TestTrue(TEXT("Role should be Wild"), Dragon->Role == ECoMDragonRole::Wild);
+		TestTrue(TEXT("Age should be Young"), Dragon->Age == ECoMDragonAge::Young);
 	}
 
 	// Second spawn gets a different ID.
@@ -77,7 +75,7 @@ bool FCoMDragonCreateDomainTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Dragon exists"), Dragon);
 	if (Dragon)
 	{
-		TestEqual(TEXT("Role promoted to DomainRuler"), Dragon->Role, ECoMDragonRole::DomainRuler);
+		TestTrue(TEXT("Role promoted to DomainRuler"), Dragon->Role == ECoMDragonRole::DomainRuler);
 		TestTrue(TEXT("DomainID assigned"), Dragon->DomainID > 0);
 
 		// Regression: domain lair position must equal dragon's lair position.
@@ -85,7 +83,7 @@ bool FCoMDragonCreateDomainTest::RunTest(const FString& Parameters)
 		TestNotNull(TEXT("Domain exists"), Domain);
 		if (Domain)
 		{
-			TestEqual(TEXT("Domain LairPosition matches dragon"), Domain->LairPosition, Dragon->LairPosition);
+			TestTrue(TEXT("Domain LairPosition matches dragon"), Domain->LairPosition == Dragon->LairPosition);
 			TestEqual(TEXT("InfluenceRadius"), Domain->InfluenceRadius, 3);
 			TestTrue(TEXT("ClaimedTiles non-empty"), Domain->ClaimedTiles.Num() > 0);
 		}
@@ -187,14 +185,14 @@ bool FCoMDragonProcessTurnTest::RunTest(const FString& Parameters)
 	const FCoMDragonInstance* Dragon = Sub->GetDragon(DragonID);
 	TestNotNull(TEXT("Dragon exists"), Dragon);
 
-	const int32 InitialAge = Dragon ? Dragon->Age : -1;
+	const int32 InitialAge = Dragon ? Dragon->TurnsAlive : -1;
 
 	// Run one turn: dragon ages by 1.
 	Sub->ProcessDragonTurn();
 	Dragon = Sub->GetDragon(DragonID);
 	if (Dragon)
 	{
-		TestEqual(TEXT("Age incremented by 1"), Dragon->Age, InitialAge + 1);
+		TestTrue(TEXT("TurnsAlive incremented by 1"), Dragon->TurnsAlive == InitialAge + 1);
 	}
 
 	// Run turns up to 10 total to trigger domain expansion.
@@ -206,7 +204,7 @@ bool FCoMDragonProcessTurnTest::RunTest(const FString& Parameters)
 	Dragon = Sub->GetDragon(DragonID);
 	if (Dragon)
 	{
-		TestEqual(TEXT("Age after 10 turns"), Dragon->Age, 10);
+		TestTrue(TEXT("TurnsAlive after 10 turns"), Dragon->TurnsAlive == 10);
 
 		const FCoMDragonDomain* Domain = Sub->GetDomain(Dragon->DomainID);
 		TestNotNull(TEXT("Domain exists after turns"), Domain);

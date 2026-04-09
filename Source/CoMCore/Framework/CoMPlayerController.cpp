@@ -66,6 +66,4 @@ void ACoMHumanPlayerController::Input_EndTurn(const FInputActionValue& /*Value*/
 
 ACoMAIPlayerController::ACoMAIPlayerController()
 {
-	// AI controllers do not process human input; flag them accordingly.
-	bIsPlayerController = false;
 }

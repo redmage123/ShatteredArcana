@@ -190,7 +190,14 @@ void UCoMLeyPortalSubsystem::LloydRelax(TArray<FIntPoint>& Nodes,
 					}
 				}
 
-				Centroids[BestIdx].X += static_cast<double>(X);
+				// Unwrap X relative to the cell's seed to handle map-edge wrapping.
+				double UnwrappedX = static_cast<double>(X);
+				const double SeedX = static_cast<double>(Nodes[BestIdx].X);
+				if (FMath::Abs(UnwrappedX - SeedX) > CoM::MAP_WIDTH / 2)
+				{
+					UnwrappedX += (UnwrappedX < SeedX) ? CoM::MAP_WIDTH : -CoM::MAP_WIDTH;
+				}
+				Centroids[BestIdx].X += UnwrappedX;
 				Centroids[BestIdx].Y += static_cast<double>(Y);
 				CellCounts[BestIdx] += 1;
 			}

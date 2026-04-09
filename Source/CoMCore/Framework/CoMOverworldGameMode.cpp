@@ -58,13 +58,13 @@ void ACoMOverworldGameMode::StartNewGame(int32 NumWizards)
 	UWorld* W = GetWorld();
 	if (!W) { return; }
 
-	// Initialise the 15-layer world map (5 planes × 3 layers).
+	// Initialise the 24-layer world map (8 planes × 3 layers).
 	UCoMWorldMapSubsystem* MapSys = GetGameInstance()->GetSubsystem<UCoMWorldMapSubsystem>();
 	if (MapSys)
 	{
 		MapSys->InitializeLayers();
 		UE_LOG(LogTemp, Log, TEXT("[CoMOverworldGameMode] World map initialised, NumLayers=%d"),
-		       0);
+		       CoM::TOTAL_MAP_LAYERS);
 	}
 
 	// Boot the turn engine.

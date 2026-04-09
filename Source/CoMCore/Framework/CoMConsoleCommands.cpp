@@ -2,6 +2,7 @@
 
 #include "CoMConsoleCommands.h"
 #include "CoMCore/Turn/CoMTurnManager.h"
+#include "CoMCore/Turn/CoMTurnSubsystem.h"
 #include "CoMCore/World/CoMFogOfWarSubsystem.h"
 #include "HAL/IConsoleManager.h"
 
@@ -156,6 +157,14 @@ void UCoMConsoleCommands::Cmd_Status(const TArray<FString>& Args)
 	UE_LOG(LogTemp, Log, TEXT("  Active Wizards: %d"), TM->GetActiveWizardCount());
 	UE_LOG(LogTemp, Log, TEXT("  Game Over:      %s"), TM->IsGameOver() ? TEXT("YES") : TEXT("No"));
 
+	// Show TurnSubsystem phase info if available.
+	if (UCoMTurnSubsystem* TS = GetGameInstance()->GetSubsystem<UCoMTurnSubsystem>())
+	{
+		UE_LOG(LogTemp, Log, TEXT("  Game Phase:     %d"), static_cast<uint8>(TS->GetCurrentPhase()));
+		UE_LOG(LogTemp, Log, TEXT("  Wizard Phase:   %d"), static_cast<uint8>(TS->GetCurrentWizardPhase()));
+		UE_LOG(LogTemp, Log, TEXT("  TS Turn:        %d"), TS->GetCurrentTurn());
+	}
+
 	// TODO: query army/city subsystems for counts per wizard.
 	UE_LOG(LogTemp, Log, TEXT("  Armies:         (subsystem not wired)"));
 	UE_LOG(LogTemp, Log, TEXT("  Cities:         (subsystem not wired)"));
@@ -272,7 +281,12 @@ void UCoMConsoleCommands::Cmd_SpawnArmyAt(const TArray<FString>& Args)
 	const int32 Y = FCString::Atoi(*Args[1]);
 
 	UCoMTurnManager* TM = GetGameInstance()->GetSubsystem<UCoMTurnManager>();
-	const int32 WizardId = TM ? TM->GetCurrentWizard() : 0;
+	const int32 WizardId = TM ? TM->GetCurrentWizard() : -1;
+	if (WizardId < 0)
+	{
+		UE_LOG(LogTemp, Error, TEXT("SpawnArmyAt: no valid current wizard."));
+		return;
+	}
 
 	// TODO: create army with 3 basic units via army/unit subsystem.
 	UE_LOG(LogTemp, Log,
@@ -299,7 +313,12 @@ void UCoMConsoleCommands::Cmd_DeclareWar(const TArray<FString>& Args)
 	const int32 TargetId = FCString::Atoi(*Args[0]);
 
 	UCoMTurnManager* TM = GetGameInstance()->GetSubsystem<UCoMTurnManager>();
-	const int32 WizardId = TM ? TM->GetCurrentWizard() : 0;
+	const int32 WizardId = TM ? TM->GetCurrentWizard() : -1;
+	if (WizardId < 0)
+	{
+		UE_LOG(LogTemp, Error, TEXT("DeclareWar: no valid current wizard."));
+		return;
+	}
 
 	if (WizardId == TargetId)
 	{

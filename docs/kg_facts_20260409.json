@@ -1,0 +1,98 @@
+[
+  {
+    "subject": "Animation Pipeline v2",
+    "predicate": "architecture",
+    "object": "Two modes: Mixamo clips (manual, 51 FBX) or MoMask motion diffusion (text-to-motion, ~2s/beat). Both feed into Playwright pose editor → quality gate → WebM encode.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Three.js AnimationMixer",
+    "predicate": "critical_bug",
+    "object": "Mixer sets bone quaternions directly, corrupting Euler↔Quaternion sync. MUST use quaternion-space overrides (applyQuatOverrides) or stop mixer before setting Euler rotations.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Three.js AnimationMixer",
+    "predicate": "jitter_fix",
+    "object": "Persistent action cache in clip-loader.js — never destroy/recreate actions. Old stopAllClips() now sets weight=0 instead of mixer.stopAllAction().",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Keyframe Engine",
+    "predicate": "range_bounded",
+    "object": "interpolateFrame and hasAnyKeyframeInRange only operate within [firstKF, lastKF]. Frames outside this range are untouched — prevents pose leaking into subsequent beats.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Clip Sequencer",
+    "predicate": "auto_crossfade",
+    "object": "Adjacent segments get 6-frame crossfade blend automatically via _autoBlend(). getClipTime() handles negative speed correctly via linear interpolation of clipStartTime→clipEndTime.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Quality Gate",
+    "predicate": "automated_checks",
+    "object": "quality_gate() in animator.py: freeze detection (<0.005 diff), jitter spikes (>3x mean), alternating jitter (std >> mean), static beats (<0.005 for 24+ frames). Runs before every WebM encode.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Knight D Pelegrini Model",
+    "predicate": "texture_repaint",
+    "object": "materials.js repaintTextureAtlas() at runtime: red tabard→steel plate, skin→helmet, brown leather→dark steel, chain mail→plate segments, gold trim enhanced, gold inlay filigree lines added.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "MoMask Integration",
+    "predicate": "installed_at",
+    "object": "tools/momask/ — EricGuo5513/momask-codes, HumanML3D pretrained weights (188MB), CLIP ViT-B/32 for text encoding. Fixed numpy deprecations (np.float→np.float64).",
+    "org": "mythforge"
+  },
+  {
+    "subject": "MoMask Fine-tuning",
+    "predicate": "completed",
+    "object": "25 samples (5 beats × 5 captions), VQ-VAE 50 epochs (loss 1.32→0.007), Transformer 30 epochs (loss 9.63→4.39). Checkpoints at tools/momask/checkpoints/t2m_finetuned/.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "SMPL-to-Mixamo Retargeting",
+    "predicate": "implementation",
+    "object": "retarget.py: HumanML3D 22-joint → Mixamo 65-bone via forward kinematics + IK. Euler XYZ rotations. Includes blend_beat_sequences() for 6-frame crossfade at beat boundaries. Resamples 20fps→24fps via scipy interp1d.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Denizen Pipeline",
+    "predicate": "usage",
+    "object": "python3 denizen_pipeline.py <plane> [--motion-diffusion] [--preview] [--all]. 8 plane configs with Mixamo clips, HumanML3D-style motion prompts, background presets, camera settings.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "HumanML3D Prompts",
+    "predicate": "best_practice",
+    "object": "Use body-part-specific physical descriptions: 'a person swings their right arm in a wide arc from right to left while stepping forward'. Avoid abstract/character terms like 'knight' or 'menacing'. MoMask trained on mocap descriptions.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Background Presets",
+    "predicate": "all_8_planes",
+    "object": "background.js: aurelith (gold particles), noctharion (purple), verdantis (green), infernyx (orange/red), aethermist (blue), abyssal (teal), ethereal (white/pale), feywild (pink). Plus dark and neutral.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "RTX 4000 SFF Ada",
+    "predicate": "performance",
+    "object": "20GB VRAM, PyTorch 2.5.1+cu121. MoMask inference ~2s/beat. Full 360-frame render ~30s. MoMask fine-tuning VQ (50 epochs) + Transformer (30 epochs) < 2 minutes total.",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Animation Pipeline",
+    "predicate": "formalized_at",
+    "object": "/home/bbrelin/ShatteredArcana/tools/animation_pipeline.py — 6 phases: reference, setup, blocking, splining, polish, render",
+    "org": "mythforge"
+  },
+  {
+    "subject": "Cycles Rendering",
+    "predicate": "performance",
+    "object": "RTX 4000 SFF Ada, CUDA+OptiX, 64 samples + denoising = ~5s/frame. 144 frames = ~12min. Significantly better metallic quality than EEVEE.",
+    "org": "mythforge"
+  }
+]

@@ -2,17 +2,17 @@
   {
     "title": "Phase 7: Diplomacy Subsystem",
     "status": "Done",
-    "description": "CoMDiplomacySubsystem \u2014 1010 lines, treaties, reputation, war, AI diplomacy, vassals"
+    "description": "CoMDiplomacySubsystem — 1010 lines, treaties, reputation, war, AI diplomacy, vassals"
   },
   {
     "title": "Phase 7: Espionage Subsystem",
     "status": "Done",
-    "description": "CoMEspionageSubsystem \u2014 710 lines, spy agents, 8 mission types, counter-intel"
+    "description": "CoMEspionageSubsystem — 710 lines, spy agents, 8 mission types, counter-intel"
   },
   {
     "title": "Phase 7: Magic Subsystem",
     "status": "Done",
-    "description": "CoMMagicSubsystem \u2014 955 lines, mana, 600 spells, rituals, runes, enchantments"
+    "description": "CoMMagicSubsystem — 955 lines, mana, 600 spells, rituals, runes, enchantments"
   },
   {
     "title": "Phase 7: Bug Fixes (13)",
@@ -32,56 +32,71 @@
   {
     "title": "Phase 7: Cross-Subsystem Bridge",
     "status": "Done",
-    "description": "CoMSubsystemBridge \u2014 Diplomacy<->Espionage<->Magic event wiring"
+    "description": "CoMSubsystemBridge — Diplomacy<->Espionage<->Magic event wiring"
   },
   {
-    "title": "Art: Terrain Tilesets (160)",
+    "title": "Art: Terrain Tilesets (418)",
     "status": "Done",
-    "description": "20 terrain types x 8 planes, 128x128 tileable SDXL"
+    "description": "160 base + 258 generated plane-specific variants. All 196 ECoMTerrain values covered."
   },
   {
-    "title": "Art: Map/Building/Spell Icons (123)",
+    "title": "Art: Map/Building/Spell Icons",
     "status": "Done",
-    "description": "25 map features + 34 buildings + 64 spell icons"
+    "description": "25 map features + 34 buildings + 636 spell icons (all 600 spells covered + 36 surplus)"
   },
   {
     "title": "Art: Hero Portraits (26)",
     "status": "Done",
-    "description": "26 hero class portraits, 256x256 painterly"
+    "description": "13 archetypes × 2 genders, 256x256 painterly"
   },
   {
     "title": "Art: Unit Sprites (126)",
-    "status": "In Progress",
-    "description": "42 races x 3 types, v2 with single-figure fix, generating"
-  },
-  {
-    "title": "Art: 600 Spell Icons",
-    "status": "In Progress",
-    "description": "600 spells x 10 realms, auto-queued after unit sprites"
-  },
-  {
-    "title": "Art: Spell Catalogue (600)",
     "status": "Done",
-    "description": "600 spells defined with CoM/Warlord/D&D/Pathfinder inspiration"
+    "description": "42 races × 3 unit types, 64x64"
   },
   {
-    "title": "Phase 8: Events System",
-    "status": "Todo",
-    "description": "World events, random encounters, story triggers"
+    "title": "Art: UI Assets (68)",
+    "status": "Done",
+    "description": "Panels, buttons, bars, frames, icons, HUD, cursors, scrollbar, tabs — dark fantasy palette"
   },
   {
-    "title": "Phase 8: Save/Load",
-    "status": "Todo",
-    "description": "Game state serialization, save slots"
+    "title": "Art: Asset Processing Pipeline",
+    "status": "Done",
+    "description": "process_assets.py: 1007 files optimized (1.6GB→366MB, 77% reduction), manifest generated"
   },
   {
-    "title": "Phase 8: Victory Conditions",
-    "status": "Todo",
-    "description": "Domination, magic, economic, diplomatic victory types"
+    "title": "Codebase Audit & Fix (125+ fixes)",
+    "status": "Done",
+    "description": "Full 193-file C++ audit: fixed enums, structs, determinism, diplomacy (war/peace broken), magic (rituals instant), espionage (all missions same), FFixed64 overflow, subsystem types, turn wiring, 7-file ECoMRace→tag migration, 17 test files, network serializer"
   },
   {
-    "title": "Phase 8: Combat Resolution",
+    "title": "Design Decisions Implemented (7)",
+    "status": "Done",
+    "description": "Deleted ECoMRace; underwater full grid layer; __int128 overflow; weather combat mods; per-wizard hero counting; trade lookup table; quest active wizard filter"
+  },
+  {
+    "title": "Sprint 4: Gate 1 Pass",
     "status": "Todo",
-    "description": "Tactical combat system connecting all subsystems"
+    "description": "Fix BV03-002 (OverworldGameMode registration), BV03-003 (level script), OBS-01 (key binding), run BV-03b, enable tests, consolidate TurnManagers"
+  },
+  {
+    "title": "Sprint 5: AI Module",
+    "status": "Todo",
+    "description": "CoMAI — Strategic/Tactical/Difficulty AI. Module structure exists but empty."
+  },
+  {
+    "title": "Sprint 5: UI Module",
+    "status": "Todo",
+    "description": "CoMUI — UMG widgets for UE5 build. 68 UI PNGs ready."
+  },
+  {
+    "title": "Sprint 5: Save/Load",
+    "status": "Todo",
+    "description": "FCoMGameStateSnapshot serialization, save slots, FArchive"
+  },
+  {
+    "title": "Sprint 5: Aurelith Animation",
+    "status": "Todo",
+    "description": "15-sec knight sword salute animation for mythforge.ai-elevate.ai. Toolset built, salute pose at v8."
   }
 ]

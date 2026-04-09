@@ -54,8 +54,12 @@ void UCoMWeatherSubsystem::ProcessWeatherTurn()
 		ECoMPlane Plane = Pair.Key;
 		FCoMWeatherState& State = Pair.Value;
 
-		// Advance season counter
 		State.SeasonTurnCounter++;
+		if (State.SeasonTurnCounter >= CoM::DEFAULT_TURNS_PER_SEASON)
+		{
+			State.SeasonTurnCounter = 0;
+			State.CurrentSeason = static_cast<ECoMSeason>((static_cast<uint8>(State.CurrentSeason) + 1) % CoM::NUM_SEASONS);
+		}
 
 		// Drift and age every active zone
 		for (int32 i = State.ActiveZones.Num() - 1; i >= 0; --i)
@@ -63,8 +67,8 @@ void UCoMWeatherSubsystem::ProcessWeatherTurn()
 			FCoMWeatherZone& Zone = State.ActiveZones[i];
 
 			// Move center: convert FFixed64 speed and FVector2D direction to integer offset
-			const float DirX = Zone.MovementDirection.X;
-			const float DirY = Zone.MovementDirection.Y;
+			const float DirX = Zone.MovementDirX.ToFloat();
+			const float DirY = Zone.MovementDirY.ToFloat();
 			const int32 SpeedTiles = Zone.MovementSpeed.ToInt32();
 
 			int32 NewX = Zone.Center.X + FMath::RoundToInt(DirX * static_cast<float>(SpeedTiles));
@@ -180,7 +184,7 @@ FCoMWeatherEffects UCoMWeatherSubsystem::GetWeatherEffects(ECoMWeatherType Type,
 		Fx.MovementPenalty = 1;
 		Fx.RangedAttackPen = -1;
 		Fx.SightReduction  = -1;
-		Fx.AttritionDamage = (Intensity * FFixed64(1) / FFixed64(2)).ToInt32();
+		Fx.AttritionDamage = (Intensity * FFixed64(2)).ToInt32();
 		break;
 
 	case ECoMWeatherType::Blizzard:
@@ -262,6 +266,117 @@ FCoMWeatherEffects UCoMWeatherSubsystem::GetWeatherEffects(ECoMWeatherType Type,
 		Fx.AttritionDamage  = 3;
 		break;
 
+	// ── Verdantis: Living Storm ─────────────────────────────────────────────
+	case ECoMWeatherType::LivingStorm:
+		Fx.MovementPenalty  = 2;
+		Fx.bFlyingGrounded  = true;
+		Fx.RangedAttackPen  = -2;
+		Fx.SightReduction   = -2;
+		Fx.AttritionDamage  = 1;
+		break;
+
+	// ── Noctharion: Crystal Rain ────────────────────────────────────────────
+	case ECoMWeatherType::CrystalRain:
+		Fx.MovementPenalty  = 1;
+		Fx.RangedAttackPen  = -1;
+		Fx.AttritionDamage  = (Intensity / FFixed64(2)).ToInt32();
+		Fx.SightReduction   = -1;
+		break;
+
+	// ── Aethermist: Void Rift ───────────────────────────────────────────────
+	case ECoMWeatherType::VoidRift:
+		Fx.MovementPenalty  = 2;
+		Fx.MeleeAttackPen   = -2;
+		Fx.RangedAttackPen  = -2;
+		Fx.SightReduction   = -3;
+		Fx.AttritionDamage  = 2;
+		break;
+
+	// ── Common: Monsoon ─────────────────────────────────────────────────────
+	case ECoMWeatherType::Monsoon:
+		Fx.MovementPenalty  = 2;
+		Fx.bFlyingGrounded  = true;
+		Fx.RangedAttackPen  = -3;
+		Fx.SightReduction   = -3;
+		Fx.AttritionDamage  = 1;
+		break;
+
+	// ── Abyssal-specific ────────────────────────────────────────────────────
+	case ECoMWeatherType::ChaosStorm:
+		Fx.MovementPenalty  = 2;
+		Fx.MeleeAttackPen   = -1;
+		Fx.RangedAttackPen  = -2;
+		Fx.SightReduction   = -2;
+		Fx.AttritionDamage  = 2;
+		break;
+
+	case ECoMWeatherType::BloodRain:
+		Fx.SightReduction   = -3;
+		Fx.RangedAttackPen  = -1;
+		Fx.AttritionDamage  = 1;
+		break;
+
+	case ECoMWeatherType::FleshGale:
+		Fx.MovementPenalty  = 1;
+		Fx.MeleeAttackPen   = -1;
+		Fx.SightReduction   = -1;
+		Fx.AttritionDamage  = 1;
+		break;
+
+	// ── Infernyx Iron Quarter-specific ──────────────────────────────────────
+	case ECoMWeatherType::AshFall_Inf:
+		Fx.MovementPenalty  = 1;
+		Fx.SightReduction   = -1;
+		break;
+
+	case ECoMWeatherType::SoulSmog:
+		Fx.SightReduction   = -2;
+		Fx.RangedAttackPen  = -1;
+		break;
+
+	case ECoMWeatherType::HellGust:
+		Fx.RangedAttackPen  = -2;
+		Fx.bFlyingGrounded  = true;
+		break;
+
+	// ── Ethereal-specific ───────────────────────────────────────────────────
+	case ECoMWeatherType::ThoughtStorm:
+		Fx.SightReduction   = 2; // reveals enemy positions
+		Fx.MeleeAttackPen   = -1;
+		Fx.RangedAttackPen  = -1;
+		break;
+
+	case ECoMWeatherType::MistRoll:
+		Fx.SightReduction   = -4;
+		Fx.AmbushChanceBonus = FFixed64(3);
+		break;
+
+	case ECoMWeatherType::EchoSquall:
+		Fx.MovementPenalty  = 1;
+		Fx.SightReduction   = -1;
+		Fx.MeleeAttackPen   = -1;
+		break;
+
+	// ── Feywild-specific ────────────────────────────────────────────────────
+	case ECoMWeatherType::FeyMist:
+		Fx.SightReduction    = -2;
+		Fx.AmbushChanceBonus = FFixed64(2);
+		break;
+
+	case ECoMWeatherType::WildHunt:
+		Fx.MovementPenalty  = 1;
+		Fx.MeleeAttackPen   = -1;
+		Fx.AttritionDamage  = 1;
+		break;
+
+	case ECoMWeatherType::BlossomGale:
+		Fx.MovementPenalty  = -1; // speeds movement
+		break;
+
+	case ECoMWeatherType::TrueNamingStorm:
+		Fx.SightReduction   = 3; // all named units revealed
+		break;
+
 	default:
 		break;
 	}
@@ -288,9 +403,8 @@ void UCoMWeatherSubsystem::GenerateWeatherFront(ECoMPlane Plane)
 	Zone.Intensity       = FFixed64(WeatherRng.RandRange(50, 100)) / FFixed64(100);
 
 	// Random drift direction: -1, 0, or 1 per axis
-	Zone.MovementDirection = FVector2D(
-		static_cast<float>(WeatherRng.RandRange(-1, 1)),
-		static_cast<float>(WeatherRng.RandRange(-1, 1)));
+	Zone.MovementDirX = FFixed64(WeatherRng.RandRange(-1, 1));
+	Zone.MovementDirY = FFixed64(WeatherRng.RandRange(-1, 1));
 	Zone.MovementSpeed = FFixed64(WeatherRng.RandRange(0, 2));
 
 	State->ActiveZones.Add(Zone);

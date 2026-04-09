@@ -241,6 +241,9 @@ private:
 	/** Global turn counter for respawn tracking. */
 	int32 CurrentTurn = 0;
 
+	/** Whether initial sea monsters have been spawned (lazy init). */
+	bool bMonstersSpawned = false;
+
 	/** Starvation tracking: CityID -> turns blockaded with negative food. */
 	TMap<int32, int32> StarvationCounters;
 

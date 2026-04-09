@@ -31,6 +31,7 @@ namespace CoMTags
 		UE_DEFINE_GAMEPLAY_TAG(Arcane,  "CoM.Realm.Arcane")
 		UE_DEFINE_GAMEPLAY_TAG(Binding, "CoM.Realm.Binding")
 		UE_DEFINE_GAMEPLAY_TAG(Spirit,  "CoM.Realm.Spirit")
+		UE_DEFINE_GAMEPLAY_TAG(Glamour, "CoM.Realm.Glamour")
 	}
 
 	// ── Races ────────────────────────────────────────────────────────────────
@@ -108,6 +109,17 @@ namespace CoMTags
 		// Ethereal Underdark
 		UE_DEFINE_GAMEPLAY_TAG(EchoWraiths,        "CoM.Race.EchoWraiths")
 		UE_DEFINE_GAMEPLAY_TAG(MemoryDevourers,    "CoM.Race.MemoryDevourers")
+
+		// Feywild surface
+		UE_DEFINE_GAMEPLAY_TAG(Sprites,            "CoM.Race.Sprites")
+		UE_DEFINE_GAMEPLAY_TAG(Pixies,             "CoM.Race.Pixies")
+		UE_DEFINE_GAMEPLAY_TAG(Satyrs,             "CoM.Race.Satyrs")
+		UE_DEFINE_GAMEPLAY_TAG(Dryads,             "CoM.Race.Dryads")
+		UE_DEFINE_GAMEPLAY_TAG(Changelings,        "CoM.Race.Changelings")
+
+		// Feywild Underdark
+		UE_DEFINE_GAMEPLAY_TAG(FeyRootkin,         "CoM.Race.FeyRootkin")
+		UE_DEFINE_GAMEPLAY_TAG(MushroomFolk,       "CoM.Race.MushroomFolk")
 
 		// Aquatic
 		UE_DEFINE_GAMEPLAY_TAG(Merfolk,       "CoM.Race.Merfolk")
@@ -382,8 +394,10 @@ namespace CoMTags
 		UE_DEFINE_GAMEPLAY_TAG(Thessaly,   "CoM.Wizard.Thessaly")
 		UE_DEFINE_GAMEPLAY_TAG(Vex,        "CoM.Wizard.Vex")
 		UE_DEFINE_GAMEPLAY_TAG(Myrkul,     "CoM.Wizard.Myrkul")
-		UE_DEFINE_GAMEPLAY_TAG(Crystallia, "CoM.Wizard.Crystallia")
-		UE_DEFINE_GAMEPLAY_TAG(Custom,     "CoM.Wizard.Custom")
+		UE_DEFINE_GAMEPLAY_TAG(Crystallia,     "CoM.Wizard.Crystallia")
+		UE_DEFINE_GAMEPLAY_TAG(Custom,         "CoM.Wizard.Custom")
+		UE_DEFINE_GAMEPLAY_TAG(DjinnSorcerer,  "CoM.Wizard.DjinnSorcerer")
+		UE_DEFINE_GAMEPLAY_TAG(EfreetiLord,    "CoM.Wizard.EfreetiLord")
 	}
 
 	// ── Unit types ───────────────────────────────────────────────────────────
@@ -430,8 +444,6 @@ namespace CoMTags
 		UE_DEFINE_GAMEPLAY_TAG(PlaneConquered,              "CoM.Condition.PlaneConquered")
 		UE_DEFINE_GAMEPLAY_TAG(LeyNexusControlled,          "CoM.Condition.LeyNexusControlled")
 		UE_DEFINE_GAMEPLAY_TAG(SpellOfMasteryResearched,    "CoM.Condition.SpellOfMasteryResearched")
-UE_DEFINE_GAMEPLAY_TAG(TAG_Wizard_DjinnSorcerer, "CoM.Wizard.DjinnSorcerer");
-UE_DEFINE_GAMEPLAY_TAG(TAG_Wizard_EfreetiLord, "CoM.Wizard.EfreetiLord");
 	}
 
 } // namespace CoMTags

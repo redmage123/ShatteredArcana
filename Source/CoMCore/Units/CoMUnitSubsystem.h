@@ -11,6 +11,8 @@ class UCoMPathfinder;
 class UCoMWorldMapSubsystem;
 class UCoMWeatherSubsystem;
 class UCoMUnitSpecDataAsset;
+class UCoMCitySubsystem;
+class UCoMAudioSubsystem;
 
 UCLASS()
 class COMCORE_API UCoMUnitSubsystem : public UGameInstanceSubsystem
@@ -49,6 +51,16 @@ public:
 	 */
 	int32 SplitArmy(int32 ArmyID, const TArray<int32>& UnitIDsToSplit);
 
+	// --- Settlement ---
+
+	/**
+	 * Found a city using a settler unit. The settler is consumed (removed from its army).
+	 * Returns the new city ID, or -1 on failure.
+	 * Validates: settler exists, tile is valid, distance from other cities, terrain suitability.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Units")
+	int32 FoundCityWithSettler(int32 ArmyId, int32 SettlerUnitId);
+
 	// --- Movement ---
 
 	/** Move an army toward Destination, consuming movement points via pathfinder costs. */
@@ -61,6 +73,12 @@ public:
 
 	const FCoMUnitInstance* GetUnit(int32 UnitID) const;
 	const FCoMArmyGroup* GetArmy(int32 ArmyID) const;
+
+	/** Set the settler flag on a unit by ID. */
+	void SetUnitSettlerFlag(int32 UnitId, bool bSettler);
+
+	/** Set the race tag on a unit by ID. */
+	void SetUnitRaceTag(int32 UnitId, FGameplayTag Tag);
 
 	TArray<const FCoMArmyGroup*> GetArmiesAtPosition(ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position) const;
 	TArray<const FCoMArmyGroup*> GetArmiesForWizard(int32 WizardIndex) const;

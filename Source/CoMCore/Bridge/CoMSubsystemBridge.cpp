@@ -6,6 +6,7 @@
 #include "CoMCore/Diplomacy/CoMDiplomacySubsystem.h"
 #include "CoMCore/Espionage/CoMEspionageSubsystem.h"
 #include "CoMCore/Magic/CoMMagicSubsystem.h"
+#include "CoMCore/CoreTypes/CoMConstants.h"
 
 
 void UCoMSubsystemBridge::WireSubsystems(
@@ -34,7 +35,7 @@ void UCoMSubsystemBridge::ProcessCrossSubsystemTurn(int32 CurrentTurn)
     // ── Espionage → Diplomacy: detected spy missions create reputation penalties ──
     // Check recent mission results for detected missions
     // For each wizard, check if their spies were caught this turn
-    for (int32 WizardId = 0; WizardId < 16; ++WizardId) // Max 16 wizards
+    for (int32 WizardId = 0; WizardId < CoM::MAX_WIZARDS; ++WizardId) // Max 14 wizards (CoM::MAX_WIZARDS)
     {
         TArray<FCoMMissionResult> History = EspionageSub->GetMissionHistory(WizardId, 5);
         for (const FCoMMissionResult& Result : History)
@@ -63,7 +64,8 @@ void UCoMSubsystemBridge::ProcessCrossSubsystemTurn(int32 CurrentTurn)
                     FCoMWizardMagicState& VictimMagic = MagicSub->GetWizardMagic(Agent->TargetWizardId);
                     if (VictimMagic.KnownSpells.Num() > 0)
                     {
-                        int32 RandIdx = FMath::RandRange(0, VictimMagic.KnownSpells.Num() - 1);
+                        FRandomStream BridgeRng(WizardId * 7777 + CurrentTurn);
+                        int32 RandIdx = BridgeRng.RandRange(0, VictimMagic.KnownSpells.Num() - 1);
                         FName StolenSpell = VictimMagic.KnownSpells[RandIdx];
                         OnTechStolen(Agent->OwnerWizardId, Agent->TargetWizardId, StolenSpell);
                     }
@@ -90,7 +92,7 @@ void UCoMSubsystemBridge::ProcessCrossSubsystemTurn(int32 CurrentTurn)
 
     // ── War weariness → AI peace proposals ──
     // If war weariness is very high, AI should propose peace
-    for (int32 WizardId = 0; WizardId < 16; ++WizardId)
+    for (int32 WizardId = 0; WizardId < CoM::MAX_WIZARDS; ++WizardId)
     {
         int32 Weariness = DiplomacySub->GetWarWeariness(WizardId, CurrentTurn);
         if (Weariness > 200) // Very war-weary
@@ -115,7 +117,7 @@ void UCoMSubsystemBridge::OnSpyCaught(int32 CaptorWizardId, int32 SpyOwnerWizard
     if (!DiplomacySub) return;
 
     // Getting caught spying is a serious diplomatic offense
-    DiplomacySub->ModifyReputation(CaptorWizardId, SpyOwnerWizardId, -75,
+    DiplomacySub->ModifyReputation(CaptorWizardId, SpyOwnerWizardId, -50,
         TEXT("Spy agent caught"));
 
     // Creates casus belli via aggression penalty
@@ -128,7 +130,7 @@ void UCoMSubsystemBridge::OnSpyExecuted(int32 ExecutorWizardId, int32 SpyOwnerWi
     if (!DiplomacySub) return;
 
     // Executing a spy is harsher than just catching one
-    DiplomacySub->ModifyReputation(ExecutorWizardId, SpyOwnerWizardId, -50,
+    DiplomacySub->ModifyReputation(ExecutorWizardId, SpyOwnerWizardId, -75,
         TEXT("Executed our agent"));
 
     // But the executor also loses some standing with neutral parties
@@ -164,7 +166,7 @@ void UCoMSubsystemBridge::OnPropagandaSuccess(int32 InstigatorWizardId, int32 Ta
 
     // Successful propaganda lowers the target wizard's reputation with neighbors
     // Simulate: all wizards who have met the target get a small negative nudge
-    for (int32 OtherId = 0; OtherId < 16; ++OtherId)
+    for (int32 OtherId = 0; OtherId < CoM::MAX_WIZARDS; ++OtherId)
     {
         if (OtherId == InstigatorWizardId || OtherId == TargetWizardId) continue;
         if (DiplomacySub->HaveMet(OtherId, TargetWizardId))

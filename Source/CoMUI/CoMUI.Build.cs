@@ -7,6 +7,7 @@ public class CoMUI : ModuleRules
 	public CoMUI(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+		PublicIncludePaths.Add(ModuleDirectory);
 
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
@@ -17,6 +18,7 @@ public class CoMUI : ModuleRules
 			"UMG",
 			"Slate",
 			"SlateCore",
+			"InputCore",
 			"GameplayTags",
 		});
 	}

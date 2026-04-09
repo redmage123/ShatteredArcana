@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMEspionageSubsystemTests.cpp — Unit and regression tests
 // Phase 7 tests — Shattered Arcana
@@ -7,9 +6,6 @@
 #include "CoreMinimal.h"
 #include "Misc/AutomationTest.h"
 #include "CoMCore/Espionage/CoMEspionageSubsystem.h"
-
-#if WITH_AUTOMATION_TESTS
-
 
 namespace CoMEspionageTests
 {
@@ -98,7 +94,7 @@ bool FEspAssignMission::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
     int32 Id = Sub->RecruitAgent(0, TEXT(""), 50, 1);
-    bool Started = Sub->AssignMission(Id, ECoMAgentMission::Spy, 1);
+    bool Started = Sub->AssignMission(Id, ECoMAgentMission::Spy, 1, FIntPoint(0, 0));
     TestTrue("Mission started", Started);
     FCoMSpyAgent* Agent = Sub->GetAgent(Id);
     TestEqual("Mission type set", Agent->CurrentMission, ECoMAgentMission::Spy);
@@ -114,8 +110,8 @@ bool FEspAssignMissionBusy::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
     int32 Id = Sub->RecruitAgent(0, TEXT(""), 50, 1);
-    Sub->AssignMission(Id, ECoMAgentMission::Spy, 1);
-    bool Second = Sub->AssignMission(Id, ECoMAgentMission::Sabotage, 2);
+    Sub->AssignMission(Id, ECoMAgentMission::Spy, 1, FIntPoint(0, 0));
+    bool Second = Sub->AssignMission(Id, ECoMAgentMission::Sabotage, 2, FIntPoint(0, 0));
     TestFalse("Cannot assign while busy", Second);
     return true;
 }
@@ -127,7 +123,7 @@ bool FEspCancelMission::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
     int32 Id = Sub->RecruitAgent(0, TEXT(""), 50, 1);
-    Sub->AssignMission(Id, ECoMAgentMission::Spy, 1);
+    Sub->AssignMission(Id, ECoMAgentMission::Spy, 1, FIntPoint(0, 0));
     Sub->CancelMission(Id);
     FCoMSpyAgent* Agent = Sub->GetAgent(Id);
     TestEqual("Mission cleared", Agent->CurrentMission, ECoMAgentMission::MAX);
@@ -165,7 +161,7 @@ bool FEspProcessTurn::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
     int32 Id = Sub->RecruitAgent(0, TEXT(""), 50, 1);
-    Sub->AssignMission(Id, ECoMAgentMission::Spy, 1); // Duration 2 turns
+    Sub->AssignMission(Id, ECoMAgentMission::Spy, 1, FIntPoint(0, 0)); // Duration 2 turns
     Sub->ProcessTurn(1);
     FCoMSpyAgent* Agent = Sub->GetAgent(Id);
     if (Agent) TestTrue("Turns left decreased", Agent->MissionTurnsLeft < 2);
@@ -183,7 +179,7 @@ bool FEspNoUseAfterFree::RunTest(const FString& Parameters)
     for (int32 i = 0; i < 20; ++i)
     {
         int32 Id = Sub->RecruitAgent(0, TEXT(""), 10, 1); // Low skill = high fail rate
-        Sub->AssignMission(Id, ECoMAgentMission::Assassinate, 1);
+        Sub->AssignMission(Id, ECoMAgentMission::Assassinate, 1, FIntPoint(0, 0));
     }
     // Process enough turns for missions to complete — should not crash
     for (int32 Turn = 1; Turn <= 10; ++Turn)
@@ -259,7 +255,5 @@ bool FEspLevelUp::RunTest(const FString& Parameters)
 }
 
 } // namespace CoMEspionageTests
-
-#endif // WITH_AUTOMATION_TESTS
 
 #endif

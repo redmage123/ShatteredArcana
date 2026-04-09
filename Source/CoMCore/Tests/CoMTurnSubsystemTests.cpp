@@ -1,5 +1,4 @@
-// TESTS DISABLED — fix after main build is clean
-#if 0
+#if WITH_AUTOMATION_TESTS
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMTurnSubsystemTests.cpp — Unit tests for UCoMTurnSubsystem. COM-028 / Policy.
 //
@@ -43,7 +42,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMTurnStartGame,
 bool FCoMTurnStartGame::RunTest(const FString& /*Params*/)
 {
 	UCoMTurnSubsystem* Sys = NewObject<UCoMTurnSubsystem>();
-	Sys->StartGame(2);
+	Sys->StartGame();
 
 	// After StartGame, the first wizard's turn should be active
 	TestNotEqual(TEXT("Phase advanced from WorldProcessing"),
@@ -104,7 +103,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMTurnSkipToNextWizard,
 bool FCoMTurnSkipToNextWizard::RunTest(const FString& /*Params*/)
 {
 	UCoMTurnSubsystem* Sys = NewObject<UCoMTurnSubsystem>();
-	Sys->StartGame(3);
+	Sys->StartGame();
 
 	const int32 First  = Sys->GetActiveWizardIndex();
 	Sys->SkipToNextWizard();
@@ -133,7 +132,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMTurnCounterIncrement,
 bool FCoMTurnCounterIncrement::RunTest(const FString& /*Params*/)
 {
 	UCoMTurnSubsystem* Sys = NewObject<UCoMTurnSubsystem>();
-	Sys->StartGame(2);
+	Sys->StartGame();
 
 	const int32 TurnBefore = Sys->GetCurrentTurn();
 
@@ -163,7 +162,7 @@ bool FCoMTurnWizardCountClamp::RunTest(const FString& /*Params*/)
 {
 	UCoMTurnSubsystem* Sys = NewObject<UCoMTurnSubsystem>();
 	// Passing 999 should not crash; it should clamp to MAX_WIZARDS
-	Sys->StartGame(999);
+	Sys->StartGame();
 	TestTrue(TEXT("WizardCount clamped to MAX_WIZARDS"),
 		Sys->GetActiveWizardIndex() < CoM::MAX_WIZARDS);
 	return true;

@@ -1,21 +1,8 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "CoMCore/Turn/CoMTurnManager.h"
-
-// Subsystem headers — resolved at call time, never cached.
-#include "CoMCore/World/CoMSeasonSubsystem.h"
-#include "CoMCore/Units/CoMHeroSubsystem.h"
-#include "CoMCore/World/CoMFogOfWarSubsystem.h"
-
-// Subsystems that may not exist yet — forward-declared, null-checked.
-// #include "CoMCombatSubsystem.h"
-// #include "CoMSiegeSubsystem.h"
-// #include "CoMNavalSubsystem.h"
-// #include "CoMMagicSubsystem.h"
-// #include "CoMDragonSubsystem.h"
-// #include "CoMDiplomacySubsystem.h"
-// #include "CoMEspionageSubsystem.h"
-// #include "CoMQuestSubsystem.h"
+#include "CoMCore/Turn/CoMTurnSubsystem.h"
+#include "Audio/CoMAudioSubsystem.h"
 
 // =====================================================================
 // Subsystem lifecycle
@@ -123,101 +110,41 @@ void UCoMTurnManager::ProcessFullTurn()
 	UE_LOG(LogTemp, Log,
 		TEXT("CoMTurnManager: ═══ Processing turn %d ═══"), CurrentTurnNumber);
 
-	// ── Phase 0: Weather / Seasons ───────────────────────────────────
-	RunPhase(ECoMTurnPhase::Movement); // Phase enum re-used; weather runs first.
-	if (UCoMSeasonSubsystem* Seasons = GetGameInstance()->GetSubsystem<UCoMSeasonSubsystem>())
+	// Delegate to UCoMTurnSubsystem — the sole turn orchestrator.
+	UGameInstance* GI = GetGameInstance();
+	UCoMTurnSubsystem* TS = GI ? GI->GetSubsystem<UCoMTurnSubsystem>() : nullptr;
+
+	if (TS)
 	{
-		Seasons->AdvanceTurn();
-		UE_LOG(LogTemp, Log, TEXT("  [Weather] Season subsystem ticked."));
+		TS->ProcessFullTurn();
+
+		// Keep local turn counter in sync.
+		CurrentTurnNumber = TS->GetCurrentTurn();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("CoMTurnManager::ProcessFullTurn — UCoMTurnSubsystem not available. "
+			     "Falling back to local turn increment only."));
+		CurrentTurnNumber++;
 	}
 
-	// ── Phase 1: Movement ────────────────────────────────────────────
-	// For each wizard: process queued movement commands.
-	// Movement commands are stored externally (army subsystem / command queue).
-	// Placeholder: iterate wizards and log.
-	for (const int32 WizardId : TurnOrder)
-	{
-		if (WizardEliminated.FindRef(WizardId))
-		{
-			continue;
-		}
-		// TODO: process queued movement for WizardId via army/command subsystem.
-	}
-	UE_LOG(LogTemp, Log, TEXT("  [Movement] Queued movements processed."));
-
-	// ── Phase 2: Combat ──────────────────────────────────────────────
-	RunPhase(ECoMTurnPhase::Combat);
-	// TODO: CombatSubsystem->DetectEncounters() + ResolveAllEncounters()
-	UE_LOG(LogTemp, Log, TEXT("  [Combat] Placeholder — no CombatSubsystem yet."));
-
-	// ── Phase 3: Siege ───────────────────────────────────────────────
-	RunPhase(ECoMTurnPhase::Siege);
-	// TODO: SiegeSubsystem->ProcessSiegeTurn()
-	UE_LOG(LogTemp, Log, TEXT("  [Siege] Placeholder — no SiegeSubsystem yet."));
-
-	// ── Phase 4: Naval ───────────────────────────────────────────────
-	RunPhase(ECoMTurnPhase::Naval);
-	// TODO: NavalSubsystem->ProcessNavalTurn()
-	UE_LOG(LogTemp, Log, TEXT("  [Naval] Placeholder — no NavalSubsystem yet."));
-
-	// ── Phase 5: Production ──────────────────────────────────────────
-	RunPhase(ECoMTurnPhase::Production);
-	// TODO: CityProduction subsystem call
-	UE_LOG(LogTemp, Log, TEXT("  [Production] Placeholder — no CityProduction yet."));
-
-	// ── Phase 6: Magic ───────────────────────────────────────────────
-	RunPhase(ECoMTurnPhase::Magic);
-	// TODO: MagicSubsystem->ProcessTurn(CurrentTurnNumber)
-	UE_LOG(LogTemp, Log, TEXT("  [Magic] Placeholder — no MagicSubsystem yet."));
-
-	// ── Phase 7: Heroes ──────────────────────────────────────────────
-	RunPhase(ECoMTurnPhase::Heroes);
-	if (UCoMHeroSubsystem* Heroes = GetGameInstance()->GetSubsystem<UCoMHeroSubsystem>())
-	{
-		Heroes->ProcessHeroTurn();
-		UE_LOG(LogTemp, Log, TEXT("  [Heroes] Hero subsystem ticked."));
-	}
-
-	// ── Phase 8: Dragons ─────────────────────────────────────────────
-	RunPhase(ECoMTurnPhase::Dragons);
-	// TODO: DragonSubsystem->ProcessDragonTurn()
-	UE_LOG(LogTemp, Log, TEXT("  [Dragons] Placeholder — no DragonSubsystem yet."));
-
-	// ── Phase 9: Diplomacy ───────────────────────────────────────────
-	RunPhase(ECoMTurnPhase::Diplomacy);
-	// TODO: DiplomacySubsystem->ProcessTurn(CurrentTurnNumber)
-	UE_LOG(LogTemp, Log, TEXT("  [Diplomacy] Placeholder — no DiplomacySubsystem yet."));
-
-	// ── Phase 10: Espionage ──────────────────────────────────────────
-	RunPhase(ECoMTurnPhase::Espionage);
-	// TODO: EspionageSubsystem->ProcessTurn(CurrentTurnNumber)
-	UE_LOG(LogTemp, Log, TEXT("  [Espionage] Placeholder — no EspionageSubsystem yet."));
-
-	// ── Phase 11: Quests ─────────────────────────────────────────────
-	RunPhase(ECoMTurnPhase::Quests);
-	// TODO: QuestSubsystem->ProcessTurn(CurrentTurnNumber)
-	UE_LOG(LogTemp, Log, TEXT("  [Quests] Placeholder — no QuestSubsystem yet."));
-
-	// ── Phase 12: Fog of War ─────────────────────────────────────────
-	RunPhase(ECoMTurnPhase::FogOfWar);
-	if (UCoMFogOfWarSubsystem* FoW = GetGameInstance()->GetSubsystem<UCoMFogOfWarSubsystem>())
-	{
-		FoW->UpdateAllVision();
-		UE_LOG(LogTemp, Log, TEXT("  [FogOfWar] Vision updated for all wizards."));
-	}
-
-	// ── Phase 13: Victory ────────────────────────────────────────────
-	RunPhase(ECoMTurnPhase::Victory);
+	// Still run local victory / elimination checks for any TurnManager-specific listeners.
 	CheckForEliminations();
 	if (CheckVictory())
 	{
 		bGameOver = true;
-		UE_LOG(LogTemp, Log, TEXT("  [Victory] Game over condition met!"));
+
+		// ── Audio: victory fanfare ────────────────────────────────────────
+		if (UCoMAudioSubsystem* Audio = GI ? GI->GetSubsystem<UCoMAudioSubsystem>() : nullptr)
+		{
+			Audio->StopAllMusic();
+			Audio->PlayMusic(FName("Music_Victory"));
+			Audio->PlayUISound(FName("SFX_UI_Victory"));
+		}
 	}
 
-	// ── Advance turn counter ─────────────────────────────────────────
 	OnTurnEnd.Broadcast(CurrentTurnNumber);
-	CurrentTurnNumber++;
 
 	UE_LOG(LogTemp, Log,
 		TEXT("CoMTurnManager: ═══ Turn complete. Next turn: %d ═══"),

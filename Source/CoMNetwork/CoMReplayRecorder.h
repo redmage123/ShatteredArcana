@@ -21,7 +21,7 @@ public:
     virtual void Deinitialize() override;
 
     // Begin a new recording session (called at game start or on -RecordReplay flag).
-    UFUNCTION(BlueprintCallable) void StartRecording(int32 InitialTurn, int64 Seed);
+    void StartRecording(int32 InitialTurn, uint64 Seed);
 
     // Append one command to the log. Called by UCoMCommandQueue after every Enqueue.
     void RecordCommand(int32 TurnNumber, int32 WizardIndex, const FCoMCommandPayload& Payload);

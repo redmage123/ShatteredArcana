@@ -1,0 +1,96 @@
+{
+  "project": "Shattered Arcana",
+  "date": "2026-04-09",
+  "status": "Animation pipeline complete: MoMask motion diffusion integrated, fine-tuned on knight data, 8 planes configured, quality gate enforced",
+  "codebase": {
+    "cpp_files": 196,
+    "cpp_lines_est": 30000,
+    "test_files": 21,
+    "modules": ["CoMCore (151)", "CoMRendering (24)", "CoMNetwork (16)", "CoMAI (1)", "CoMUI (1)", "CoMEditor (1)", "ShatteredArcana (2)"],
+    "subsystems_wired": 16,
+    "data_asset_types": 26,
+    "gameplay_tags": "~200 (races 60+, realms 9, wizards 30+, buildings, units, conditions)"
+  },
+  "animation_pipeline": {
+    "location": "tools/pose_editor/",
+    "status": "Production-ready, two rendering modes",
+    "modes": {
+      "mixamo_clips": "Manual clip selection from 51 FBX files, sequenced with auto-crossfade",
+      "motion_diffusion": "MoMask text-to-motion, SMPL→Mixamo retarget, ~45s per plane on RTX 4000"
+    },
+    "js_modules": 14,
+    "python_tools": [
+      "animator.py — Playwright wrapper, 50+ methods, quality gate",
+      "denizen_pipeline.py — One-call pipeline for any plane, 8 configs, --motion-diffusion flag",
+      "motion_generator.py — MoMask wrapper, text→Mixamo rotations",
+      "retarget.py — SMPL 22-joint → Mixamo 65-bone, IK + crossfade blending",
+      "build_finetune_data.py — Extract HumanML3D training data from animations",
+      "finetune_momask.py — Two-stage VQ-VAE + Transformer fine-tuning"
+    ],
+    "model": "Knight D Pelegrini.fbx (Mixamo, 198 bones)",
+    "clips_available": 51,
+    "background_presets": 10,
+    "texture_repaint": "Runtime steel plate + gold inlay (materials.js repaintTextureAtlas)",
+    "quality_gate": "Automated freeze/jitter/static detection before WebM encode"
+  },
+  "momask_integration": {
+    "repo": "tools/momask/ (EricGuo5513/momask-codes)",
+    "pretrained_weights": "188MB HumanML3D checkpoints",
+    "finetuned_weights": "tools/momask/checkpoints/t2m_finetuned/",
+    "finetune_data": "25 samples (5 beats × 5 caption variants), HumanML3D 263-dim format",
+    "finetune_results": {
+      "vq_vae": "50 epochs, loss 1.32 → 0.007",
+      "transformer": "30 epochs, loss 9.63 → 4.39"
+    },
+    "gpu": "NVIDIA RTX 4000 SFF Ada (20GB VRAM)",
+    "inference_speed": "~2s per 3s beat (60 frames at 20fps)"
+  },
+  "bugs_fixed_20260409": [
+    "Three.js AnimationMixer corrupts Euler↔Quaternion sync — fixed with quaternion-space keyframe overrides",
+    "Clip action recreation causes frame jitter — fixed with persistent action cache",
+    "Keyframe pose leaks past last keyframe — fixed with range-bounded interpolation",
+    "Negative clip speed produces static frames — fixed with getClipTime linear interpolation",
+    "evaluateFullFrame stops mixer for all frames after first keyframe — fixed with bounded hasAnyKeyframeInRange",
+    "Salute beat frozen (0 motion) — fixed by keeping mixer running + quaternion overrides",
+    "Beat transitions are hard cuts — fixed with auto 6-frame crossfade blending"
+  ],
+  "denizen_animations": {
+    "aurelith": "v4 complete — 15s WebM, steel plate armor, 5-beat sequence",
+    "noctharion": "MoMask preview generated — 5 beats from text prompts",
+    "verdantis": "Config ready, not yet rendered",
+    "infernyx": "Config ready, not yet rendered",
+    "aethermist": "Config ready, not yet rendered",
+    "abyssal": "Config ready, not yet rendered",
+    "ethereal": "Config ready, not yet rendered",
+    "feywild": "Config ready, not yet rendered"
+  },
+  "art_assets": {
+    "terrain_tiles": 418,
+    "unit_sprites": 126,
+    "spell_icons": 636,
+    "building_icons": 34,
+    "hero_portraits": 26,
+    "map_features": 25,
+    "ui_elements": 68,
+    "total_gameplay": 1333,
+    "website_assets": "845+",
+    "denizen_webms": "1 production (Aurelith v4) + 6 early versions for other planes"
+  },
+  "gate1_status": {
+    "C1_zero_errors": "LIKELY PASS (125 fixes applied, needs build verify)",
+    "C2_data_assets": "COND PASS",
+    "C3_overworld_level": "BLOCKED (BUG-BV03-002)",
+    "C4_turn_phases": "LIKELY PASS (all ProcessTurn wired)",
+    "C5_world_map_layers": "RESOLVED (unified to 24)",
+    "C6_gameplay_tags": "LIKELY PASS (Glamour + Feywild tags added)"
+  },
+  "infrastructure": {
+    "dev_server": "176.9.99.103",
+    "prod_server": "78.47.104.139",
+    "website": "mythforge.ai-elevate.ai (Next.js + Tailwind)",
+    "ue_version": "5.4",
+    "godot_prototype": "Godot 4.x, 3427 lines GDScript, playable",
+    "pytorch": "2.5.1+cu121",
+    "gpu": "NVIDIA RTX 4000 SFF Ada (20GB VRAM, CUDA 12.1)"
+  }
+}

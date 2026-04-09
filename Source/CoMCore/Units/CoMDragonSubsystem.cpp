@@ -19,7 +19,7 @@ namespace CoMDragonConstants
 void UCoMDragonSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	RngStream.Initialize(FPlatformTime::Cycles());
+	RngStream.Initialize(0x44726167);
 }
 
 void UCoMDragonSubsystem::Deinitialize()
@@ -90,6 +90,22 @@ void UCoMDragonSubsystem::CreateDragonDomain(int32 DragonID, int32 InfluenceRadi
 	Domain.RulerDragonID   = DragonID;
 	Domain.InfluenceRadius = InfluenceRadius;
 	Domain.LairPosition    = Dragon->LairPosition;
+
+	// Set the domain's plane from the dragon's spawn data.
+	// Note: SpawnDragon stores Plane implicitly via the domain;
+	// since FCoMDragonInstance does not carry a Plane field,
+	// we look up any existing domain, or default to Aurelith.
+	// For a newly created domain, the caller must ensure the dragon
+	// is on the correct plane. We'll check if the dragon already has
+	// a domain we can reference, otherwise default.
+	Domain.Plane = ECoMPlane::Aurelith; // default
+	if (Dragon->DomainID >= 0)
+	{
+		if (const FCoMDragonDomain* ExistingDomain = Domains.Find(Dragon->DomainID))
+		{
+			Domain.Plane = ExistingDomain->Plane;
+		}
+	}
 
 	// Compute initial claimed tiles.
 	Domain.ClaimedTiles = ComputeClaimedTiles(Domain.LairPosition, InfluenceRadius);
@@ -165,9 +181,23 @@ int32 UCoMDragonSubsystem::HatchEgg(int32 EggID)
 				return -1;
 			}
 
-			// Spawn the hatchling.
+			// Spawn the hatchling at the parent dragon's position and plane.
 			FRandomStream HatchRng(EggID * 7919); // deterministic seed from egg ID
-			const int32 NewDragonID = SpawnDragon(0, ECoMPlane::Aurelith, FIntPoint(0, 0), HatchRng);
+			ECoMPlane HatchPlane = ECoMPlane::Aurelith;
+			FIntPoint HatchPosition = FIntPoint(0, 0);
+			const FCoMDragonInstance* ParentDragon = Dragons.Find(Egg.ParentDragonID);
+			if (ParentDragon)
+			{
+				HatchPosition = ParentDragon->LairPosition;
+				if (ParentDragon->DomainID >= 0)
+				{
+					if (const FCoMDragonDomain* ParentDomain = Domains.Find(ParentDragon->DomainID))
+					{
+						HatchPlane = ParentDomain->Plane;
+					}
+				}
+			}
+			const int32 NewDragonID = SpawnDragon(FCString::Atoi(*Egg.DragonTypeID.ToString()), HatchPlane, HatchPosition, HatchRng);
 
 			if (NewDragonID >= 0)
 			{
@@ -249,7 +279,9 @@ TArray<FIntPoint> UCoMDragonSubsystem::ComputeClaimedTiles(FIntPoint Center, int
 		{
 			if ((DX * DX + DY * DY) <= RadiusSq)
 			{
-				Tiles.Add(FIntPoint(Center.X + DX, Center.Y + DY));
+				const int32 WrappedX = ((Center.X + DX) % CoM::MAP_WIDTH + CoM::MAP_WIDTH) % CoM::MAP_WIDTH;
+				const int32 ClampedY = FMath::Clamp(Center.Y + DY, 0, CoM::MAP_HEIGHT - 1);
+				Tiles.Add(FIntPoint(WrappedX, ClampedY));
 			}
 		}
 	}
