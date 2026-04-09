@@ -204,21 +204,14 @@ void UCoMSpellBookWidget::OnCastClicked()
 		return;
 	}
 
-	UCoMMagicSubsystem* MagicSub = GetMagicSubsystem();
-	if (!MagicSub)
+	// Route through the spell targeting widget for target selection.
+	// The targeting widget handles NoTarget spells (instant cast) as well as
+	// spells that require tile/unit/city/army target selection.
+	if (UCoMUISubsystem* UISS = GetGameInstance()->GetSubsystem<UCoMUISubsystem>())
 	{
-		return;
-	}
-
-	FCoMSpellCast CastParams;
-	CastParams.SpellId = SelectedSpellId;
-	CastParams.CasterWizardId = CurrentWizardId;
-
-	if (MagicSub->CanCastSpell(CurrentWizardId, SelectedSpellId, CastParams))
-	{
-		MagicSub->CastSpell(CastParams);
-		// Refresh to show updated mana.
-		SetWizardId(CurrentWizardId);
+		UISS->BeginSpellTargeting(SelectedSpellId, CurrentWizardId);
+		// Close the spell book to let the player select a target on the map.
+		UISS->HideSpellBook();
 	}
 }
 

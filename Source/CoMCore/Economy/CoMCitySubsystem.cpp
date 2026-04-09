@@ -6,6 +6,10 @@
 #include "CoMCore/Units/CoMUnitSubsystem.h"
 #include "CoMCore/CoreTypes/CoMConstants.h"
 #include "CoMCore/CoreTypes/CoMGameplayTags.h"
+#include "CoMCore/Data/CoMBuildingDataAsset.h"
+#include "CoMCore/Data/CoMUnitSpecDataAsset.h"
+#include "CoMCore/Data/CoMRaceDataAsset.h"
+#include "Engine/AssetManager.h"
 
 // =====================================================================
 // Subsystem lifecycle
@@ -65,9 +69,10 @@ int32 UCoMCitySubsystem::FoundCity(int32 OwnerWizard, ECoMPlane Plane,
 	City.Position          = Position;
 	City.Population        = 1;
 	City.PrimaryRaceTag    = RaceTag;
-	City.CurrentBuildingID = -1;
-	City.BuildingProgress  = 0;
-	City.GarrisonArmyID    = -1;
+	City.CurrentBuildingID   = -1;
+	City.BuildingProgress    = 0;
+	City.AccumulatedProduction = 0;
+	City.GarrisonArmyID      = -1;
 	City.WallLevel         = 0;
 	City.Unrest            = 0;
 
@@ -247,8 +252,8 @@ void UCoMCitySubsystem::ProcessCityTurn()
 		// 2. Growth from food surplus.
 		ProcessGrowth(*City);
 
-		// 3. Building construction.
-		ProcessBuilding(*City);
+		// 3. Production queue processing (buildings and units).
+		ProcessCityProduction(*City);
 
 		// 4. Evaluate unrest.
 		City->Unrest = ComputeUnrest(*City);
@@ -319,6 +324,286 @@ bool UCoMCitySubsystem::SetBuildingQueue(int32 CityID, int32 BuildingID)
 	City->BuildingProgress  = 0;
 
 	return true;
+}
+
+// =====================================================================
+// Production Queue (new multi-item system)
+// =====================================================================
+
+void UCoMCitySubsystem::AddToQueue(int32 CityId, FName ItemID, bool bIsUnit)
+{
+	FCoMCityData* City = AllCities.Find(CityId);
+	if (!City)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AddToQueue: invalid CityId %d"), CityId);
+		return;
+	}
+
+	FCoMProductionItem Item;
+	Item.ItemID = ItemID;
+	Item.bIsUnit = bIsUnit;
+
+	if (bIsUnit)
+	{
+		Item.ProductionCost = LookupUnitCost(ItemID);
+	}
+	else
+	{
+		// Don't allow queueing a building the city already has.
+		if (CityHasBuilding(*City, ItemID))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("AddToQueue: city %d already has building %s"),
+				CityId, *ItemID.ToString());
+			return;
+		}
+		Item.ProductionCost = LookupBuildingCost(ItemID);
+	}
+
+	// Estimate turns remaining.
+	const int32 ProdPerTurn = FMath::Max(1, City->ProductionOutput);
+	int32 RemainingCost = Item.ProductionCost;
+
+	// Account for production already accumulated and costs of prior queue items.
+	for (int32 i = 0; i < City->ProductionQueue.Num(); ++i)
+	{
+		if (i == 0)
+		{
+			RemainingCost += (City->ProductionQueue[i].ProductionCost - City->AccumulatedProduction);
+		}
+		else
+		{
+			RemainingCost += City->ProductionQueue[i].ProductionCost;
+		}
+	}
+	if (City->ProductionQueue.Num() == 0)
+	{
+		// This will be the first item — no prior cost to account for.
+	}
+	Item.TurnsRemaining = FMath::CeilToInt32(static_cast<float>(RemainingCost) / ProdPerTurn);
+
+	City->ProductionQueue.Add(MoveTemp(Item));
+
+	UE_LOG(LogTemp, Log, TEXT("AddToQueue: city %d queued %s '%s' (cost %d)"),
+		CityId, bIsUnit ? TEXT("unit") : TEXT("building"), *ItemID.ToString(),
+		City->ProductionQueue.Last().ProductionCost);
+}
+
+void UCoMCitySubsystem::RemoveFromQueue(int32 CityId, int32 QueueIndex)
+{
+	FCoMCityData* City = AllCities.Find(CityId);
+	if (!City)
+	{
+		return;
+	}
+
+	if (!City->ProductionQueue.IsValidIndex(QueueIndex))
+	{
+		return;
+	}
+
+	City->ProductionQueue.RemoveAt(QueueIndex);
+
+	// If we removed the front item, reset accumulated production.
+	if (QueueIndex == 0)
+	{
+		City->AccumulatedProduction = 0;
+	}
+}
+
+void UCoMCitySubsystem::MoveInQueue(int32 CityId, int32 FromIndex, int32 ToIndex)
+{
+	FCoMCityData* City = AllCities.Find(CityId);
+	if (!City)
+	{
+		return;
+	}
+
+	if (!City->ProductionQueue.IsValidIndex(FromIndex) ||
+		!City->ProductionQueue.IsValidIndex(ToIndex) ||
+		FromIndex == ToIndex)
+	{
+		return;
+	}
+
+	FCoMProductionItem MovedItem = City->ProductionQueue[FromIndex];
+	City->ProductionQueue.RemoveAt(FromIndex);
+	City->ProductionQueue.Insert(MoveTemp(MovedItem), ToIndex);
+
+	// If the front item changed, reset accumulated production.
+	if (FromIndex == 0 || ToIndex == 0)
+	{
+		City->AccumulatedProduction = 0;
+	}
+}
+
+void UCoMCitySubsystem::ClearQueue(int32 CityId)
+{
+	FCoMCityData* City = AllCities.Find(CityId);
+	if (!City)
+	{
+		return;
+	}
+
+	City->ProductionQueue.Empty();
+	City->AccumulatedProduction = 0;
+}
+
+TArray<FCoMProductionItem> UCoMCitySubsystem::GetQueue(int32 CityId) const
+{
+	const FCoMCityData* City = AllCities.Find(CityId);
+	if (!City)
+	{
+		return TArray<FCoMProductionItem>();
+	}
+	return City->ProductionQueue;
+}
+
+// =====================================================================
+// Availability Queries
+// =====================================================================
+
+TArray<FName> UCoMCitySubsystem::GetAvailableBuildings(int32 CityId) const
+{
+	TArray<FName> Result;
+
+	const FCoMCityData* City = AllCities.Find(CityId);
+	if (!City)
+	{
+		return Result;
+	}
+
+	UAssetManager& AM = UAssetManager::Get();
+	const FPrimaryAssetType BuildingType(TEXT("CoMBuilding"));
+	TArray<FPrimaryAssetId> AssetList;
+	AM.GetPrimaryAssetIdList(BuildingType, AssetList);
+
+	// Collect IDs already in queue (to avoid duplicate queueing).
+	TSet<FName> QueuedBuildingIDs;
+	for (const FCoMProductionItem& QItem : City->ProductionQueue)
+	{
+		if (!QItem.bIsUnit)
+		{
+			QueuedBuildingIDs.Add(QItem.ItemID);
+		}
+	}
+
+	for (const FPrimaryAssetId& AssetId : AssetList)
+	{
+		FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
+		const UCoMBuildingDataAsset* Building = Cast<UCoMBuildingDataAsset>(Path.ResolveObject());
+		if (!Building)
+		{
+			continue;
+		}
+
+		// Skip if already built.
+		if (CityHasBuilding(*City, Building->BuildingID))
+		{
+			continue;
+		}
+
+		// Skip if already in queue.
+		if (QueuedBuildingIDs.Contains(Building->BuildingID))
+		{
+			continue;
+		}
+
+		// Check prerequisites: all required buildings must already be built.
+		bool bPrereqsMet = true;
+		for (const FName& ReqID : Building->RequiredBuildingIDs)
+		{
+			if (!CityHasBuilding(*City, ReqID))
+			{
+				bPrereqsMet = false;
+				break;
+			}
+		}
+
+		if (!bPrereqsMet)
+		{
+			continue;
+		}
+
+		Result.Add(Building->BuildingID);
+	}
+
+	// Add settler option if population >= 2.
+	if (City->Population >= 2)
+	{
+		Result.Add(FName(TEXT("Settler")));
+	}
+
+	return Result;
+}
+
+TArray<FName> UCoMCitySubsystem::GetAvailableUnits(int32 CityId) const
+{
+	TArray<FName> Result;
+
+	const FCoMCityData* City = AllCities.Find(CityId);
+	if (!City)
+	{
+		return Result;
+	}
+
+	UAssetManager& AM = UAssetManager::Get();
+	TSet<FName> EnabledUnitSpecIDs;
+
+	// 1. Gather units enabled by the city's buildings.
+	const FPrimaryAssetType BuildingType(TEXT("CoMBuilding"));
+	TArray<FPrimaryAssetId> BuildingAssets;
+	AM.GetPrimaryAssetIdList(BuildingType, BuildingAssets);
+
+	for (const FPrimaryAssetId& AssetId : BuildingAssets)
+	{
+		FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
+		const UCoMBuildingDataAsset* Building = Cast<UCoMBuildingDataAsset>(Path.ResolveObject());
+		if (!Building)
+		{
+			continue;
+		}
+
+		// Only consider buildings the city actually has.
+		if (!CityHasBuilding(*City, Building->BuildingID))
+		{
+			continue;
+		}
+
+		for (const TSoftObjectPtr<UCoMUnitSpecDataAsset>& UnitRef : Building->EnabledUnits)
+		{
+			if (const UCoMUnitSpecDataAsset* UnitSpec = UnitRef.Get())
+			{
+				EnabledUnitSpecIDs.Add(UnitSpec->UnitSpecID);
+			}
+		}
+	}
+
+	// 2. Add racial units if the race data asset can be resolved.
+	const FPrimaryAssetType RaceType(TEXT("CoMRace"));
+	TArray<FPrimaryAssetId> RaceAssets;
+	AM.GetPrimaryAssetIdList(RaceType, RaceAssets);
+
+	for (const FPrimaryAssetId& AssetId : RaceAssets)
+	{
+		FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
+		const UCoMRaceDataAsset* Race = Cast<UCoMRaceDataAsset>(Path.ResolveObject());
+		if (!Race || Race->RaceTag != City->PrimaryRaceTag)
+		{
+			continue;
+		}
+
+		for (const TSoftObjectPtr<UCoMUnitSpecDataAsset>& UnitRef : Race->UniqueUnits)
+		{
+			if (const UCoMUnitSpecDataAsset* UnitSpec = UnitRef.Get())
+			{
+				EnabledUnitSpecIDs.Add(UnitSpec->UnitSpecID);
+			}
+		}
+		break; // Found the matching race.
+	}
+
+	Result = EnabledUnitSpecIDs.Array();
+	return Result;
 }
 
 // =====================================================================
@@ -666,6 +951,225 @@ void UCoMCitySubsystem::ProcessBuilding(FCoMCityData& City)
 }
 
 // =====================================================================
+// Internal helpers -- production queue processing
+// =====================================================================
+
+void UCoMCitySubsystem::ProcessCityProduction(FCoMCityData& City)
+{
+	// If the queue is empty, fall back to legacy single-item processing.
+	if (City.ProductionQueue.Num() == 0)
+	{
+		ProcessBuilding(City);
+		return;
+	}
+
+	const int32 ProdPerTurn = FMath::Max(1, City.ProductionOutput);
+	City.AccumulatedProduction += ProdPerTurn;
+
+	// Process completions — loop in case production is high enough to finish multiple items.
+	while (City.ProductionQueue.Num() > 0)
+	{
+		FCoMProductionItem& CurrentItem = City.ProductionQueue[0];
+
+		if (City.AccumulatedProduction < CurrentItem.ProductionCost)
+		{
+			break; // Not enough yet.
+		}
+
+		// Item completed — carry over excess production.
+		const int32 Overflow = City.AccumulatedProduction - CurrentItem.ProductionCost;
+
+		if (CurrentItem.bIsUnit)
+		{
+			// Spawn the recruited unit.
+			const int32 UnitId = SpawnRecruitedUnit(City, CurrentItem.ItemID);
+			if (UnitId != INDEX_NONE)
+			{
+				OnUnitRecruited.Broadcast(City.CityID, CurrentItem.ItemID, City.OwnerWizardIndex);
+
+				const FText Msg = FText::FromString(FString::Printf(
+					TEXT("%s recruited in %s!"),
+					*CurrentItem.ItemID.ToString(), *City.CityName.ToString()));
+				OnProductionNotification.Broadcast(City.CityID, Msg);
+			}
+		}
+		else
+		{
+			// Special case: Settler.
+			if (CurrentItem.ItemID == FName(TEXT("Settler")))
+			{
+				ProduceSettler(City.CityID);
+
+				const FText Msg = FText::FromString(FString::Printf(
+					TEXT("Settler produced in %s!"), *City.CityName.ToString()));
+				OnProductionNotification.Broadcast(City.CityID, Msg);
+			}
+			else
+			{
+				// Complete a building.
+				const int32 IntID = BuildingNameToID(CurrentItem.ItemID);
+				City.BuildingIDs.Add(IntID);
+
+				OnBuildingCompleted.Broadcast(City.CityID, IntID, City.OwnerWizardIndex);
+
+				const FText Msg = FText::FromString(FString::Printf(
+					TEXT("%s completed in %s!"),
+					*CurrentItem.ItemID.ToString(), *City.CityName.ToString()));
+				OnProductionNotification.Broadcast(City.CityID, Msg);
+			}
+		}
+
+		City.ProductionQueue.RemoveAt(0);
+		City.AccumulatedProduction = Overflow;
+	}
+
+	// Update TurnsRemaining estimates for remaining items.
+	if (ProdPerTurn > 0)
+	{
+		int32 CumulativeCost = 0;
+		for (int32 i = 0; i < City.ProductionQueue.Num(); ++i)
+		{
+			if (i == 0)
+			{
+				CumulativeCost = City.ProductionQueue[i].ProductionCost - City.AccumulatedProduction;
+			}
+			else
+			{
+				CumulativeCost += City.ProductionQueue[i].ProductionCost;
+			}
+			City.ProductionQueue[i].TurnsRemaining =
+				FMath::CeilToInt32(static_cast<float>(FMath::Max(0, CumulativeCost)) / ProdPerTurn);
+		}
+	}
+}
+
+int32 UCoMCitySubsystem::LookupBuildingCost(FName BuildingID) const
+{
+	UAssetManager& AM = UAssetManager::Get();
+	const FPrimaryAssetType BuildingType(TEXT("CoMBuilding"));
+	TArray<FPrimaryAssetId> AssetList;
+	AM.GetPrimaryAssetIdList(BuildingType, AssetList);
+
+	for (const FPrimaryAssetId& AssetId : AssetList)
+	{
+		FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
+		if (const UCoMBuildingDataAsset* Building = Cast<UCoMBuildingDataAsset>(Path.ResolveObject()))
+		{
+			if (Building->BuildingID == BuildingID)
+			{
+				return Building->ProductionCost;
+			}
+		}
+	}
+
+	// Settler special case.
+	if (BuildingID == FName(TEXT("Settler")))
+	{
+		return 80;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("LookupBuildingCost: unknown building '%s', using default 50"), *BuildingID.ToString());
+	return 50;
+}
+
+int32 UCoMCitySubsystem::LookupUnitCost(FName UnitSpecID) const
+{
+	UAssetManager& AM = UAssetManager::Get();
+	const FPrimaryAssetType UnitSpecType(TEXT("CoMUnitSpec"));
+	TArray<FPrimaryAssetId> AssetList;
+	AM.GetPrimaryAssetIdList(UnitSpecType, AssetList);
+
+	for (const FPrimaryAssetId& AssetId : AssetList)
+	{
+		FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
+		if (const UCoMUnitSpecDataAsset* Spec = Cast<UCoMUnitSpecDataAsset>(Path.ResolveObject()))
+		{
+			if (Spec->UnitSpecID == UnitSpecID)
+			{
+				return Spec->ProductionCost;
+			}
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("LookupUnitCost: unknown unit '%s', using default 50"), *UnitSpecID.ToString());
+	return 50;
+}
+
+bool UCoMCitySubsystem::CityHasBuilding(const FCoMCityData& City, FName BuildingID) const
+{
+	const int32 IntID = BuildingNameToID(BuildingID);
+	return City.BuildingIDs.Contains(IntID);
+}
+
+int32 UCoMCitySubsystem::BuildingNameToID(FName BuildingID)
+{
+	// Use FName's internal index as a stable int32 identifier.
+	// This bridges the int32 BuildingIDs array with FName-based data assets.
+	return GetTypeHash(BuildingID);
+}
+
+int32 UCoMCitySubsystem::SpawnRecruitedUnit(const FCoMCityData& City, FName UnitSpecID)
+{
+	UGameInstance* GI = GetGameInstance();
+	if (!GI)
+	{
+		return INDEX_NONE;
+	}
+
+	UCoMUnitSubsystem* UnitSub = GI->GetSubsystem<UCoMUnitSubsystem>();
+	if (!UnitSub)
+	{
+		return INDEX_NONE;
+	}
+
+	// Resolve the SpecID int32 from the FName.
+	UAssetManager& AM = UAssetManager::Get();
+	const FPrimaryAssetType UnitSpecType(TEXT("CoMUnitSpec"));
+	TArray<FPrimaryAssetId> AssetList;
+	AM.GetPrimaryAssetIdList(UnitSpecType, AssetList);
+
+	int32 ResolvedSpecID = 0;
+	for (const FPrimaryAssetId& AssetId : AssetList)
+	{
+		FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
+		if (const UCoMUnitSpecDataAsset* Spec = Cast<UCoMUnitSpecDataAsset>(Path.ResolveObject()))
+		{
+			if (Spec->UnitSpecID == UnitSpecID)
+			{
+				// UCoMUnitSubsystem::SpawnUnit takes an int32 SpecID.
+				// Use the type hash as a mapping, matching the resolver pattern.
+				ResolvedSpecID = GetTypeHash(UnitSpecID);
+				break;
+			}
+		}
+	}
+
+	const int32 UnitId = UnitSub->SpawnUnit(
+		ResolvedSpecID, City.Plane, City.Layer, City.Position, City.OwnerWizardIndex);
+
+	if (UnitId == INDEX_NONE)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnRecruitedUnit: SpawnUnit failed for '%s' in city %d"),
+			*UnitSpecID.ToString(), City.CityID);
+		return INDEX_NONE;
+	}
+
+	// Add to garrison army if one exists, otherwise create one.
+	if (City.GarrisonArmyID >= 0)
+	{
+		UnitSub->AddUnitToArmy(UnitId, City.GarrisonArmyID);
+	}
+	else
+	{
+		const int32 ArmyId = UnitSub->CreateArmy(
+			City.OwnerWizardIndex, City.Plane, City.Layer, City.Position);
+		UnitSub->AddUnitToArmy(UnitId, ArmyId);
+	}
+
+	return UnitId;
+}
+
+// =====================================================================
 // Internal helpers -- rebellion
 // =====================================================================
 
@@ -680,6 +1184,8 @@ void UCoMCitySubsystem::HandleRebellion(FCoMCityData& City)
 	City.Unrest = 0;
 	City.CurrentBuildingID = -1;
 	City.BuildingProgress  = 0;
+	City.ProductionQueue.Empty();
+	City.AccumulatedProduction = 0;
 	City.GarrisonArmyID = -1;
 
 	OnCityRebelled.Broadcast(City.CityID, FormerOwner);

@@ -21,7 +21,7 @@ import * as renderPipe from './render-pipeline.js';
 import { camera, controls, forceRender, setRenderSize } from './core.js';
 
 // ── Model / Ready ──────────────────────────────────────────
-window.getModelReady = () => rig.getBoneNames().length > 0;
+window.getModelReady = () => (rig.getBoneNames().length > 0) || (window._modelReady === true);
 window.getBoneMap = () => rig.boneMap;
 
 // ── Auto-center camera ────────────────────────────────────
@@ -56,7 +56,25 @@ window.useProceduralKnight = () => {
 window.useSDFKnight = (opts) => {
   const boneMap = rig.boneMap;
   replaceWithSDFKnight(boneMap, opts || {});
+  // Hide bone helper spheres
+  import('./core.js').then(core => {
+    // boneHelperGroup is exported from core
+  });
   return Object.keys(boneMap).length;
+};
+
+window.hideBoneHelpers = () => {
+  // Find and hide the bone helper group
+  const scene = camera.parent; // camera is in the scene
+  if (!scene) return false;
+  scene.traverse(child => {
+    // The boneHelperGroup contains spheres with userData.boneName
+    if (child.isGroup) {
+      const hasBoneChildren = child.children.some(c => c.userData && c.userData.boneName);
+      if (hasBoneChildren) child.visible = false;
+    }
+  });
+  return true;
 };
 
 window.repaintArmor = () => {

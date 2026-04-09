@@ -277,6 +277,19 @@ enum class ECoMSpellScope : uint8
 	MAX UMETA(Hidden)
 };
 
+/** Spell targeting type — used by the spell targeting widget to determine input mode. */
+UENUM(BlueprintType)
+enum class ECoMSpellTargetType : uint8
+{
+	NoTarget    UMETA(DisplayName = "No Target"),     // Instant cast (global spells, self-buffs)
+	TileTarget  UMETA(DisplayName = "Tile Target"),   // Click a map tile
+	UnitTarget  UMETA(DisplayName = "Unit Target"),   // Click a unit
+	CityTarget  UMETA(DisplayName = "City Target"),   // Click a city
+	ArmyTarget  UMETA(DisplayName = "Army Target"),   // Click an army group
+
+	MAX UMETA(Hidden)
+};
+
 /** Ritual spell types. */
 UENUM(BlueprintType)
 enum class ECoMRitualType : uint8

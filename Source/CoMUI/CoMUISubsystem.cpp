@@ -16,6 +16,9 @@
 #include "HUD/CoMMainMenuWidget.h"
 #include "HUD/CoMLoadScreenWidget.h"
 #include "Panels/CoMVictoryScreenWidget.h"
+#include "HUD/CoMTooltipWidget.h"
+#include "HUD/CoMTurnNotificationWidget.h"
+#include "HUD/CoMSpellTargetingWidget.h"
 #include "Framework/CoMGameInstance.h"
 
 void UCoMUISubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -116,10 +119,42 @@ void UCoMUISubsystem::HideMainMenu()
 void UCoMUISubsystem::ShowHUD()
 {
 	CreateAndShowWidget<UCoMHUDWidget>(HUDWidgetClass, HUDWidgetInstance, 0);
+
+	// Create the turn notification overlay (lives on top of HUD).
+	if (!TurnNotificationInstance)
+	{
+		UCoMTurnNotificationWidget* NotifWidget = CreateAndShowWidget<UCoMTurnNotificationWidget>(
+			TurnNotificationWidgetClass, TurnNotificationInstance, 50);
+		if (NotifWidget)
+		{
+			NotifWidget->BindToSubsystems();
+		}
+	}
+
+	// Create the tooltip widget (highest Z-order).
+	if (!TooltipInstance)
+	{
+		CreateAndShowWidget<UCoMTooltipWidget>(TooltipWidgetClass, TooltipInstance, 200);
+	}
+
+	// Create the spell targeting widget (below tooltip, above panels).
+	if (!SpellTargetingInstance)
+	{
+		CreateAndShowWidget<UCoMSpellTargetingWidget>(SpellTargetingWidgetClass, SpellTargetingInstance, 150);
+	}
 }
 
 void UCoMUISubsystem::HideHUD()
 {
+	// Unbind notification delegates before removal.
+	if (TurnNotificationInstance)
+	{
+		TurnNotificationInstance->UnbindFromSubsystems();
+	}
+
+	RemoveWidget(TurnNotificationInstance);
+	RemoveWidget(TooltipInstance);
+	RemoveWidget(SpellTargetingInstance);
 	RemoveWidget(HUDWidgetInstance);
 }
 
@@ -327,6 +362,90 @@ void UCoMUISubsystem::ShowDefeatScreen(int32 ConquerorWizardId)
 void UCoMUISubsystem::HideVictoryScreen()
 {
 	RemoveWidget(VictoryScreenInstance);
+}
+
+// =============================================================================
+// Tooltip
+// =============================================================================
+
+void UCoMUISubsystem::ShowTooltipTile(ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint TilePos, int32 WizardId)
+{
+	if (!TooltipInstance)
+	{
+		CreateAndShowWidget<UCoMTooltipWidget>(TooltipWidgetClass, TooltipInstance, 200);
+	}
+	if (TooltipInstance)
+	{
+		TooltipInstance->ShowTileTooltip(Plane, Layer, TilePos, WizardId);
+	}
+}
+
+void UCoMUISubsystem::ShowTooltipCity(int32 CityId)
+{
+	if (!TooltipInstance)
+	{
+		CreateAndShowWidget<UCoMTooltipWidget>(TooltipWidgetClass, TooltipInstance, 200);
+	}
+	if (TooltipInstance)
+	{
+		TooltipInstance->ShowCityTooltip(CityId);
+	}
+}
+
+void UCoMUISubsystem::ShowTooltipArmy(int32 ArmyId)
+{
+	if (!TooltipInstance)
+	{
+		CreateAndShowWidget<UCoMTooltipWidget>(TooltipWidgetClass, TooltipInstance, 200);
+	}
+	if (TooltipInstance)
+	{
+		TooltipInstance->ShowArmyTooltip(ArmyId);
+	}
+}
+
+void UCoMUISubsystem::ShowTooltipUnit(int32 UnitId)
+{
+	if (!TooltipInstance)
+	{
+		CreateAndShowWidget<UCoMTooltipWidget>(TooltipWidgetClass, TooltipInstance, 200);
+	}
+	if (TooltipInstance)
+	{
+		TooltipInstance->ShowUnitTooltip(UnitId);
+	}
+}
+
+void UCoMUISubsystem::HideTooltip()
+{
+	if (TooltipInstance)
+	{
+		TooltipInstance->Hide();
+	}
+}
+
+// =============================================================================
+// Spell Targeting
+// =============================================================================
+
+void UCoMUISubsystem::BeginSpellTargeting(FName SpellId, int32 CasterWizardId)
+{
+	if (!SpellTargetingInstance)
+	{
+		CreateAndShowWidget<UCoMSpellTargetingWidget>(SpellTargetingWidgetClass, SpellTargetingInstance, 150);
+	}
+	if (SpellTargetingInstance)
+	{
+		SpellTargetingInstance->BeginTargeting(SpellId, CasterWizardId);
+	}
+}
+
+void UCoMUISubsystem::CancelSpellTargeting()
+{
+	if (SpellTargetingInstance)
+	{
+		SpellTargetingInstance->CancelTargeting();
+	}
 }
 
 // =============================================================================

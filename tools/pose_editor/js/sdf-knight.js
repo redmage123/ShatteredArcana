@@ -58,12 +58,13 @@ function sdTorus(p, center, R, r, axis) {
   return Math.sqrt(q0*q0 + q1*q1) - r;
 }
 
-// Smooth minimum — blends two SDFs with controllable radius
+// Polynomial smooth minimum — blends two SDFs with controllable radius.
+// k = blend radius (in same units as the SDF). Numerically stable at any scale.
+// From Inigo Quilez: https://iquilezles.org/articles/smin/
 function smin(a, b, k) {
   if (k <= 0) return Math.min(a, b);
-  const ea = Math.exp(-k * a);
-  const eb = Math.exp(-k * b);
-  return -Math.log(ea + eb) / k;
+  const h = Math.max(k - Math.abs(a - b), 0) / k;
+  return Math.min(a, b) - h * h * h * k * (1 / 6);
 }
 
 // Sharp union
@@ -84,80 +85,81 @@ function opSubtract(a, b) { return Math.max(a, -b); }
  */
 function defineKnightSDF(bones) {
   const B = bones;
-  const K = 12; // smooth blend factor (higher = sharper joints)
+  const K = 8; // smooth blend radius in cm (higher = smoother joint transitions)
 
+  // All dimensions in CENTIMETERS to match Mixamo model space
   return function sdf(p) {
     // === BODY (smooth union of capsules along skeleton) ===
     let body = 1e6;
 
     // Torso
-    body = smin(body, sdCapsule(p, B.hips, B.spine, 0.10), K);
-    body = smin(body, sdCapsule(p, B.spine, B.spine1, 0.095), K);
-    body = smin(body, sdCapsule(p, B.spine1, B.spine2, 0.10), K);
-    body = smin(body, sdCapsule(p, B.spine2, B.neck, 0.08), K);
-    body = smin(body, sdCapsule(p, B.neck, B.head, 0.06), K);
+    body = smin(body, sdCapsule(p, B.hips, B.spine, 10), K);
+    body = smin(body, sdCapsule(p, B.spine, B.spine1, 9.5), K);
+    body = smin(body, sdCapsule(p, B.spine1, B.spine2, 10), K);
+    body = smin(body, sdCapsule(p, B.spine2, B.neck, 8), K);
+    body = smin(body, sdCapsule(p, B.neck, B.head, 6), K);
 
     // Left arm
-    body = smin(body, sdCapsule(p, B.lShoulder, B.lArm, 0.055), K);
-    body = smin(body, sdCapsule(p, B.lArm, B.lForeArm, 0.042), K);
-    body = smin(body, sdCapsule(p, B.lForeArm, B.lHand, 0.035), K);
+    body = smin(body, sdCapsule(p, B.lShoulder, B.lArm, 5.5), K);
+    body = smin(body, sdCapsule(p, B.lArm, B.lForeArm, 4.2), K);
+    body = smin(body, sdCapsule(p, B.lForeArm, B.lHand, 3.5), K);
 
     // Right arm
-    body = smin(body, sdCapsule(p, B.rShoulder, B.rArm, 0.055), K);
-    body = smin(body, sdCapsule(p, B.rArm, B.rForeArm, 0.042), K);
-    body = smin(body, sdCapsule(p, B.rForeArm, B.rHand, 0.035), K);
+    body = smin(body, sdCapsule(p, B.rShoulder, B.rArm, 5.5), K);
+    body = smin(body, sdCapsule(p, B.rArm, B.rForeArm, 4.2), K);
+    body = smin(body, sdCapsule(p, B.rForeArm, B.rHand, 3.5), K);
 
     // Left leg
-    body = smin(body, sdCapsule(p, B.lUpLeg, B.lLeg, 0.058), K);
-    body = smin(body, sdCapsule(p, B.lLeg, B.lFoot, 0.048), K);
-    body = smin(body, sdCapsule(p, B.lFoot, B.lToe, 0.038), K);
+    body = smin(body, sdCapsule(p, B.lUpLeg, B.lLeg, 5.8), K);
+    body = smin(body, sdCapsule(p, B.lLeg, B.lFoot, 4.8), K);
+    body = smin(body, sdCapsule(p, B.lFoot, B.lToe, 3.8), K);
 
     // Right leg
-    body = smin(body, sdCapsule(p, B.rUpLeg, B.rLeg, 0.058), K);
-    body = smin(body, sdCapsule(p, B.rLeg, B.rFoot, 0.048), K);
-    body = smin(body, sdCapsule(p, B.rFoot, B.rToe, 0.038), K);
+    body = smin(body, sdCapsule(p, B.rUpLeg, B.rLeg, 5.8), K);
+    body = smin(body, sdCapsule(p, B.rLeg, B.rFoot, 4.8), K);
+    body = smin(body, sdCapsule(p, B.rFoot, B.rToe, 3.8), K);
 
     // Head sphere
     const headCenter = [(B.head[0]+B.headTop[0])/2, (B.head[1]+B.headTop[1])/2, (B.head[2]+B.headTop[2])/2];
-    body = smin(body, sdSphere(p, headCenter, 0.10), K);
+    body = smin(body, sdSphere(p, headCenter, 10), K);
 
     // === ARMOR (sharper unions — plate edges) ===
     let armor = 1e6;
-    const KA = 25; // sharper blend for armor edges
+    const KA = 3; // sharper blend radius for armor edges (cm)
 
     // Breastplate — thick slab over chest
-    const chestCenter = [(B.spine1[0]+B.spine2[0])/2, (B.spine1[1]+B.spine2[1])/2, (B.spine1[2]+B.spine2[2])/2 + 0.04];
-    armor = opUnion(armor, sdBox(p, chestCenter, [0.12, 0.11, 0.04], 0.01));
+    const chestCenter = [(B.spine1[0]+B.spine2[0])/2, (B.spine1[1]+B.spine2[1])/2, (B.spine1[2]+B.spine2[2])/2 + 4];
+    armor = opUnion(armor, sdBox(p, chestCenter, [12, 11, 4], 1));
 
     // Pauldrons — spheres on shoulders
-    armor = opUnion(armor, sdSphere(p, [B.lArm[0]+0.03, B.lArm[1]+0.04, B.lArm[2]], 0.07));
-    armor = opUnion(armor, sdSphere(p, [B.rArm[0]-0.03, B.rArm[1]+0.04, B.rArm[2]], 0.07));
+    armor = opUnion(armor, sdSphere(p, [B.lArm[0]+3, B.lArm[1]+4, B.lArm[2]], 7));
+    armor = opUnion(armor, sdSphere(p, [B.rArm[0]-3, B.rArm[1]+4, B.rArm[2]], 7));
 
     // Helmet — sphere + box visor
-    armor = opUnion(armor, sdSphere(p, headCenter, 0.125));
+    armor = opUnion(armor, sdSphere(p, headCenter, 12.5));
     // Visor slit subtraction
-    const visorCenter = [headCenter[0], headCenter[1]-0.02, headCenter[2]+0.12];
-    armor = opSubtract(armor, sdBox(p, visorCenter, [0.06, 0.008, 0.03], 0));
+    const visorCenter = [headCenter[0], headCenter[1]-2, headCenter[2]+12];
+    armor = opSubtract(armor, sdBox(p, visorCenter, [6, 0.8, 3], 0));
 
     // Tassets — plate skirts at hips
-    const lTasset = [(B.hips[0]+B.lUpLeg[0])/2 + 0.02, B.hips[1]-0.06, B.hips[2]+0.04];
-    const rTasset = [(B.hips[0]+B.rUpLeg[0])/2 - 0.02, B.hips[1]-0.06, B.hips[2]+0.04];
-    armor = opUnion(armor, sdBox(p, lTasset, [0.06, 0.07, 0.02], 0.005));
-    armor = opUnion(armor, sdBox(p, rTasset, [0.06, 0.07, 0.02], 0.005));
+    const lTasset = [(B.hips[0]+B.lUpLeg[0])/2 + 2, B.hips[1]-6, B.hips[2]+4];
+    const rTasset = [(B.hips[0]+B.rUpLeg[0])/2 - 2, B.hips[1]-6, B.hips[2]+4];
+    armor = opUnion(armor, sdBox(p, lTasset, [6, 7, 2], 0.5));
+    armor = opUnion(armor, sdBox(p, rTasset, [6, 7, 2], 0.5));
 
     // Knee guards
-    armor = opUnion(armor, sdSphere(p, [B.lLeg[0], B.lLeg[1], B.lLeg[2]+0.02], 0.045));
-    armor = opUnion(armor, sdSphere(p, [B.rLeg[0], B.rLeg[1], B.rLeg[2]+0.02], 0.045));
+    armor = opUnion(armor, sdSphere(p, [B.lLeg[0], B.lLeg[1], B.lLeg[2]+2], 4.5));
+    armor = opUnion(armor, sdSphere(p, [B.rLeg[0], B.rLeg[1], B.rLeg[2]+2], 4.5));
 
     // Greaves — slight bulge on shins
-    const lShin = [(B.lLeg[0]+B.lFoot[0])/2, (B.lLeg[1]+B.lFoot[1])/2, (B.lLeg[2]+B.lFoot[2])/2+0.01];
-    const rShin = [(B.rLeg[0]+B.rFoot[0])/2, (B.rLeg[1]+B.rFoot[1])/2, (B.rLeg[2]+B.rFoot[2])/2+0.01];
-    armor = opUnion(armor, sdBox(p, lShin, [0.04, 0.20, 0.03], 0.01));
-    armor = opUnion(armor, sdBox(p, rShin, [0.04, 0.20, 0.03], 0.01));
+    const lShin = [(B.lLeg[0]+B.lFoot[0])/2, (B.lLeg[1]+B.lFoot[1])/2, (B.lLeg[2]+B.lFoot[2])/2+1];
+    const rShin = [(B.rLeg[0]+B.rFoot[0])/2, (B.rLeg[1]+B.rFoot[1])/2, (B.rLeg[2]+B.rFoot[2])/2+1];
+    armor = opUnion(armor, sdBox(p, lShin, [4, 20, 3], 1));
+    armor = opUnion(armor, sdBox(p, rShin, [4, 20, 3], 1));
 
     // Boots — boxes at feet
-    armor = opUnion(armor, sdBox(p, [B.lFoot[0], B.lFoot[1]-0.01, B.lFoot[2]+0.04], [0.045, 0.04, 0.08], 0.01));
-    armor = opUnion(armor, sdBox(p, [B.rFoot[0], B.rFoot[1]-0.01, B.rFoot[2]+0.04], [0.045, 0.04, 0.08], 0.01));
+    armor = opUnion(armor, sdBox(p, [B.lFoot[0], B.lFoot[1]-1, B.lFoot[2]+4], [4.5, 4, 8], 1));
+    armor = opUnion(armor, sdBox(p, [B.rFoot[0], B.rFoot[1]-1, B.rFoot[2]+4], [4.5, 4, 8], 1));
 
     // Combine body + armor with smooth blend
     return smin(body, armor, KA);
@@ -173,33 +175,35 @@ function defineGoldSDF(bones) {
     let d = 1e6;
     const headCenter = [(B.head[0]+B.headTop[0])/2, (B.head[1]+B.headTop[1])/2, (B.head[2]+B.headTop[2])/2];
 
+    // All dimensions in CENTIMETERS
+
     // Helmet crest
-    d = opUnion(d, sdBox(p, [headCenter[0], headCenter[1]+0.10, headCenter[2]], [0.008, 0.04, 0.08], 0.003));
+    d = opUnion(d, sdBox(p, [headCenter[0], headCenter[1]+10, headCenter[2]], [0.8, 4, 8], 0.3));
 
     // Chest cross
-    const chestCenter = [(B.spine1[0]+B.spine2[0])/2, (B.spine1[1]+B.spine2[1])/2, (B.spine1[2]+B.spine2[2])/2 + 0.085];
-    d = opUnion(d, sdBox(p, chestCenter, [0.003, 0.09, 0.003], 0.002)); // vertical
-    d = opUnion(d, sdBox(p, chestCenter, [0.10, 0.003, 0.003], 0.002)); // horizontal
+    const chestCenter = [(B.spine1[0]+B.spine2[0])/2, (B.spine1[1]+B.spine2[1])/2, (B.spine1[2]+B.spine2[2])/2 + 8.5];
+    d = opUnion(d, sdBox(p, chestCenter, [0.3, 9, 0.3], 0.2));  // vertical
+    d = opUnion(d, sdBox(p, chestCenter, [10, 0.3, 0.3], 0.2));  // horizontal
 
     // Pauldron rims
-    d = opUnion(d, sdTorus(p, [B.lArm[0]+0.03, B.lArm[1]+0.02, B.lArm[2]], 0.065, 0.007, 'y'));
-    d = opUnion(d, sdTorus(p, [B.rArm[0]-0.03, B.rArm[1]+0.02, B.rArm[2]], 0.065, 0.007, 'y'));
+    d = opUnion(d, sdTorus(p, [B.lArm[0]+3, B.lArm[1]+2, B.lArm[2]], 6.5, 0.7, 'y'));
+    d = opUnion(d, sdTorus(p, [B.rArm[0]-3, B.rArm[1]+2, B.rArm[2]], 6.5, 0.7, 'y'));
 
     // Waist belt
-    const waist = [B.hips[0], B.hips[1]+0.04, B.hips[2]];
-    d = opUnion(d, sdTorus(p, waist, 0.11, 0.008, 'y'));
+    const waist = [B.hips[0], B.hips[1]+4, B.hips[2]];
+    d = opUnion(d, sdTorus(p, waist, 11, 0.8, 'y'));
 
     // Knee caps
-    d = opUnion(d, sdSphere(p, [B.lLeg[0], B.lLeg[1], B.lLeg[2]+0.035], 0.025));
-    d = opUnion(d, sdSphere(p, [B.rLeg[0], B.rLeg[1], B.rLeg[2]+0.035], 0.025));
+    d = opUnion(d, sdSphere(p, [B.lLeg[0], B.lLeg[1], B.lLeg[2]+3.5], 2.5));
+    d = opUnion(d, sdSphere(p, [B.rLeg[0], B.rLeg[1], B.rLeg[2]+3.5], 2.5));
 
     // Boot rims
-    d = opUnion(d, sdTorus(p, [B.lFoot[0], B.lFoot[1]+0.02, B.lFoot[2]+0.02], 0.04, 0.006, 'y'));
-    d = opUnion(d, sdTorus(p, [B.rFoot[0], B.rFoot[1]+0.02, B.rFoot[2]+0.02], 0.04, 0.006, 'y'));
+    d = opUnion(d, sdTorus(p, [B.lFoot[0], B.lFoot[1]+2, B.lFoot[2]+2], 4, 0.6, 'y'));
+    d = opUnion(d, sdTorus(p, [B.rFoot[0], B.rFoot[1]+2, B.rFoot[2]+2], 4, 0.6, 'y'));
 
     // Gauntlet rims
-    d = opUnion(d, sdTorus(p, B.lHand, 0.03, 0.005, 'x'));
-    d = opUnion(d, sdTorus(p, B.rHand, 0.03, 0.005, 'x'));
+    d = opUnion(d, sdTorus(p, B.lHand, 3, 0.5, 'x'));
+    d = opUnion(d, sdTorus(p, B.rHand, 3, 0.5, 'x'));
 
     return d;
   };
@@ -346,7 +350,7 @@ function marchingCubes(sdf, min, max, res) {
  * @param {number} sigma - falloff distance (smaller = tighter binding)
  * @returns {{ skinIndices: Float32Array, skinWeights: Float32Array }}
  */
-function computeSkinWeights(positions, boneSegments, sigma = 0.08) {
+function computeSkinWeights(positions, boneSegments, sigma = 8) {
   const n = positions.length / 3;
   const skinIndices = new Float32Array(n * 4);
   const skinWeights = new Float32Array(n * 4);
@@ -398,13 +402,16 @@ function buildSDFKnight(boneMap, opts = {}) {
   const resolution = opts.resolution || 80;
   console.time('SDF Knight');
 
-  // Extract bone world positions
+  // Extract bone positions in MODEL SPACE (centimeters).
+  // The bones' world positions are in meters (after Group scale 0.01).
+  // The original mesh vertices are in cm, so we need bone positions in cm too.
+  // We get world position (meters) and multiply by 100 to get cm.
   const wp = (name) => {
     const bone = boneMap[name];
     if (!bone) return [0, 0, 0];
     const v = new THREE.Vector3();
     bone.getWorldPosition(v);
-    return [v.x, v.y, v.z];
+    return [v.x * 100, v.y * 100, v.z * 100];
   };
 
   const bones = {
@@ -437,7 +444,7 @@ function buildSDFKnight(boneMap, opts = {}) {
   const bodySDF = defineKnightSDF(bones);
   const goldSDF = defineGoldSDF(bones);
 
-  // 2. Compute bounding box
+  // 2. Compute bounding box (in cm)
   const allPts = Object.values(bones);
   let bbMin = [Infinity, Infinity, Infinity];
   let bbMax = [-Infinity, -Infinity, -Infinity];
@@ -447,8 +454,8 @@ function buildSDFKnight(boneMap, opts = {}) {
       bbMax[i] = Math.max(bbMax[i], pt[i]);
     }
   }
-  // Expand by armor padding
-  const pad = 0.2;
+  // Expand by armor padding (in cm)
+  const pad = 20;
   bbMin = bbMin.map(v => v - pad);
   bbMax = bbMax.map(v => v + pad);
 
@@ -461,11 +468,19 @@ function buildSDFKnight(boneMap, opts = {}) {
   const goldMesh = marchingCubes(goldSDF, bbMin, bbMax, Math.floor(resolution * 0.8));
   console.log(`  Gold: ${goldMesh.vertexCount} vertices`);
 
-  // 5. Build bone segments for skinning
-  const boneNames = Object.keys(boneMap);
-  const boneIndexMap = {};
-  const boneArray = [];
-  boneNames.forEach((name, i) => { boneIndexMap[name] = i; });
+  // 5. Build bone segments for skinning.
+  // CRITICAL: skinIndex values must be indices into skeleton.bones[],
+  // NOT indices into boneMap keys. Build a lookup from bone name → skeleton index.
+  const skeletonRef = opts._skeleton || null;
+  const skeletonBoneIndex = {};
+  if (skeletonRef) {
+    skeletonRef.bones.forEach((bone, i) => {
+      skeletonBoneIndex[bone.name] = i;
+    });
+  } else {
+    // Fallback: use boneMap key order (will be wrong but at least won't crash)
+    Object.keys(boneMap).forEach((name, i) => { skeletonBoneIndex[name] = i; });
+  }
 
   const segments = [
     { a: bones.hips, b: bones.spine, bone: 'mixamorigHips' },
@@ -486,7 +501,7 @@ function buildSDFKnight(boneMap, opts = {}) {
     { a: bones.rUpLeg, b: bones.rLeg, bone: 'mixamorigRightUpLeg' },
     { a: bones.rLeg, b: bones.rFoot, bone: 'mixamorigRightLeg' },
     { a: bones.rFoot, b: bones.rToe, bone: 'mixamorigRightFoot' },
-  ].map(s => ({ a: s.a, b: s.b, boneIndex: boneIndexMap[s.bone] || 0 }));
+  ].map(s => ({ a: s.a, b: s.b, boneIndex: skeletonBoneIndex[s.bone] ?? 0 }));
 
   // 6. Compute skinning weights for body mesh
   console.log('  Computing skinning weights...');
@@ -526,19 +541,8 @@ function buildSDFKnight(boneMap, opts = {}) {
     envMapIntensity: 2.0,
   });
 
-  // 9. Create SkinnedMesh instances
-  // Get the skeleton from the existing model
-  let skeleton = null;
-  const firstBone = Object.values(boneMap)[0];
-  if (firstBone) {
-    let root = firstBone;
-    while (root.parent && root.parent.type !== 'Scene') root = root.parent;
-    root.traverse(child => {
-      if (child.isSkinnedMesh && child.skeleton && !skeleton) {
-        skeleton = child.skeleton;
-      }
-    });
-  }
+  // 9. Create SkinnedMesh instances using the skeleton captured earlier
+  const skeleton = skeletonRef;
 
   if (!skeleton) {
     console.warn('SDF Knight: No skeleton found, mesh will be static');
@@ -550,21 +554,32 @@ function buildSDFKnight(boneMap, opts = {}) {
     return bodyMeshObj;
   }
 
+  // Mesh vertices are already in cm (model space) — no scaling needed.
+
   const bodySkinnedMesh = new THREE.SkinnedMesh(bodyGeo, steelMat);
   bodySkinnedMesh.name = 'SDFKnight_Body';
   bodySkinnedMesh.bind(skeleton);
   bodySkinnedMesh.castShadow = true;
+  bodySkinnedMesh.frustumCulled = false;
 
   const goldSkinnedMesh = new THREE.SkinnedMesh(goldGeo, goldMat);
   goldSkinnedMesh.name = 'SDFKnight_Gold';
   goldSkinnedMesh.bind(skeleton);
   goldSkinnedMesh.castShadow = true;
+  goldSkinnedMesh.frustumCulled = false;
 
-  // Add to the model root
-  let modelRoot = firstBone;
+  // Add to the model root (Group with scale 0.01)
+  let modelRoot = Object.values(boneMap)[0];
   while (modelRoot.parent && modelRoot.parent.type !== 'Scene') modelRoot = modelRoot.parent;
   modelRoot.add(bodySkinnedMesh);
   modelRoot.add(goldSkinnedMesh);
+
+  // Hide bone helper spheres
+  scene.traverse(child => {
+    if (child.name === 'boneHelperGroup' || (child.isGroup && child.children.some(c => c.userData?.boneName))) {
+      child.visible = false;
+    }
+  });
 
   console.timeEnd('SDF Knight');
   console.log(`  SDF Knight complete: ${bodyMesh.vertexCount + goldMesh.vertexCount} total vertices`);
@@ -576,12 +591,20 @@ function buildSDFKnight(boneMap, opts = {}) {
  * Replace the original FBX meshes with the SDF knight.
  */
 function replaceWithSDFKnight(boneMap, opts) {
-  // Remove original meshes
   const firstBone = Object.values(boneMap)[0];
   if (!firstBone) return null;
   let root = firstBone;
   while (root.parent && root.parent.type !== 'Scene') root = root.parent;
 
+  // IMPORTANT: Capture skeleton BEFORE removing original skinned meshes
+  let skeleton = null;
+  root.traverse(child => {
+    if (child.isSkinnedMesh && child.skeleton && !skeleton) {
+      skeleton = child.skeleton;
+    }
+  });
+
+  // Remove original meshes
   const toRemove = [];
   root.traverse(child => {
     if (child.isMesh && ['Body', 'Head_Hands', 'Lower_Armor'].includes(child.name)) {
@@ -596,7 +619,7 @@ function replaceWithSDFKnight(boneMap, opts) {
     mesh.parent.remove(mesh);
   }
 
-  return buildSDFKnight(boneMap, opts);
+  return buildSDFKnight(boneMap, { ...opts, _skeleton: skeleton });
 }
 
 export { buildSDFKnight, replaceWithSDFKnight, defineKnightSDF, defineGoldSDF, marchingCubes };

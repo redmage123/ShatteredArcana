@@ -12,6 +12,7 @@
 #include "Economy/CoMCitySubsystem.h"
 #include "Magic/CoMMagicSubsystem.h"
 #include "Audio/CoMAudioSubsystem.h"
+#include "Turn/CoMTurnSubsystem.h"
 #include "Framework/CoMGameState.h"
 #include "Engine/World.h"
 
@@ -261,6 +262,16 @@ const FCoMWorldEvent* UCoMWorldEventSubsystem::GetEventByID(int32 EventID) const
 		}
 	}
 	return nullptr;
+}
+
+const TArray<FCoMWorldEvent>& UCoMWorldEventSubsystem::GetEventHistory() const
+{
+	return EventHistory;
+}
+
+int32 UCoMWorldEventSubsystem::GetNextEventID() const
+{
+	return NextEventID;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

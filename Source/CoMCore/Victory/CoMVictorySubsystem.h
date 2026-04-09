@@ -184,6 +184,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "CoM|Victory")
 	int32 GetDestabilizedPlaneCount() const { return DestabilizedPlanes.Num(); }
 
+	TSet<ECoMPlane> GetDestabilizedPlanes() const { return DestabilizedPlanes; }
+
+	bool IsSpellOfMasteryCast() const { return bSpellOfMasteryCast; }
+	int32 GetMasteryCasterWizardId() const { return MasteryCasterWizardId; }
+
 	// -- Spell of Mastery notification ----------------------------------------
 
 	/** Call when a wizard begins researching a Spell of Mastery. Notifies all. */

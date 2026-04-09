@@ -114,21 +114,38 @@ import { THREE, canvas, camera, controls, renderer, scene, boneHelperGroup, regi
 import * as rig from './js/rig.js';
 import * as kfe from './js/keyframe-engine.js';
 import './js/api.js';  // registers all window.* functions
+import './js/knight-standalone.js';  // self-contained SDF knight
 
 const statusEl = document.getElementById('status');
 
 // ============================================================
-// LOAD MODEL
+// LOAD MODEL — Standalone SDF knight (no FBX dependency)
 // ============================================================
-statusEl.textContent = 'Loading X Bot...';
+statusEl.textContent = 'Building knight...';
 
-rig.loadModel('/model/Knight D Pelegrini.fbx').then(({ boneCount }) => {
-  buildBoneList();
-  statusEl.textContent = `Loaded: ${boneCount} bones. Click bone to select, right-drag to rotate.`;
-}).catch(err => {
-  statusEl.textContent = `Error: ${err.message}`;
-  console.error(err);
-});
+// Build the SDF knight directly — no Mixamo model needed.
+// The FBX load is kept as a fallback if buildStandaloneKnight isn't available yet.
+setTimeout(() => {
+  if (window.buildStandaloneKnight) {
+    const boneCount = window.buildStandaloneKnight({ resolution: 64 });
+    if (boneCount > 0) {
+      buildBoneList();
+      statusEl.textContent = `SDF Knight: ${boneCount} bones. Click bone to select.`;
+      // Signal model ready for Playwright automation
+      window._modelReady = true;
+      return;
+    }
+  }
+  // Fallback: load FBX model
+  statusEl.textContent = 'Loading FBX fallback...';
+  rig.loadModel('/model/Knight D Pelegrini.fbx').then(({ boneCount }) => {
+    buildBoneList();
+    statusEl.textContent = `Loaded: ${boneCount} bones. Click bone to select, right-drag to rotate.`;
+  }).catch(err => {
+    statusEl.textContent = `Error: ${err.message}`;
+    console.error(err);
+  });
+}, 100);
 
 // Register bone visual updates in render loop
 registerUpdatable(() => rig.updateBoneVisuals());
@@ -157,12 +174,24 @@ registerUpdatable((dt) => {
 function buildBoneList() {
   const el = document.getElementById('bone-list');
   el.innerHTML = '<div style="font-weight:bold;padding:4px 8px;margin-bottom:4px;">Bones</div>';
+
+  // Use standalone knight bones if available, otherwise rig.js bones
+  let boneNames = [];
+  if (window.knightGetBoneNames) {
+    boneNames = window.knightGetBoneNames();
+  }
+  if (boneNames.length === 0) {
+    boneNames = [...new Set(rig.getBones().map(b => b.name))];
+  }
+
+  // For standalone knight, all bones are important
   const important = rig.getBones().filter(b => {
     const n = b.name.toLowerCase();
     return n.includes('spine') || n.includes('arm') || n.includes('hand') ||
       n.includes('head') || n.includes('neck') || n.includes('hip') ||
       n.includes('leg') || n.includes('foot') || n.includes('shoulder') ||
-      n.includes('thigh') || n.includes('calf') || n.includes('toe');
+      n.includes('thigh') || n.includes('calf') || n.includes('toe') ||
+      n.includes('chest') || n.includes('upper');
   });
   // Deduplicate
   const seen = new Set();

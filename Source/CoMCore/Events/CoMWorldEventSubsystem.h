@@ -107,6 +107,12 @@ public:
 	/** Get an event by ID, or nullptr if not found. */
 	const FCoMWorldEvent* GetEventByID(int32 EventID) const;
 
+	/** Get event history (completed events). */
+	const TArray<FCoMWorldEvent>& GetEventHistory() const;
+
+	/** Get next event ID counter. */
+	int32 GetNextEventID() const;
+
 	// ── Delegates ────────────────────────────────────────────────────────
 
 	UPROPERTY(BlueprintAssignable, Category = "CoM|WorldEvents")

@@ -677,9 +677,8 @@ void UCoMSaveSubsystem::CollectWorldEvents(FCoMSaveData& OutData)
     if (!GI) { return; }
     if (auto* EventSub = GI->GetSubsystem<UCoMWorldEventSubsystem>())
     {
-        OutData.ActiveWorldEvents = EventSub->GetActiveEvents();
-        OutData.WorldEventHistory = EventSub->GetEventHistory();
-        OutData.NextWorldEventID  = EventSub->GetNextEventID();
+        EventSub->ExportAll(OutData.ActiveWorldEvents, OutData.WorldEventHistory,
+                            OutData.NextWorldEventID, OutData.EventRng);
     }
 }
 
@@ -689,7 +688,8 @@ void UCoMSaveSubsystem::RestoreWorldEvents(const FCoMSaveData& InData)
     if (!GI) { return; }
     if (auto* EventSub = GI->GetSubsystem<UCoMWorldEventSubsystem>())
     {
-        EventSub->ImportAll(InData.ActiveWorldEvents, InData.WorldEventHistory, InData.NextWorldEventID);
+        EventSub->ImportAll(InData.ActiveWorldEvents, InData.WorldEventHistory,
+                            InData.NextWorldEventID, InData.EventRng);
     }
 }
 
@@ -723,10 +723,13 @@ void UCoMSaveSubsystem::RestoreVictory(const FCoMSaveData& InData)
     if (!GI) { return; }
     if (auto* VicSub = GI->GetSubsystem<UCoMVictorySubsystem>())
     {
-        VicSub->ImportEliminatedWizards(InData.EliminatedWizards);
-        VicSub->ImportAll(InData.bGameOver, InData.WinningWizardId,
+        // Convert uint8 planes back to ECoMPlane array
+        TArray<ECoMPlane> DestPlanes;
+        for (uint8 P : InData.DestabilizedPlanes) { DestPlanes.Add(static_cast<ECoMPlane>(P)); }
+
+        VicSub->ImportAll(InData.EliminatedWizards, InData.bGameOver, InData.WinningWizardId,
                           static_cast<ECoMVictoryType>(InData.WinningCondition),
-                          InData.bSaelThrixSlain, InData.bSpellOfMasteryCast,
-                          InData.MasteryCasterWizardId, InData.DestabilizedPlanes);
+                          DestPlanes, InData.bSaelThrixSlain,
+                          InData.bSpellOfMasteryCast, InData.MasteryCasterWizardId);
     }
 }

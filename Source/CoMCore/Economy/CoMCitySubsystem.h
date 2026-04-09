@@ -8,17 +8,47 @@
 #include "CoMCitySubsystem.generated.h"
 
 class UCoMUnitSubsystem;
+class UCoMBuildingDataAsset;
+class UCoMUnitSpecDataAsset;
+class UCoMRaceDataAsset;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCityFounded, int32, CityID, int32, OwnerWizardIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCityDestroyed, int32, CityID, int32, FormerOwnerWizardIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCityRebelled, int32, CityID, int32, FormerOwnerWizardIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnBuildingCompleted, int32, CityID, int32, BuildingID, int32, OwnerWizardIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCityPopulationChanged, int32, CityID, int32, OldPop, int32, NewPop);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnUnitRecruited, int32, CityID, FName, UnitSpecID, int32, OwnerWizardIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnProductionNotification, int32, CityID, FText, Message);
 
 /**
  * Data for a single city enchantment instance (buff or curse applied to a city).
  */
 // (struct defined in CoMStructs.h)
+
+/**
+ * A single item (building or unit) in a city's production queue.
+ */
+USTRUCT(BlueprintType)
+struct COMCORE_API FCoMProductionItem
+{
+	GENERATED_BODY()
+
+	/** Building ID (FName from BuildingDataAsset) or Unit Spec ID (FName from UnitSpecDataAsset). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName ItemID;
+
+	/** True = unit recruitment, false = building construction. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsUnit = false;
+
+	/** Total production cost to complete this item. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 ProductionCost = 50;
+
+	/** Estimated turns remaining at current production rate (recalculated each turn). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 TurnsRemaining = 0;
+};
 
 /**
  * Full state for a single city in the world.
@@ -77,10 +107,18 @@ struct COMCORE_API FCoMCityData
 	TArray<int32> BuildingIDs;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 CurrentBuildingID = -1; // -1 = nothing in production
+	int32 CurrentBuildingID = -1; // -1 = nothing in production (legacy, use ProductionQueue)
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	int32 BuildingProgress = 0;
+	int32 BuildingProgress = 0; // legacy field, use AccumulatedProduction
+
+	/** Ordered list of items to produce. Front of array = currently being built. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FCoMProductionItem> ProductionQueue;
+
+	/** Production points accumulated toward the current queue item. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 AccumulatedProduction = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 GarrisonArmyID = -1;
@@ -182,15 +220,52 @@ public:
 	TArray<const FCoMCityData*> GetCitiesOnPlane(ECoMPlane Plane) const;
 
 	// -----------------------------------------------------------------
-	// Production Queue
+	// Production Queue (legacy — kept for backward compatibility)
 	// -----------------------------------------------------------------
 
 	/**
-	 * Set the building currently in the production queue.
+	 * Set the building currently in the production queue (legacy single-item).
+	 * Prefer AddToQueue for the new multi-item system.
 	 * @return true if the building ID is valid and the city doesn't already have it.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Cities")
 	bool SetBuildingQueue(int32 CityID, int32 BuildingID);
+
+	// -----------------------------------------------------------------
+	// Production Queue (new multi-item system)
+	// -----------------------------------------------------------------
+
+	/** Add a building or unit to the end of a city's production queue. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Cities")
+	void AddToQueue(int32 CityId, FName ItemID, bool bIsUnit);
+
+	/** Remove an item from the queue at the given index. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Cities")
+	void RemoveFromQueue(int32 CityId, int32 QueueIndex);
+
+	/** Move an item within the queue (reorder). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Cities")
+	void MoveInQueue(int32 CityId, int32 FromIndex, int32 ToIndex);
+
+	/** Clear all items from a city's production queue. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Cities")
+	void ClearQueue(int32 CityId);
+
+	/** Get a copy of the city's current production queue. */
+	UFUNCTION(BlueprintPure, Category = "CoM|Cities")
+	TArray<FCoMProductionItem> GetQueue(int32 CityId) const;
+
+	// -----------------------------------------------------------------
+	// Availability Queries
+	// -----------------------------------------------------------------
+
+	/** Return building IDs available to construct (not already built, prerequisites met). */
+	UFUNCTION(BlueprintPure, Category = "CoM|Cities")
+	TArray<FName> GetAvailableBuildings(int32 CityId) const;
+
+	/** Return unit spec IDs available to recruit (based on city's buildings and race). */
+	UFUNCTION(BlueprintPure, Category = "CoM|Cities")
+	TArray<FName> GetAvailableUnits(int32 CityId) const;
 
 	// -----------------------------------------------------------------
 	// Output Recalculation
@@ -225,6 +300,12 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Cities")
 	FOnCityPopulationChanged OnCityPopulationChanged;
+
+	UPROPERTY(BlueprintAssignable, Category = "CoM|Cities")
+	FOnUnitRecruited OnUnitRecruited;
+
+	UPROPERTY(BlueprintAssignable, Category = "CoM|Cities")
+	FOnProductionNotification OnProductionNotification;
 
 	// ── Save/Load Export/Import ───────────────────────────────────────────
 
@@ -275,8 +356,26 @@ private:
 	/** Process growth for a single city based on food surplus. */
 	void ProcessGrowth(FCoMCityData& City);
 
-	/** Process building construction for a single city. */
+	/** Process building construction for a single city (legacy single-item). */
 	void ProcessBuilding(FCoMCityData& City);
+
+	/** Process production queue for a single city (new multi-item system). */
+	void ProcessCityProduction(FCoMCityData& City);
+
+	/** Look up production cost for a building by its FName ID. Returns 50 as fallback. */
+	int32 LookupBuildingCost(FName BuildingID) const;
+
+	/** Look up production cost for a unit by its FName spec ID. Returns 50 as fallback. */
+	int32 LookupUnitCost(FName UnitSpecID) const;
+
+	/** Check if a city has a specific building (by FName). BuildingIDs stores int32, so this does a data-asset lookup. */
+	bool CityHasBuilding(const FCoMCityData& City, FName BuildingID) const;
+
+	/** Convert a building FName to its int32 hash for BuildingIDs storage. */
+	static int32 BuildingNameToID(FName BuildingID);
+
+	/** Spawn a recruited unit at the city's position. Returns the unit ID or INDEX_NONE. */
+	int32 SpawnRecruitedUnit(const FCoMCityData& City, FName UnitSpecID);
 
 	/** Handle city rebellion when unrest reaches 10. */
 	void HandleRebellion(FCoMCityData& City);

@@ -20,6 +20,9 @@ class UCoMMainMenuWidget;
 class UCoMWizardCreationWidget;
 class UCoMLoadScreenWidget;
 class UCoMVictoryScreenWidget;
+class UCoMTooltipWidget;
+class UCoMTurnNotificationWidget;
+class UCoMSpellTargetingWidget;
 
 /**
  * UCoMUISubsystem
@@ -157,6 +160,52 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HideCredits();
 
+	// -- Tooltip ---------------------------------------------------------------
+
+	/** Show a tile tooltip at the given map position. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowTooltipTile(ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint TilePos, int32 WizardId);
+
+	/** Show a city tooltip. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowTooltipCity(int32 CityId);
+
+	/** Show an army tooltip. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowTooltipArmy(int32 ArmyId);
+
+	/** Show a unit tooltip. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowTooltipUnit(int32 UnitId);
+
+	/** Hide the tooltip. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideTooltip();
+
+	/** Get the tooltip widget (may be nullptr). */
+	UFUNCTION(BlueprintPure, Category = "CoM|UI")
+	UCoMTooltipWidget* GetTooltipWidget() const { return TooltipInstance; }
+
+	// -- Turn Notifications ----------------------------------------------------
+
+	/** Get the turn notification widget (may be nullptr). */
+	UFUNCTION(BlueprintPure, Category = "CoM|UI")
+	UCoMTurnNotificationWidget* GetTurnNotificationWidget() const { return TurnNotificationInstance; }
+
+	// -- Spell Targeting -------------------------------------------------------
+
+	/** Get the spell targeting widget (may be nullptr). */
+	UFUNCTION(BlueprintPure, Category = "CoM|UI")
+	UCoMSpellTargetingWidget* GetSpellTargetingWidget() const { return SpellTargetingInstance; }
+
+	/** Begin spell targeting mode (called from spell book Cast button). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void BeginSpellTargeting(FName SpellId, int32 CasterWizardId);
+
+	/** Cancel spell targeting. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void CancelSpellTargeting();
+
 	// -- Bulk Operations -------------------------------------------------------
 
 	/** Close all panels except the HUD (includes victory screen). */
@@ -202,6 +251,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<UCoMVictoryScreenWidget> VictoryScreenWidgetClass;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<UCoMTooltipWidget> TooltipWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<UCoMTurnNotificationWidget> TurnNotificationWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<UCoMSpellTargetingWidget> SpellTargetingWidgetClass;
+
 private:
 	/** Helper: create a widget of the given class and add it to the viewport. */
 	template<typename T>
@@ -245,4 +303,13 @@ private:
 
 	UPROPERTY()
 	UCoMVictoryScreenWidget* VictoryScreenInstance = nullptr;
+
+	UPROPERTY()
+	UCoMTooltipWidget* TooltipInstance = nullptr;
+
+	UPROPERTY()
+	UCoMTurnNotificationWidget* TurnNotificationInstance = nullptr;
+
+	UPROPERTY()
+	UCoMSpellTargetingWidget* SpellTargetingInstance = nullptr;
 };

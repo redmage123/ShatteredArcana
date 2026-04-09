@@ -7,6 +7,9 @@
 #include "Components/Button.h"
 #include "Components/ScrollBox.h"
 #include "Components/ProgressBar.h"
+#include "Components/Overlay.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "CoMCore/Economy/CoMCitySubsystem.h"
@@ -21,6 +24,29 @@ void UCoMCityScreenWidget::NativeConstruct()
 	{
 		CloseButton->OnClicked.AddDynamic(this, &UCoMCityScreenWidget::OnCloseClicked);
 	}
+
+	if (AddToQueueButton)
+	{
+		AddToQueueButton->OnClicked.AddDynamic(this, &UCoMCityScreenWidget::OnAddToQueueClicked);
+	}
+
+	if (BuildingsTabButton)
+	{
+		BuildingsTabButton->OnClicked.AddDynamic(this, &UCoMCityScreenWidget::OnBuildingsTabClicked);
+	}
+
+	if (UnitsTabButton)
+	{
+		UnitsTabButton->OnClicked.AddDynamic(this, &UCoMCityScreenWidget::OnUnitsTabClicked);
+	}
+
+	if (CloseBuildPickerButton)
+	{
+		CloseBuildPickerButton->OnClicked.AddDynamic(this, &UCoMCityScreenWidget::OnCloseBuildPickerClicked);
+	}
+
+	// Hide the build picker overlay on startup.
+	HideBuildPicker();
 }
 
 UCoMCitySubsystem* UCoMCityScreenWidget::GetCitySubsystem()
@@ -71,23 +97,29 @@ void UCoMCityScreenWidget::SetCity(int32 CityId)
 	// Resource outputs
 	if (FoodText)
 	{
+		const FString FoodSign = (City->FoodSurplus >= 0) ? TEXT("+") : TEXT("");
 		FoodText->SetText(FText::FromString(
-			FString::Printf(TEXT("Food: %d"), City->FoodSurplus)));
+			FString::Printf(TEXT("Food: %s%d per turn"), *FoodSign, City->FoodSurplus)));
 	}
 	if (GoldText)
 	{
 		GoldText->SetText(FText::FromString(
-			FString::Printf(TEXT("Gold: %d"), City->GoldIncome)));
+			FString::Printf(TEXT("Gold: +%d per turn"), City->GoldIncome)));
 	}
 	if (ProductionText)
 	{
 		ProductionText->SetText(FText::FromString(
-			FString::Printf(TEXT("Production: %d"), City->ProductionOutput)));
+			FString::Printf(TEXT("Production: +%d per turn"), City->ProductionOutput)));
 	}
 	if (ManaText)
 	{
 		ManaText->SetText(FText::FromString(
-			FString::Printf(TEXT("Mana: %d"), City->ManaOutput)));
+			FString::Printf(TEXT("Mana: +%d per turn"), City->ManaOutput)));
+	}
+	if (ResearchText)
+	{
+		ResearchText->SetText(FText::FromString(
+			FString::Printf(TEXT("Research: +%d per turn"), City->ResearchOutput)));
 	}
 	if (UnrestText)
 	{
@@ -95,10 +127,46 @@ void UCoMCityScreenWidget::SetCity(int32 CityId)
 			FString::Printf(TEXT("Unrest: %d / %d"), City->Unrest, 10)));
 	}
 
-	// Production queue
+	// Population growth estimate.
+	if (GrowthText)
+	{
+		if (City->FoodSurplus > 0)
+		{
+			// Rough estimate: food surplus / growth divisor gives growth per turn.
+			// Population cap tells us when growth stops.
+			const int32 GrowthRate = FMath::Max(1, City->FoodSurplus / 10);
+			const int32 PopCap = CitySub ? CitySub->GetCityPopulationCap(CurrentCityId) : 25;
+			const int32 Remaining = FMath::Max(0, PopCap - City->Population);
+			const int32 TurnsToNext = (GrowthRate > 0 && Remaining > 0)
+				? FMath::CeilToInt32(1.f / GrowthRate) : 0;
+
+			if (TurnsToNext > 0)
+			{
+				GrowthText->SetText(FText::FromString(
+					FString::Printf(TEXT("Growth: %d turns to next pop"), TurnsToNext)));
+			}
+			else
+			{
+				GrowthText->SetText(FText::FromString(TEXT("Growth: at capacity")));
+			}
+		}
+		else
+		{
+			GrowthText->SetText(FText::FromString(TEXT("Growth: stagnant")));
+		}
+	}
+
+	// Production queue display (legacy fallback in CurrentBuildText).
 	if (CurrentBuildText)
 	{
-		if (City->CurrentBuildingID >= 0)
+		if (City->ProductionQueue.Num() > 0)
+		{
+			const FCoMProductionItem& Front = City->ProductionQueue[0];
+			CurrentBuildText->SetText(FText::FromString(
+				FString::Printf(TEXT("Producing: %s (%d / %d)"),
+					*Front.ItemID.ToString(), City->AccumulatedProduction, Front.ProductionCost)));
+		}
+		else if (City->CurrentBuildingID >= 0)
 		{
 			CurrentBuildText->SetText(FText::FromString(
 				FString::Printf(TEXT("Building ID %d (Progress: %d)"),
@@ -112,15 +180,25 @@ void UCoMCityScreenWidget::SetCity(int32 CityId)
 
 	if (BuildProgressBar)
 	{
-		// Show progress as a rough percentage. Without knowing total cost here,
-		// we display a proportional bar capped at 1.0.
-		float Progress = (City->CurrentBuildingID >= 0 && City->ProductionOutput > 0)
-			? FMath::Clamp(static_cast<float>(City->BuildingProgress) / FMath::Max(City->ProductionOutput * 10, 1), 0.f, 1.f)
-			: 0.f;
-		BuildProgressBar->SetPercent(Progress);
+		if (City->ProductionQueue.Num() > 0)
+		{
+			const FCoMProductionItem& Front = City->ProductionQueue[0];
+			const float Progress = FMath::Clamp(
+				static_cast<float>(City->AccumulatedProduction) / FMath::Max(Front.ProductionCost, 1),
+				0.f, 1.f);
+			BuildProgressBar->SetPercent(Progress);
+		}
+		else
+		{
+			float Progress = (City->CurrentBuildingID >= 0 && City->ProductionOutput > 0)
+				? FMath::Clamp(static_cast<float>(City->BuildingProgress) / FMath::Max(City->ProductionOutput * 10, 1), 0.f, 1.f)
+				: 0.f;
+			BuildProgressBar->SetPercent(Progress);
+		}
 	}
 
 	RefreshBuildings();
+	RefreshQueue();
 	RefreshGarrison();
 }
 
@@ -159,20 +237,38 @@ void UCoMCityScreenWidget::RefreshBuildings()
 		}
 	}
 
-	// Available buildings placeholder -- in a full implementation this would
-	// query a building database and filter out already-built structures.
+	// Available buildings list (from the new availability query system).
 	if (AvailableBuildingsScrollBox)
 	{
 		AvailableBuildingsScrollBox->ClearChildren();
 
-		UTextBlock* Placeholder = NewObject<UTextBlock>(this);
-		if (Placeholder)
+		const TArray<FName> Available = CitySub->GetAvailableBuildings(CurrentCityId);
+		if (Available.Num() == 0)
 		{
-			Placeholder->SetText(FText::FromString(TEXT("(Select a building to queue)")));
-			FSlateFontInfo FontInfo = Placeholder->GetFont();
-			FontInfo.Size = 12;
-			Placeholder->SetFont(FontInfo);
-			AvailableBuildingsScrollBox->AddChild(Placeholder);
+			UTextBlock* Placeholder = NewObject<UTextBlock>(this);
+			if (Placeholder)
+			{
+				Placeholder->SetText(FText::FromString(TEXT("(No buildings available)")));
+				FSlateFontInfo FontInfo = Placeholder->GetFont();
+				FontInfo.Size = 12;
+				Placeholder->SetFont(FontInfo);
+				AvailableBuildingsScrollBox->AddChild(Placeholder);
+			}
+		}
+		else
+		{
+			for (const FName& BuildingName : Available)
+			{
+				UTextBlock* Entry = NewObject<UTextBlock>(this);
+				if (Entry)
+				{
+					Entry->SetText(FText::FromString(BuildingName.ToString()));
+					FSlateFontInfo FontInfo = Entry->GetFont();
+					FontInfo.Size = 12;
+					Entry->SetFont(FontInfo);
+					AvailableBuildingsScrollBox->AddChild(Entry);
+				}
+			}
 		}
 	}
 }
@@ -246,6 +342,273 @@ void UCoMCityScreenWidget::RefreshGarrison()
 			GarrisonScrollBox->AddChild(UnitEntry);
 		}
 	}
+}
+
+void UCoMCityScreenWidget::RefreshQueue()
+{
+	UCoMCitySubsystem* CitySub = GetCitySubsystem();
+	if (!CitySub || !QueueScrollBox || CurrentCityId < 0)
+	{
+		return;
+	}
+
+	QueueScrollBox->ClearChildren();
+
+	const TArray<FCoMProductionItem> Queue = CitySub->GetQueue(CurrentCityId);
+
+	if (Queue.Num() == 0)
+	{
+		UTextBlock* EmptyText = NewObject<UTextBlock>(this);
+		if (EmptyText)
+		{
+			EmptyText->SetText(FText::FromString(TEXT("Queue is empty")));
+			FSlateFontInfo FontInfo = EmptyText->GetFont();
+			FontInfo.Size = 12;
+			EmptyText->SetFont(FontInfo);
+			QueueScrollBox->AddChild(EmptyText);
+		}
+		return;
+	}
+
+	// Update the queue-level progress bar for the first item.
+	if (QueueProgressBar && Queue.Num() > 0)
+	{
+		const FCoMProductionItem& Front = Queue[0];
+		const float Progress = FMath::Clamp(
+			static_cast<float>(CitySub->GetCity(CurrentCityId)->AccumulatedProduction) /
+			FMath::Max(Front.ProductionCost, 1),
+			0.f, 1.f);
+		QueueProgressBar->SetPercent(Progress);
+	}
+
+	for (int32 i = 0; i < Queue.Num(); ++i)
+	{
+		const FCoMProductionItem& Item = Queue[i];
+
+		// Create a horizontal box for each queue row: name + turns + remove button.
+		UHorizontalBox* Row = NewObject<UHorizontalBox>(this);
+		if (!Row)
+		{
+			continue;
+		}
+
+		// Item name and type.
+		UTextBlock* NameText = NewObject<UTextBlock>(this);
+		if (NameText)
+		{
+			const FString TypeTag = Item.bIsUnit ? TEXT("[Unit]") : TEXT("[Bldg]");
+			NameText->SetText(FText::FromString(
+				FString::Printf(TEXT("%s %s"), *TypeTag, *Item.ItemID.ToString())));
+
+			FSlateFontInfo FontInfo = NameText->GetFont();
+			FontInfo.Size = 12;
+			NameText->SetFont(FontInfo);
+
+			UHorizontalBoxSlot* Slot = Row->AddChildToHorizontalBox(NameText);
+			if (Slot)
+			{
+				Slot->SetPadding(FMargin(4.f, 2.f));
+			}
+		}
+
+		// Turns remaining.
+		UTextBlock* TurnsText = NewObject<UTextBlock>(this);
+		if (TurnsText)
+		{
+			if (i == 0)
+			{
+				TurnsText->SetText(FText::FromString(
+					FString::Printf(TEXT("(%d turns)"), Item.TurnsRemaining)));
+			}
+			else
+			{
+				TurnsText->SetText(FText::FromString(
+					FString::Printf(TEXT("~%d turns"), Item.TurnsRemaining)));
+			}
+
+			FSlateFontInfo FontInfo = TurnsText->GetFont();
+			FontInfo.Size = 11;
+			TurnsText->SetFont(FontInfo);
+
+			UHorizontalBoxSlot* Slot = Row->AddChildToHorizontalBox(TurnsText);
+			if (Slot)
+			{
+				Slot->SetPadding(FMargin(8.f, 2.f));
+			}
+		}
+
+		QueueScrollBox->AddChild(Row);
+	}
+}
+
+void UCoMCityScreenWidget::ShowBuildPicker()
+{
+	if (BuildPickerOverlay)
+	{
+		BuildPickerOverlay->SetVisibility(ESlateVisibility::Visible);
+	}
+
+	bBuildPickerShowingUnits = false;
+
+	// Populate with buildings by default.
+	OnBuildingsTabClicked();
+}
+
+void UCoMCityScreenWidget::HideBuildPicker()
+{
+	if (BuildPickerOverlay)
+	{
+		BuildPickerOverlay->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UCoMCityScreenWidget::OnBuildItemSelected(FName ItemID, bool bIsUnit)
+{
+	UCoMCitySubsystem* CitySub = GetCitySubsystem();
+	if (CitySub && CurrentCityId >= 0)
+	{
+		CitySub->AddToQueue(CurrentCityId, ItemID, bIsUnit);
+		SetCity(CurrentCityId); // Full refresh.
+	}
+
+	HideBuildPicker();
+}
+
+void UCoMCityScreenWidget::OnAddToQueueClicked()
+{
+	ShowBuildPicker();
+}
+
+void UCoMCityScreenWidget::OnRemoveFromQueue(int32 Index)
+{
+	UCoMCitySubsystem* CitySub = GetCitySubsystem();
+	if (CitySub && CurrentCityId >= 0)
+	{
+		CitySub->RemoveFromQueue(CurrentCityId, Index);
+		SetCity(CurrentCityId);
+	}
+}
+
+void UCoMCityScreenWidget::OnMoveUp(int32 Index)
+{
+	if (Index <= 0)
+	{
+		return;
+	}
+
+	UCoMCitySubsystem* CitySub = GetCitySubsystem();
+	if (CitySub && CurrentCityId >= 0)
+	{
+		CitySub->MoveInQueue(CurrentCityId, Index, Index - 1);
+		SetCity(CurrentCityId);
+	}
+}
+
+void UCoMCityScreenWidget::OnMoveDown(int32 Index)
+{
+	UCoMCitySubsystem* CitySub = GetCitySubsystem();
+	if (!CitySub || CurrentCityId < 0)
+	{
+		return;
+	}
+
+	const TArray<FCoMProductionItem> Queue = CitySub->GetQueue(CurrentCityId);
+	if (Index >= Queue.Num() - 1)
+	{
+		return;
+	}
+
+	CitySub->MoveInQueue(CurrentCityId, Index, Index + 1);
+	SetCity(CurrentCityId);
+}
+
+void UCoMCityScreenWidget::OnBuildingsTabClicked()
+{
+	bBuildPickerShowingUnits = false;
+
+	UCoMCitySubsystem* CitySub = GetCitySubsystem();
+	if (!CitySub || !BuildPickerScrollBox || CurrentCityId < 0)
+	{
+		return;
+	}
+
+	BuildPickerScrollBox->ClearChildren();
+
+	const TArray<FName> Available = CitySub->GetAvailableBuildings(CurrentCityId);
+
+	if (Available.Num() == 0)
+	{
+		UTextBlock* NoItems = NewObject<UTextBlock>(this);
+		if (NoItems)
+		{
+			NoItems->SetText(FText::FromString(TEXT("No buildings available")));
+			FSlateFontInfo FontInfo = NoItems->GetFont();
+			FontInfo.Size = 12;
+			NoItems->SetFont(FontInfo);
+			BuildPickerScrollBox->AddChild(NoItems);
+		}
+		return;
+	}
+
+	for (const FName& BuildingID : Available)
+	{
+		UTextBlock* Entry = NewObject<UTextBlock>(this);
+		if (Entry)
+		{
+			Entry->SetText(FText::FromString(BuildingID.ToString()));
+			FSlateFontInfo FontInfo = Entry->GetFont();
+			FontInfo.Size = 13;
+			Entry->SetFont(FontInfo);
+			BuildPickerScrollBox->AddChild(Entry);
+		}
+	}
+}
+
+void UCoMCityScreenWidget::OnUnitsTabClicked()
+{
+	bBuildPickerShowingUnits = true;
+
+	UCoMCitySubsystem* CitySub = GetCitySubsystem();
+	if (!CitySub || !BuildPickerScrollBox || CurrentCityId < 0)
+	{
+		return;
+	}
+
+	BuildPickerScrollBox->ClearChildren();
+
+	const TArray<FName> Available = CitySub->GetAvailableUnits(CurrentCityId);
+
+	if (Available.Num() == 0)
+	{
+		UTextBlock* NoItems = NewObject<UTextBlock>(this);
+		if (NoItems)
+		{
+			NoItems->SetText(FText::FromString(TEXT("No units available")));
+			FSlateFontInfo FontInfo = NoItems->GetFont();
+			FontInfo.Size = 12;
+			NoItems->SetFont(FontInfo);
+			BuildPickerScrollBox->AddChild(NoItems);
+		}
+		return;
+	}
+
+	for (const FName& UnitSpecID : Available)
+	{
+		UTextBlock* Entry = NewObject<UTextBlock>(this);
+		if (Entry)
+		{
+			Entry->SetText(FText::FromString(UnitSpecID.ToString()));
+			FSlateFontInfo FontInfo = Entry->GetFont();
+			FontInfo.Size = 13;
+			Entry->SetFont(FontInfo);
+			BuildPickerScrollBox->AddChild(Entry);
+		}
+	}
+}
+
+void UCoMCityScreenWidget::OnCloseBuildPickerClicked()
+{
+	HideBuildPicker();
 }
 
 void UCoMCityScreenWidget::OnBuildClicked(int32 BuildingId)

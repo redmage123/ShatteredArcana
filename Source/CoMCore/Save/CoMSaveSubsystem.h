@@ -151,6 +151,7 @@ struct COMCORE_API FCoMSaveData
     UPROPERTY() TArray<FCoMWorldEvent> ActiveWorldEvents;
     UPROPERTY() TArray<FCoMWorldEvent> WorldEventHistory;
     UPROPERTY() int32 NextWorldEventID = 1;
+    UPROPERTY() FCoMDeterministicRandom EventRng;
 
     // ── Victory ──────────────────────────────────────────────────────────────
     UPROPERTY() TArray<int32> EliminatedWizards;
