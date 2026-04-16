@@ -34,7 +34,8 @@ enum class ECoMSpellEffect : uint8
 	Summon,
 	Healing,
 	Divination,
-	Dispel
+	Dispel,
+	Diplomatic      // Affects wizard relations/reputation
 };
 
 /**

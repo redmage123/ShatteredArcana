@@ -746,23 +746,18 @@ void UCoMWizardConfigWidget::BuildLayout()
 	UOverlay* RootOverlay = WidgetTree->ConstructWidget<UOverlay>();
 	BackgroundBorder->AddChild(RootOverlay);
 
-	// -- Scrollable content panel (920px wide) --------------------------------
+	// -- Fullscreen content panel (fills viewport with padding) ---------------
 
-	USizeBox* PanelSizeBox = WidgetTree->ConstructWidget<USizeBox>();
-	PanelSizeBox->SetWidthOverride(920.0f);
-
-	UOverlaySlot* PanelSlot = RootOverlay->AddChildToOverlay(PanelSizeBox);
-	if (PanelSlot)
-	{
-		PanelSlot->SetHorizontalAlignment(HAlign_Center);
-		PanelSlot->SetVerticalAlignment(VAlign_Center);
-	}
-
-	// Panel background border
 	UBorder* PanelBorder = WidgetTree->ConstructWidget<UBorder>();
 	PanelBorder->SetBrushColor(WizConfigColours::PanelBg);
-	PanelBorder->SetPadding(FMargin(28.0f, 20.0f));
-	PanelSizeBox->AddChild(PanelBorder);
+	PanelBorder->SetPadding(FMargin(40.0f, 20.0f));
+
+	UOverlaySlot* PanelSlot = RootOverlay->AddChildToOverlay(PanelBorder);
+	if (PanelSlot)
+	{
+		PanelSlot->SetHorizontalAlignment(HAlign_Fill);
+		PanelSlot->SetVerticalAlignment(VAlign_Fill);
+	}
 
 	// Scroll box for panel contents
 	UScrollBox* PanelScroll = WidgetTree->ConstructWidget<UScrollBox>();

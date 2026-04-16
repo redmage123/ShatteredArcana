@@ -27,6 +27,9 @@ public class CoMCore : ModuleRules
 		{
 			"NetCore",
 			"Json",            // Save metadata (.meta) JSON serialization
+			"UMG",             // Custom cursor widget (UImage for wand cursor)
+			"Slate",
+			"SlateCore",
 		});
 
 		// Automation tests — only compiled for test targets

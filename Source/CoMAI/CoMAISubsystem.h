@@ -12,6 +12,7 @@
 class UCoMAIStrategicPlanner;
 class UCoMAITacticalExecutor;
 class UCoMAIDifficultyModifier;
+class UCoMAIWizardDiplomacy;
 
 /**
  * UCoMAISubsystem
@@ -74,10 +75,18 @@ public:
 	UFUNCTION(BlueprintPure, Category = "CoMAI")
 	UCoMAIDifficultyModifier* GetDifficultyModifier() const { return DifficultyModifier; }
 
+	/** Get the wizard-to-wizard diplomacy engine (for UI queries, player event polling). */
+	UFUNCTION(BlueprintPure, Category = "CoMAI")
+	UCoMAIWizardDiplomacy* GetWizardDiplomacy() const { return WizardDiplomacy; }
+
 private:
 	/** Delegate callback: fires when the game phase changes. */
 	UFUNCTION()
 	void OnGamePhaseChanged(ECoMGamePhase OldPhase, ECoMGamePhase NewPhase);
+
+	/** Delegate callback: fires after diplomacy tick during ProcessAllSubsystemTurns batch path. */
+	UFUNCTION()
+	void OnPostDiplomacyAITick(int32 CurrentTurn);
 
 	UPROPERTY()
 	TObjectPtr<UCoMAIStrategicPlanner> Planner;
@@ -89,6 +98,9 @@ private:
 	TObjectPtr<UCoMAIDifficultyModifier> DifficultyModifier;
 
 	UPROPERTY()
+	TObjectPtr<UCoMAIWizardDiplomacy> WizardDiplomacy;
+
+	UPROPERTY()
 	ECoMAIDifficulty CurrentDifficulty = ECoMAIDifficulty::Normal;
 
 	/** Cached strategies per wizard for debug access. */
@@ -97,4 +109,7 @@ private:
 
 	/** Whether we have bound to the turn subsystem delegate. */
 	bool bDelegateBound = false;
+
+	/** Whether we have bound to the post-diplomacy AI tick delegate. */
+	bool bPostDiplomacyBound = false;
 };

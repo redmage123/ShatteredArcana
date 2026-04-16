@@ -59,6 +59,14 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTurnEnded, int32, TurnNumber);
 /** Fired when the player hits End Turn with idle armies/cities. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnIdleWarning, int32, IdleArmyCount, int32, IdleCityCount);
 
+/**
+ * Fired during ProcessAllSubsystemTurns after the diplomacy tick completes,
+ * before combat resolution. AI modules bind to this to run wizard-to-wizard
+ * diplomacy (war declarations, alliance proposals, spell trades) so that
+ * new diplomatic states affect the current turn's combat.
+ */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPostDiplomacyAITick, int32, CurrentTurn);
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -205,6 +213,13 @@ public:
 	/** Fired when player tries to end turn with idle armies/cities. */
 	UPROPERTY(BlueprintAssignable, Category = "TurnSubsystem")
 	FOnIdleWarning OnIdleWarning;
+
+	/**
+	 * Fired after the diplomacy subsystem tick during ProcessAllSubsystemTurns.
+	 * AI modules bind to this for wizard-to-wizard diplomatic actions.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "TurnSubsystem")
+	FOnPostDiplomacyAITick OnPostDiplomacyAITick;
 
 	// ── Save/Load Export/Import ───────────────────────────────────────────
 

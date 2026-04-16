@@ -28,7 +28,12 @@
       "Bash(python:*)",
       "Bash(grep:*)",
       "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Build/BatchFiles/Build.bat\" ShatteredArcanaEditor Win64 Development -project=\"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -WaitMutex -MaxParallelActions=1)",
-      "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Build/BatchFiles/RunUAT.bat\" BuildCookRun -project=\"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -noP4 -platform=Win64 -clientconfig=Development -cook -build -stage -pak -archive -archivedirectory=\"C:/Users/Braun/repos/ShatteredArcana/exports/WindowsBuild\" -MaxParallelActions=1)"
+      "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Build/BatchFiles/RunUAT.bat\" BuildCookRun -project=\"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -noP4 -platform=Win64 -clientconfig=Development -cook -build -stage -pak -archive -archivedirectory=\"C:/Users/Braun/repos/ShatteredArcana/exports/WindowsBuild\" -MaxParallelActions=1)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(MSYS_NO_PATHCONV=1 \"/c/Program Files/Epic Games/UE_5.7/Engine/Binaries/Win64/UnrealEditor-Cmd.exe\" \"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -run=pythonscript -script=\"C:/Users/Braun/repos/ShatteredArcana/Scripts/import_cursor.py\" -unattended)"
     ]
   }
 }

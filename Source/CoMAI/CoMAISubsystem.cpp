@@ -6,6 +6,7 @@
 #include "Strategic/CoMAIStrategicPlanner.h"
 #include "Tactical/CoMAITacticalExecutor.h"
 #include "Difficulty/CoMAIDifficultyModifier.h"
+#include "Diplomacy/CoMAIWizardDiplomacy.h"
 
 #include "CoMCore/CoreTypes/CoMConstants.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
@@ -26,9 +27,12 @@ void UCoMAISubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Planner            = NewObject<UCoMAIStrategicPlanner>(this);
 	Executor           = NewObject<UCoMAITacticalExecutor>(this);
 	DifficultyModifier = NewObject<UCoMAIDifficultyModifier>(this);
+	WizardDiplomacy    = NewObject<UCoMAIWizardDiplomacy>(this);
+	WizardDiplomacy->InitializeDefaultPersonalities();
 
 	CurrentDifficulty = ECoMAIDifficulty::Normal;
 	bDelegateBound = false;
+	bPostDiplomacyBound = false;
 
 	// Bind to UCoMTurnSubsystem::OnGamePhaseChanged so we auto-process AI turns.
 	// The turn subsystem may not be initialized yet, so we try here and also
@@ -39,6 +43,12 @@ void UCoMAISubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		{
 			TurnSub->OnGamePhaseChanged.AddDynamic(this, &UCoMAISubsystem::OnGamePhaseChanged);
 			bDelegateBound = true;
+
+			// Bind to the post-diplomacy tick for ProcessFullTurn batch path.
+			// This fires after the diplomacy subsystem ticks but before combat,
+			// so AI diplomatic changes (war declarations, alliances) affect combat.
+			TurnSub->OnPostDiplomacyAITick.AddDynamic(this, &UCoMAISubsystem::OnPostDiplomacyAITick);
+			bPostDiplomacyBound = true;
 		}
 	}
 
@@ -48,22 +58,28 @@ void UCoMAISubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void UCoMAISubsystem::Deinitialize()
 {
-	// Unbind delegate
-	if (bDelegateBound)
+	// Unbind delegates
+	if (UGameInstance* GI = GetGameInstance())
 	{
-		if (UGameInstance* GI = GetGameInstance())
+		if (UCoMTurnSubsystem* TurnSub = GI->GetSubsystem<UCoMTurnSubsystem>())
 		{
-			if (UCoMTurnSubsystem* TurnSub = GI->GetSubsystem<UCoMTurnSubsystem>())
+			if (bDelegateBound)
 			{
 				TurnSub->OnGamePhaseChanged.RemoveDynamic(this, &UCoMAISubsystem::OnGamePhaseChanged);
 			}
+			if (bPostDiplomacyBound)
+			{
+				TurnSub->OnPostDiplomacyAITick.RemoveDynamic(this, &UCoMAISubsystem::OnPostDiplomacyAITick);
+			}
 		}
-		bDelegateBound = false;
 	}
+	bDelegateBound = false;
+	bPostDiplomacyBound = false;
 
 	Planner            = nullptr;
 	Executor           = nullptr;
 	DifficultyModifier = nullptr;
+	WizardDiplomacy    = nullptr;
 	LastStrategies.Empty();
 
 	Super::Deinitialize();
@@ -81,6 +97,30 @@ void UCoMAISubsystem::OnGamePhaseChanged(ECoMGamePhase OldPhase, ECoMGamePhase N
 	}
 }
 
+void UCoMAISubsystem::OnPostDiplomacyAITick(int32 CurrentTurn)
+{
+	// Called during ProcessFullTurn batch path — run wizard-to-wizard diplomacy
+	// for all AI wizards. The FSM path handles this inside ProcessAITurns instead.
+	if (!WizardDiplomacy)
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Log,
+	       TEXT("UCoMAISubsystem: OnPostDiplomacyAITick — running AI diplomacy for turn %d."),
+	       CurrentTurn);
+
+	for (int32 WizardId = 0; WizardId < CoM::MAX_WIZARDS; ++WizardId)
+	{
+		if (!IsAIWizard(WizardId))
+		{
+			continue;
+		}
+
+		WizardDiplomacy->ProcessDiplomacy(WizardId, CurrentTurn);
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Main AI turn processing
 // ---------------------------------------------------------------------------
@@ -88,15 +128,23 @@ void UCoMAISubsystem::OnGamePhaseChanged(ECoMGamePhase OldPhase, ECoMGamePhase N
 void UCoMAISubsystem::ProcessAITurns()
 {
 	// Lazy delegate binding in case TurnSubsystem was not ready at Initialize time
-	if (!bDelegateBound)
+	if (!bDelegateBound || !bPostDiplomacyBound)
 	{
 		if (UGameInstance* GI = GetGameInstance())
 		{
 			if (UCoMTurnSubsystem* TurnSub = GI->GetSubsystem<UCoMTurnSubsystem>())
 			{
-				TurnSub->OnGamePhaseChanged.AddDynamic(this, &UCoMAISubsystem::OnGamePhaseChanged);
-				bDelegateBound = true;
-				UE_LOG(LogTemp, Log, TEXT("UCoMAISubsystem: Late-bound to TurnSubsystem delegate."));
+				if (!bDelegateBound)
+				{
+					TurnSub->OnGamePhaseChanged.AddDynamic(this, &UCoMAISubsystem::OnGamePhaseChanged);
+					bDelegateBound = true;
+				}
+				if (!bPostDiplomacyBound)
+				{
+					TurnSub->OnPostDiplomacyAITick.AddDynamic(this, &UCoMAISubsystem::OnPostDiplomacyAITick);
+					bPostDiplomacyBound = true;
+				}
+				UE_LOG(LogTemp, Log, TEXT("UCoMAISubsystem: Late-bound to TurnSubsystem delegates."));
 			}
 		}
 	}
@@ -109,6 +157,16 @@ void UCoMAISubsystem::ProcessAITurns()
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("UCoMAISubsystem: Processing AI turns..."));
+
+	// Resolve the current turn number for diplomacy processing
+	int32 CurrentTurn = 0;
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMTurnSubsystem* TurnSub = GI->GetSubsystem<UCoMTurnSubsystem>())
+		{
+			CurrentTurn = TurnSub->GetCurrentTurn();
+		}
+	}
 
 	int32 AIWizardsProcessed = 0;
 
@@ -127,7 +185,15 @@ void UCoMAISubsystem::ProcessAITurns()
 		// Cache for debug display
 		LastStrategies.Add(WizardId, Strategy);
 
-		// Step 2: Tactical execution (pass difficulty so executor can apply multipliers)
+		// Step 2: Wizard-to-wizard diplomacy (declare wars, propose alliances, trade spells)
+		// Runs after strategy so decisions are informed by threat assessment, but before
+		// tactical execution so new wars/alliances affect the current turn's military actions.
+		if (WizardDiplomacy)
+		{
+			WizardDiplomacy->ProcessDiplomacy(WizardId, CurrentTurn);
+		}
+
+		// Step 3: Tactical execution (pass difficulty so executor can apply multipliers)
 		Executor->ExecuteTurn(WizardId, Strategy, CurrentDifficulty);
 
 		++AIWizardsProcessed;

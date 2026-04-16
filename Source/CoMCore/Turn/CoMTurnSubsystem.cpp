@@ -421,6 +421,13 @@ void UCoMTurnSubsystem::ProcessAllSubsystemTurns()
 		UE_LOG(LogTemp, Log, TEXT("  [Diplomacy] Diplomacy subsystem ticked."));
 	}
 
+	// ── AI Wizard Diplomacy (delegate) ──────────────────────────────
+	// Broadcast so the CoMAI module can run wizard-to-wizard diplomacy
+	// (war declarations, alliances, spell trades) after treaty state is
+	// current but before combat resolution affects the current turn.
+	OnPostDiplomacyAITick.Broadcast(CurrentTurn);
+	UE_LOG(LogTemp, Log, TEXT("  [AI Diplomacy] OnPostDiplomacyAITick broadcast (turn %d)."), CurrentTurn);
+
 	// ── Espionage ────────────────────────────────────────────────────
 	if (UCoMEspionageSubsystem* Espionage = GI->GetSubsystem<UCoMEspionageSubsystem>())
 	{

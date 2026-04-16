@@ -7,6 +7,11 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Save/CoMSaveSubsystem.h"
+#include "Engine/Texture2D.h"
+#include "Components/Image.h"
+#include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetTree.h"
+#include "Framework/CoMAccessibilitySubsystem.h"
 #include "Economy/CoMCitySubsystem.h"
 #include "Units/CoMUnitSubsystem.h"
 #include "World/CoMWorldMapSubsystem.h"
@@ -26,6 +31,29 @@ ACoMHumanPlayerController::ACoMHumanPlayerController()
 void ACoMHumanPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Set custom magic wand cursor via SetMouseCursorWidget
+	UTexture2D* CursorTex = LoadObject<UTexture2D>(nullptr,
+		TEXT("/Game/Textures/UI/T_Cursor_Wand.T_Cursor_Wand"));
+	if (CursorTex)
+	{
+		UUserWidget* CursorWidget = CreateWidget<UUserWidget>(this);
+		if (CursorWidget && CursorWidget->WidgetTree)
+		{
+			UImage* CursorImage = CursorWidget->WidgetTree->ConstructWidget<UImage>();
+			FSlateBrush Brush;
+			Brush.SetResourceObject(CursorTex);
+			Brush.ImageSize = FVector2D(32.0f, 32.0f);
+			Brush.DrawAs = ESlateBrushDrawType::Image;
+			CursorImage->SetBrush(Brush);
+
+			CursorWidget->WidgetTree->RootWidget = CursorImage;
+			SetMouseCursorWidget(EMouseCursor::Default, CursorWidget);
+			CurrentMouseCursor = EMouseCursor::Default;
+
+			UE_LOG(LogTemp, Log, TEXT("[PlayerController] Custom wand cursor set."));
+		}
+	}
 }
 
 void ACoMHumanPlayerController::OnPossess(APawn* InPawn)
@@ -81,6 +109,10 @@ void ACoMHumanPlayerController::SetupInputComponent()
 	{
 		InputComponent->BindAction(TEXT("Select"), IE_Pressed, this,
 		                           &ACoMHumanPlayerController::OnSelectPressed);
+		InputComponent->BindAction(TEXT("UIZoomIn"), IE_Pressed, this,
+		                           &ACoMHumanPlayerController::Input_UIZoomIn);
+		InputComponent->BindAction(TEXT("UIZoomOut"), IE_Pressed, this,
+		                           &ACoMHumanPlayerController::Input_UIZoomOut);
 	}
 }
 
@@ -89,6 +121,28 @@ void ACoMHumanPlayerController::Input_EndTurn(const FInputActionValue& /*Value*/
 	// TODO (Sprint 2): Validate it is this wizard's turn, then call
 	//   UCoMTurnSubsystem::CommitEndTurn() via GetGameInstance()->GetSubsystem.
 	UE_LOG(LogTemp, Log, TEXT("ACoMHumanPlayerController: EndTurn triggered (stub)."));
+}
+
+void ACoMHumanPlayerController::Input_UIZoomIn()
+{
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMAccessibilitySubsystem* Acc = GI->GetSubsystem<UCoMAccessibilitySubsystem>())
+		{
+			Acc->ZoomIn();
+		}
+	}
+}
+
+void ACoMHumanPlayerController::Input_UIZoomOut()
+{
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMAccessibilitySubsystem* Acc = GI->GetSubsystem<UCoMAccessibilitySubsystem>())
+		{
+			Acc->ZoomOut();
+		}
+	}
 }
 
 FIntPoint ACoMHumanPlayerController::WorldToTile(const FVector& WorldPos)

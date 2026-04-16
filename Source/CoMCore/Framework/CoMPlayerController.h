@@ -71,6 +71,10 @@ private:
 	/** Triggered by IA_QuickLoad (F9). Loads game from the QuickSave slot. */
 	void Input_QuickLoad(const FInputActionValue& Value);
 
+	/** UI zoom in/out via Ctrl+Scroll for accessibility. */
+	void Input_UIZoomIn();
+	void Input_UIZoomOut();
+
 	/** Handles left-click tile/city/army selection on the overworld. */
 	void OnSelectPressed();
 

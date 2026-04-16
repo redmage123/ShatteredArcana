@@ -1,6 +1,7 @@
 // Copyright Mythforge Studios. All Rights Reserved.
 // CoMGameInstance.cpp — COM-032
 #include "Framework/CoMGameInstance.h"
+#include "GameFramework/GameUserSettings.h"
 
 UCoMGameInstance::UCoMGameInstance()
 {
@@ -9,6 +10,15 @@ UCoMGameInstance::UCoMGameInstance()
 void UCoMGameInstance::Init()
 {
 	Super::Init();
+
+	// Force windowed fullscreen on startup
+	if (UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings())
+	{
+		Settings->SetFullscreenMode(EWindowMode::WindowedFullscreen);
+		Settings->SetScreenResolution(FIntPoint(1920, 1080));
+		Settings->ConfirmVideoMode();
+		Settings->ApplySettings(false);
+	}
 }
 
 void UCoMGameInstance::Shutdown()

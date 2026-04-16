@@ -146,6 +146,12 @@ ECoMSpellEffect CoMSpellDatabase::ParseEffect(const FString& SpellIDStr)
 	{
 		return ECoMSpellEffect::Divination;
 	}
+	if (Lower.Contains(TEXT("diplomat")) || Lower.Contains(TEXT("treaty")) ||
+	    Lower.Contains(TEXT("alliance")) || Lower.Contains(TEXT("pact")) ||
+	    Lower.Contains(TEXT("reputation")) || Lower.Contains(TEXT("majesty")))
+	{
+		return ECoMSpellEffect::Diplomatic;
+	}
 	return ECoMSpellEffect::Damage; // Default
 }
 
@@ -198,6 +204,7 @@ FCoMSpellInfo CoMSpellDatabase::GetSpellInfo(FName SpellID)
 	case ECoMSpellEffect::GlobalEnchantment:
 	case ECoMSpellEffect::Divination:
 	case ECoMSpellEffect::Dispel:
+	case ECoMSpellEffect::Diplomatic:
 		Info.TargetType = ECoMSpellTarget::NoTarget;
 		break;
 	}
@@ -747,6 +754,606 @@ void CoMSpellDatabase::InitializeDatabase()
 		S.TargetType = ECoMSpellTarget::UnitTarget; S.EffectType = ECoMSpellEffect::UnitBuff;
 		S.ResearchCost = 50; S.CastingCost = 5; S.Range = 4;
 		S.bOngoing = true; S.UpkeepMana = 1;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// =====================================================================
+	// Diplomatic Spells
+	// =====================================================================
+
+	// ─── Life Diplomatic ─────────────────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Aura_of_Majesty"));
+		S.DisplayName = FText::FromString(TEXT("Aura of Majesty"));
+		S.Realm = ECoMSpellRealm::Life; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Diplomatic;
+		S.ResearchCost = 400; S.CastingCost = 120;
+		S.UpkeepMana = 10; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Divine_Mandate"));
+		S.DisplayName = FText::FromString(TEXT("Divine Mandate"));
+		S.Realm = ECoMSpellRealm::Life; S.Rarity = ECoMSpellRarity::Uncommon;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Diplomatic;
+		S.ResearchCost = 150; S.CastingCost = 60;
+		S.UpkeepMana = 8; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Holy_Alliance"));
+		S.DisplayName = FText::FromString(TEXT("Holy Alliance"));
+		S.Realm = ECoMSpellRealm::Life; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Diplomatic;
+		S.ResearchCost = 400; S.CastingCost = 80;
+		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Death Diplomatic ────────────────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Aura_of_Fear"));
+		S.DisplayName = FText::FromString(TEXT("Aura of Fear"));
+		S.Realm = ECoMSpellRealm::Death; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Diplomatic;
+		S.ResearchCost = 400; S.CastingCost = 100;
+		S.UpkeepMana = 8; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Dark_Intimidation"));
+		S.DisplayName = FText::FromString(TEXT("Dark Intimidation"));
+		S.Realm = ECoMSpellRealm::Death; S.Rarity = ECoMSpellRarity::Uncommon;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Diplomatic;
+		S.ResearchCost = 150; S.CastingCost = 60;
+		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Soul_Pact"));
+		S.DisplayName = FText::FromString(TEXT("Soul Pact"));
+		S.Realm = ECoMSpellRealm::Death; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Diplomatic;
+		S.ResearchCost = 1000; S.CastingCost = 100;
+		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Glamour Diplomatic ─────────────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Charm_of_Persuasion"));
+		S.DisplayName = FText::FromString(TEXT("Charm of Persuasion"));
+		S.Realm = ECoMSpellRealm::Glamour; S.Rarity = ECoMSpellRarity::Common;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Diplomatic;
+		S.ResearchCost = 50; S.CastingCost = 40;
+		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Diplomatic_Illusion"));
+		S.DisplayName = FText::FromString(TEXT("Diplomatic Illusion"));
+		S.Realm = ECoMSpellRealm::Glamour; S.Rarity = ECoMSpellRarity::Uncommon;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Diplomatic;
+		S.ResearchCost = 150; S.CastingCost = 50;
+		S.UpkeepMana = 5; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("True_Name_Binding"));
+		S.DisplayName = FText::FromString(TEXT("True Name Binding"));
+		S.Realm = ECoMSpellRealm::Glamour; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Diplomatic;
+		S.ResearchCost = 1000; S.CastingCost = 150;
+		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Binding Diplomatic ─────────────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Dark_Contract"));
+		S.DisplayName = FText::FromString(TEXT("Dark Contract"));
+		S.Realm = ECoMSpellRealm::Binding; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Diplomatic;
+		S.ResearchCost = 400; S.CastingCost = 80;
+		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Infernal_Ultimatum"));
+		S.DisplayName = FText::FromString(TEXT("Infernal Ultimatum"));
+		S.Realm = ECoMSpellRealm::Binding; S.Rarity = ECoMSpellRarity::Uncommon;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Diplomatic;
+		S.ResearchCost = 150; S.CastingCost = 60;
+		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Sorcery Diplomatic ─────────────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Word_of_Recall"));
+		S.DisplayName = FText::FromString(TEXT("Word of Recall"));
+		S.Realm = ECoMSpellRealm::Sorcery; S.Rarity = ECoMSpellRarity::Uncommon;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Dispel;
+		S.ResearchCost = 150; S.CastingCost = 50;
+		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Diplomatic_Scrying"));
+		S.DisplayName = FText::FromString(TEXT("Diplomatic Scrying"));
+		S.Realm = ECoMSpellRealm::Sorcery; S.Rarity = ECoMSpellRarity::Common;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Divination;
+		S.ResearchCost = 50; S.CastingCost = 30;
+		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// =====================================================================
+	// City Enchantments (MoM-style)
+	// =====================================================================
+
+	// ─── Life City Enchantments ──────────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Heavenly_Light"));
+		S.DisplayName = FText::FromString(TEXT("Heavenly Light"));
+		S.Realm = ECoMSpellRealm::Life; S.Rarity = ECoMSpellRarity::Common;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 50; S.CastingCost = 30;
+		S.UpkeepMana = 3; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Consecrate_Ground"));
+		S.DisplayName = FText::FromString(TEXT("Consecrate Ground"));
+		S.Realm = ECoMSpellRealm::Life; S.Rarity = ECoMSpellRarity::Uncommon;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 150; S.CastingCost = 60;
+		S.UpkeepMana = 5; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Prosperity"));
+		S.DisplayName = FText::FromString(TEXT("Prosperity"));
+		S.Realm = ECoMSpellRealm::Life; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 400; S.CastingCost = 100;
+		S.UpkeepMana = 4; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Guardian_Spirit"));
+		S.DisplayName = FText::FromString(TEXT("Guardian Spirit"));
+		S.Realm = ECoMSpellRealm::Life; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 1000; S.CastingCost = 200;
+		S.UpkeepMana = 6; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Death City Enchantments ─────────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Dark_Ritual"));
+		S.DisplayName = FText::FromString(TEXT("Dark Ritual"));
+		S.Realm = ECoMSpellRealm::Death; S.Rarity = ECoMSpellRarity::Common;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 50; S.CastingCost = 25;
+		S.UpkeepMana = 3; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Pestilence"));
+		S.DisplayName = FText::FromString(TEXT("Pestilence"));
+		S.Realm = ECoMSpellRealm::Death; S.Rarity = ECoMSpellRarity::Uncommon;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityDebuff;
+		S.ResearchCost = 150; S.CastingCost = 60;
+		S.UpkeepMana = 5; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Famine"));
+		S.DisplayName = FText::FromString(TEXT("Famine"));
+		S.Realm = ECoMSpellRealm::Death; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityDebuff;
+		S.ResearchCost = 400; S.CastingCost = 100;
+		S.UpkeepMana = 4; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Cursed_Lands"));
+		S.DisplayName = FText::FromString(TEXT("Cursed Lands"));
+		S.Realm = ECoMSpellRealm::Death; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityDebuff;
+		S.ResearchCost = 1000; S.CastingCost = 200;
+		S.UpkeepMana = 8; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Chaos City Enchantments ─────────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Wall_of_Fire"));
+		S.DisplayName = FText::FromString(TEXT("Wall of Fire"));
+		S.Realm = ECoMSpellRealm::Chaos; S.Rarity = ECoMSpellRarity::Common;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 50; S.CastingCost = 30;
+		S.UpkeepMana = 3; S.bOngoing = true; S.bInstant = false;
+		S.DamageBase = 3;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Chaos_Rift"));
+		S.DisplayName = FText::FromString(TEXT("Chaos Rift"));
+		S.Realm = ECoMSpellRealm::Chaos; S.Rarity = ECoMSpellRarity::Uncommon;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 150; S.CastingCost = 60;
+		S.UpkeepMana = 5; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Volcano"));
+		S.DisplayName = FText::FromString(TEXT("Volcano"));
+		S.Realm = ECoMSpellRealm::Chaos; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityDebuff;
+		S.ResearchCost = 400; S.CastingCost = 200;
+		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Armageddon_Clock"));
+		S.DisplayName = FText::FromString(TEXT("Armageddon Clock"));
+		S.Realm = ECoMSpellRealm::Chaos; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 1000; S.CastingCost = 300;
+		S.UpkeepMana = 20; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Nature City Enchantments ────────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Nature_Ward"));
+		S.DisplayName = FText::FromString(TEXT("Nature Ward"));
+		S.Realm = ECoMSpellRealm::Nature; S.Rarity = ECoMSpellRarity::Common;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 50; S.CastingCost = 20;
+		S.UpkeepMana = 2; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Gaias_Blessing"));
+		S.DisplayName = FText::FromString(TEXT("Gaia's Blessing"));
+		S.Realm = ECoMSpellRealm::Nature; S.Rarity = ECoMSpellRarity::Uncommon;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 150; S.CastingCost = 60;
+		S.UpkeepMana = 5; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Earth_Gate"));
+		S.DisplayName = FText::FromString(TEXT("Earth Gate"));
+		S.Realm = ECoMSpellRealm::Nature; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 400; S.CastingCost = 120;
+		S.UpkeepMana = 8; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Great_Tree"));
+		S.DisplayName = FText::FromString(TEXT("Great Tree"));
+		S.Realm = ECoMSpellRealm::Nature; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 1000; S.CastingCost = 250;
+		S.UpkeepMana = 10; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Sorcery City Enchantments ───────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Awareness"));
+		S.DisplayName = FText::FromString(TEXT("Awareness"));
+		S.Realm = ECoMSpellRealm::Sorcery; S.Rarity = ECoMSpellRarity::Common;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 50; S.CastingCost = 25;
+		S.UpkeepMana = 3; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Phantom_Warriors"));
+		S.DisplayName = FText::FromString(TEXT("Phantom Warriors"));
+		S.Realm = ECoMSpellRealm::Sorcery; S.Rarity = ECoMSpellRarity::Uncommon;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 150; S.CastingCost = 50;
+		S.UpkeepMana = 4; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Spell_Ward"));
+		S.DisplayName = FText::FromString(TEXT("Spell Ward"));
+		S.Realm = ECoMSpellRealm::Sorcery; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 400; S.CastingCost = 100;
+		S.UpkeepMana = 6; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Flying_Fortress"));
+		S.DisplayName = FText::FromString(TEXT("Flying Fortress"));
+		S.Realm = ECoMSpellRealm::Sorcery; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::CityTarget; S.EffectType = ECoMSpellEffect::CityBuff;
+		S.ResearchCost = 1000; S.CastingCost = 250;
+		S.UpkeepMana = 10; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// =====================================================================
+	// Global Enchantments
+	// =====================================================================
+
+	// ─── Life Global Enchantments ────────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Crusade"));
+		S.DisplayName = FText::FromString(TEXT("Crusade"));
+		S.Realm = ECoMSpellRealm::Life; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 1000; S.CastingCost = 300;
+		S.UpkeepMana = 15; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Tranquility"));
+		S.DisplayName = FText::FromString(TEXT("Tranquility"));
+		S.Realm = ECoMSpellRealm::Life; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 400; S.CastingCost = 120;
+		S.UpkeepMana = 8; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Just_Cause"));
+		S.DisplayName = FText::FromString(TEXT("Just Cause"));
+		S.Realm = ECoMSpellRealm::Life; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 400; S.CastingCost = 120;
+		S.UpkeepMana = 10; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Death Global Enchantments ───────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Eternal_Night"));
+		S.DisplayName = FText::FromString(TEXT("Eternal Night"));
+		S.Realm = ECoMSpellRealm::Death; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 1000; S.CastingCost = 300;
+		S.UpkeepMana = 15; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Zombie_Mastery"));
+		S.DisplayName = FText::FromString(TEXT("Zombie Mastery"));
+		S.Realm = ECoMSpellRealm::Death; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 400; S.CastingCost = 150;
+		S.UpkeepMana = 12; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Chaos Global Enchantments ───────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Chaos_Surge"));
+		S.DisplayName = FText::FromString(TEXT("Chaos Surge"));
+		S.Realm = ECoMSpellRealm::Chaos; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 400; S.CastingCost = 150;
+		S.UpkeepMana = 12; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Great_Wasting"));
+		S.DisplayName = FText::FromString(TEXT("Great Wasting"));
+		S.Realm = ECoMSpellRealm::Chaos; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 1000; S.CastingCost = 300;
+		S.UpkeepMana = 15; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Doom_Mastery"));
+		S.DisplayName = FText::FromString(TEXT("Doom Mastery"));
+		S.Realm = ECoMSpellRealm::Chaos; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 1000; S.CastingCost = 350;
+		S.UpkeepMana = 20; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Nature Global Enchantments ──────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Nature_Awareness"));
+		S.DisplayName = FText::FromString(TEXT("Nature Awareness"));
+		S.Realm = ECoMSpellRealm::Nature; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 400; S.CastingCost = 120;
+		S.UpkeepMana = 10; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Herb_Mastery"));
+		S.DisplayName = FText::FromString(TEXT("Herb Mastery"));
+		S.Realm = ECoMSpellRealm::Nature; S.Rarity = ECoMSpellRarity::Uncommon;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 150; S.CastingCost = 60;
+		S.UpkeepMana = 8; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Gaia_Force"));
+		S.DisplayName = FText::FromString(TEXT("Gaia Force"));
+		S.Realm = ECoMSpellRealm::Nature; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 1000; S.CastingCost = 300;
+		S.UpkeepMana = 15; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Sorcery Global Enchantments ─────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Suppress_Magic"));
+		S.DisplayName = FText::FromString(TEXT("Suppress Magic"));
+		S.Realm = ECoMSpellRealm::Sorcery; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 1000; S.CastingCost = 300;
+		S.UpkeepMana = 15; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Detect_Magic"));
+		S.DisplayName = FText::FromString(TEXT("Detect Magic"));
+		S.Realm = ECoMSpellRealm::Sorcery; S.Rarity = ECoMSpellRarity::Common;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Divination;
+		S.ResearchCost = 50; S.CastingCost = 20;
+		S.UpkeepMana = 5; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Aether_Binding"));
+		S.DisplayName = FText::FromString(TEXT("Aether Binding"));
+		S.Realm = ECoMSpellRealm::Sorcery; S.Rarity = ECoMSpellRarity::Rare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 400; S.CastingCost = 150;
+		S.UpkeepMana = 10; S.bOngoing = true; S.bInstant = false;
+		RegisterSpell(MoveTemp(S));
+	}
+
+	// ─── Arcane Global Enchantments ──────────────────────────────────
+
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Spell_of_Mastery"));
+		S.DisplayName = FText::FromString(TEXT("Spell of Mastery"));
+		S.Realm = ECoMSpellRealm::Arcane; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 10000; S.CastingCost = 5000;
+		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Spell_of_Return"));
+		S.DisplayName = FText::FromString(TEXT("Spell of Return"));
+		S.Realm = ECoMSpellRealm::Arcane; S.Rarity = ECoMSpellRarity::VeryRare;
+		S.Scope = ECoMSpellScope::Global;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::GlobalEnchantment;
+		S.ResearchCost = 1000; S.CastingCost = 500;
+		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
 		RegisterSpell(MoveTemp(S));
 	}
 }
