@@ -22,7 +22,7 @@
 #include "CoMUISubsystem.h"
 #include "Shared/CoMWidgetStyles.h"
 
-static const FString GWizardNames[] = {
+static const FString GPortraitWizardNames[] = {
 	TEXT("Merlin"), TEXT("Morgana"), TEXT("Zephyros"), TEXT("Hecate"),
 	TEXT("Malachar"), TEXT("Lunara"), TEXT("Grimnar"), TEXT("Nekros"),
 	TEXT("Gaia"), TEXT("Pyraxis"), TEXT("Glaciel"), TEXT("Aldric"),
@@ -225,7 +225,7 @@ void UCoMWizardCreationWidget::BuildLayout()
 
 			// Wizard name
 			UTextBlock* NameLabel = WidgetTree->ConstructWidget<UTextBlock>();
-			NameLabel->SetText(FText::FromString(GWizardNames[Idx]));
+			NameLabel->SetText(FText::FromString(GPortraitWizardNames[Idx]));
 			NameLabel->SetColorAndOpacity(FSlateColor(CoMStyle::TextSilver));
 			NameLabel->SetJustification(ETextJustify::Center);
 			FSlateFontInfo NFont = NameLabel->GetFont();

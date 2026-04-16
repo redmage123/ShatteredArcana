@@ -47,6 +47,15 @@ void ACoMOverworldGameMode::BeginPlay()
 	// Check if a game is already in progress (e.g. loaded save).
 	if (TurnSys && TurnSys->HasGameStarted())
 	{
+		// Spawn the rendering bridge actor for the resumed game.
+		UClass* RenderActorClass = LoadClass<AActor>(nullptr,
+			TEXT("/Script/CoMRendering.CoMOverworldRenderingActor"));
+		if (RenderActorClass)
+		{
+			W->SpawnActor<AActor>(RenderActorClass, FTransform::Identity);
+			UE_LOG(LogTemp, Log, TEXT("[CoMOverworldGameMode] Spawned OverworldRenderingActor (resume)"));
+		}
+
 		// Resume — just show the HUD.
 		if (CoMGI) { CoMGI->OnHUDRequested.Broadcast(); }
 		return;
@@ -139,6 +148,20 @@ void ACoMOverworldGameMode::StartNewGame(int32 NumWizards)
 		UnitSub->AddUnitToArmy(SettlerId, ArmyId);
 		UE_LOG(LogTemp, Log, TEXT("[CoMOverworldGameMode] Spawned starting army, ArmyID=%d (Swordsmen=%d, Settler=%d)"),
 		       ArmyId, SwordsmenId, SettlerId);
+	}
+
+	// Spawn the overworld rendering bridge actor.
+	// Use LoadClass to avoid a CoMCore -> CoMRendering module dependency.
+	UClass* RenderActorClass = LoadClass<AActor>(nullptr,
+		TEXT("/Script/CoMRendering.CoMOverworldRenderingActor"));
+	if (RenderActorClass)
+	{
+		W->SpawnActor<AActor>(RenderActorClass, FTransform::Identity);
+		UE_LOG(LogTemp, Log, TEXT("[CoMOverworldGameMode] Spawned OverworldRenderingActor"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[CoMOverworldGameMode] Could not load CoMOverworldRenderingActor class"));
 	}
 
 	// Show the in-game HUD.

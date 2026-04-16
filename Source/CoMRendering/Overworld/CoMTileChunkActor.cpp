@@ -156,13 +156,22 @@ void ACoMTileChunkActor::BuildChunkTexture(UCoMWorldMapSubsystem* MapSub,
 	Mip.BulkData.Unlock();
 	Tex->UpdateResource();
 
-	// Create or update the material instance
+	// Create or update the material instance.
+	// We need a material whose shader actually samples a texture parameter.
+	// The engine's BasicShapeMaterial (bundled with /Engine/BasicShapes/) exposes
+	// a "Texture" parameter that maps to the diffuse/base-color input.
 	if (!ChunkMID)
 	{
-		// Use a simple unlit material so the map is always fully readable
 		UMaterialInterface* BaseMat = LoadObject<UMaterialInterface>(
 			nullptr,
-			TEXT("/Engine/EngineMaterials/DefaultMaterial.DefaultMaterial"));
+			TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+		if (!BaseMat)
+		{
+			// Fallback: try the legacy path used in some engine versions
+			BaseMat = LoadObject<UMaterialInterface>(
+				nullptr,
+				TEXT("/Engine/EngineMaterials/DefaultMaterial.DefaultMaterial"));
+		}
 		if (BaseMat)
 		{
 			ChunkMID = UMaterialInstanceDynamic::Create(BaseMat, this);
@@ -171,6 +180,9 @@ void ACoMTileChunkActor::BuildChunkTexture(UCoMWorldMapSubsystem* MapSub,
 
 	if (ChunkMID)
 	{
+		// BasicShapeMaterial uses "Texture"; try both names so it works
+		// regardless of which parent material was loaded.
+		ChunkMID->SetTextureParameterValue(FName(TEXT("Texture")), Tex);
 		ChunkMID->SetTextureParameterValue(FName(TEXT("BaseColor")), Tex);
 		ChunkMesh->SetMaterial(0, ChunkMID);
 	}
