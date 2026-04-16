@@ -92,9 +92,10 @@ void UCoMUISubsystem::Deinitialize()
 template<typename T>
 T* UCoMUISubsystem::CreateAndShowWidget(TSubclassOf<T> WidgetClass, T*& InstanceRef, int32 ZOrder)
 {
-	// If already showing, just return the existing instance.
+	// If already in viewport, ensure visible and return.
 	if (InstanceRef && InstanceRef->IsInViewport())
 	{
+		InstanceRef->SetVisibility(ESlateVisibility::Visible);
 		return InstanceRef;
 	}
 

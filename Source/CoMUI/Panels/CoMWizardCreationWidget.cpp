@@ -130,12 +130,12 @@ void UCoMWizardCreationWidget::BuildLayout()
 	UOverlay* RootOverlay = WidgetTree->ConstructWidget<UOverlay>();
 	BackgroundBorder->AddChild(RootOverlay);
 
-	// Scrollable content so large portraits fit
+	// Scrollable content filling the full screen
 	UScrollBox* ScrollRoot = WidgetTree->ConstructWidget<UScrollBox>();
 	UOverlaySlot* ScrollSlotRef = RootOverlay->AddChildToOverlay(ScrollRoot);
 	if (ScrollSlotRef)
 	{
-		ScrollSlotRef->SetHorizontalAlignment(HAlign_Center);
+		ScrollSlotRef->SetHorizontalAlignment(HAlign_Fill);
 		ScrollSlotRef->SetVerticalAlignment(VAlign_Fill);
 	}
 
@@ -159,20 +159,19 @@ void UCoMWizardCreationWidget::BuildLayout()
 		if (SlotRef) { SlotRef->SetHorizontalAlignment(HAlign_Center); SlotRef->SetPadding(FMargin(0, 20, 0, 15)); }
 	}
 
-	// Portrait grid: 4 columns x 4 rows (14 used, 2 empty)
-	for (int32 Row = 0; Row < 4; ++Row)
+	// Portrait grid: 7 columns x 2 rows (14 portraits filling the screen)
+	for (int32 Row = 0; Row < 2; ++Row)
 	{
 		UHorizontalBox* PortRow = WidgetTree->ConstructWidget<UHorizontalBox>();
 
-		for (int32 Col = 0; Col < 4; ++Col)
+		for (int32 Col = 0; Col < 7; ++Col)
 		{
-			int32 Idx = Row * 4 + Col;
+			int32 Idx = Row * 7 + Col;
 			if (Idx >= NumPortraits)
 			{
-				// Empty cell spacer
 				USizeBox* EmptyCell = WidgetTree->ConstructWidget<USizeBox>();
-				EmptyCell->SetWidthOverride(340.0f);
-				EmptyCell->SetHeightOverride(400.0f);
+				EmptyCell->SetWidthOverride(250.0f);
+				EmptyCell->SetHeightOverride(340.0f);
 				PortRow->AddChildToHorizontalBox(EmptyCell);
 				continue;
 			}
@@ -195,7 +194,7 @@ void UCoMWizardCreationWidget::BuildLayout()
 
 			UVerticalBox* PortContent = WidgetTree->ConstructWidget<UVerticalBox>();
 
-			// Portrait image — 320x320
+			// Portrait image — 230x230 (fits 7 across on 1920px)
 			PortraitImages[Idx] = WidgetTree->ConstructWidget<UImage>();
 			{
 				FString AssetPath = FString::Printf(
@@ -213,13 +212,13 @@ void UCoMWizardCreationWidget::BuildLayout()
 					Brush.TintColor = FSlateColor(FLinearColor::MakeFromHSV8(
 						static_cast<uint8>(Hue * 255), 140, 180));
 				}
-				Brush.ImageSize = FVector2D(320.0f, 320.0f);
+				Brush.ImageSize = FVector2D(230.0f, 230.0f);
 				PortraitImages[Idx]->SetBrush(Brush);
 			}
 
 			USizeBox* ImgSize = WidgetTree->ConstructWidget<USizeBox>();
-			ImgSize->SetWidthOverride(320.0f);
-			ImgSize->SetHeightOverride(320.0f);
+			ImgSize->SetWidthOverride(230.0f);
+			ImgSize->SetHeightOverride(230.0f);
 			ImgSize->AddChild(PortraitImages[Idx]);
 			PortContent->AddChildToVerticalBox(ImgSize);
 
@@ -240,8 +239,8 @@ void UCoMWizardCreationWidget::BuildLayout()
 			PortraitBorders[Idx]->AddChild(PortraitButtons[Idx]);
 
 			USizeBox* CellSize = WidgetTree->ConstructWidget<USizeBox>();
-			CellSize->SetWidthOverride(340.0f);
-			CellSize->SetHeightOverride(400.0f);
+			CellSize->SetWidthOverride(250.0f);
+			CellSize->SetHeightOverride(300.0f);
 			CellSize->AddChild(PortraitBorders[Idx]);
 
 			UHorizontalBoxSlot* CellSlotRef = PortRow->AddChildToHorizontalBox(CellSize);

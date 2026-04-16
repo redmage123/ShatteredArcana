@@ -11,6 +11,7 @@
 #include "Components/Spacer.h"
 #include "Components/Image.h"
 #include "Blueprint/WidgetTree.h"
+#include "CoMUISubsystem.h"
 
 // =============================================================================
 // Colour constants
@@ -99,7 +100,15 @@ void UCoMCreditsWidget::StartCredits()
 void UCoMCreditsWidget::StopCredits()
 {
 	bIsScrolling = false;
-	RemoveFromParent();
+
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMUISubsystem* UISS = GI->GetSubsystem<UCoMUISubsystem>())
+		{
+			UISS->HideCredits();
+			UISS->ShowMainMenu();
+		}
+	}
 }
 
 // =============================================================================
