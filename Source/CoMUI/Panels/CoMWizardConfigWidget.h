@@ -5,7 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "CoreTypes/CoMEnums.h"
+#include "CoreTypes/CoMEnums.h"  // for ECoMPlane, ECoMSpellRealm
 #include "Framework/CoMGameInstance.h"
 #include "CoMWizardConfigWidget.generated.h"
 
@@ -94,6 +94,16 @@ private:
 	UFUNCTION() void OnBackClicked();
 	UFUNCTION() void OnStartGameClicked();
 
+	// -- Plane selection callbacks ------------------------------------------------
+
+	UFUNCTION() void OnPlane0(); UFUNCTION() void OnPlane1();
+	UFUNCTION() void OnPlane2(); UFUNCTION() void OnPlane3();
+	UFUNCTION() void OnPlane4(); UFUNCTION() void OnPlane5();
+	UFUNCTION() void OnPlane6(); UFUNCTION() void OnPlane7();
+
+	void SelectPlane(int32 PlaneIndex);
+	void UpdatePlaneHighlights();
+
 	// -- Logic --------------------------------------------------------------------
 
 	void OnAddBook(int32 RealmIndex);
@@ -132,6 +142,7 @@ private:
 	TArray<int32> SelectedRetortIndices;
 	int32 SelectedDifficulty = 1;
 	int32 SelectedPortraitIndex = 0;
+	ECoMPlane SelectedPlane = ECoMPlane::Aurelith;
 
 	// -- Widget references --------------------------------------------------------
 
@@ -142,6 +153,7 @@ private:
 	// Top bar
 	UPROPERTY() UImage* TopPortraitImage = nullptr;
 	UPROPERTY() UTextBlock* PicksRemainingText = nullptr;
+	UPROPERTY() UTextBlock* PicksRemainingTextRight = nullptr;
 
 	// Spell book rows
 	UPROPERTY() UButton* AddBookButtons[9] = {};
@@ -159,6 +171,10 @@ private:
 
 	// Difficulty buttons
 	UPROPERTY() UButton* DifficultyButtons[5] = {};
+
+	// Plane selection
+	UPROPERTY() UButton* PlaneButtons[8] = {};
+	UPROPERTY() UBorder* PlaneBorders[8] = {};
 
 	// Bottom buttons
 	UPROPERTY() UButton* BackButton = nullptr;

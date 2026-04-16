@@ -810,7 +810,7 @@ void UCoMWizardConfigWidget::BuildLayout()
 				PortBrush.DrawAs = ESlateBrushDrawType::Box;
 				PortBrush.TintColor = FSlateColor(WizConfigColours::Grey);
 			}
-			PortBrush.ImageSize = FVector2D(100.0f, 100.0f);
+			PortBrush.ImageSize = FVector2D(300.0f, 300.0f);
 			TopPortraitImage->SetBrush(PortBrush);
 
 			UBorder* PortBorder = WidgetTree->ConstructWidget<UBorder>();
@@ -818,8 +818,8 @@ void UCoMWizardConfigWidget::BuildLayout()
 			PortBorder->SetPadding(FMargin(2.0f));
 
 			USizeBox* PortSize = WidgetTree->ConstructWidget<USizeBox>();
-			PortSize->SetWidthOverride(104.0f);
-			PortSize->SetHeightOverride(104.0f);
+			PortSize->SetWidthOverride(304.0f);
+			PortSize->SetHeightOverride(304.0f);
 			PortSize->AddChild(TopPortraitImage);
 			PortBorder->AddChild(PortSize);
 
@@ -836,7 +836,7 @@ void UCoMWizardConfigWidget::BuildLayout()
 			NameLabel->SetText(FText::FromString(TEXT("Wizard Name")));
 			NameLabel->SetColorAndOpacity(FSlateColor(WizConfigColours::LightGrey));
 			FSlateFontInfo NLFont = NameLabel->GetFont();
-			NLFont.Size = 11;
+			NLFont.Size = 16;
 			NameLabel->SetFont(NLFont);
 			UVerticalBoxSlot* NLSlot = NamePicksBox->AddChildToVerticalBox(NameLabel);
 			if (NLSlot) { NLSlot->SetPadding(FMargin(0, 0, 0, 2)); }
@@ -853,7 +853,7 @@ void UCoMWizardConfigWidget::BuildLayout()
 			TextBoxStyle.BackgroundImageFocused.TintColor = FSlateColor(WizConfigColours::DarkButton);
 			TextBoxStyle.ForegroundColor = FSlateColor(WizConfigColours::White);
 			FSlateFontInfo InputFont = TextBoxStyle.TextStyle.Font;
-			InputFont.Size = 14;
+			InputFont.Size = 18;
 			TextBoxStyle.TextStyle.Font = InputFont;
 			TextBoxStyle.TextStyle.ColorAndOpacity = FSlateColor(WizConfigColours::White);
 
@@ -972,7 +972,7 @@ void UCoMWizardConfigWidget::BuildLayout()
 				BookSize->AddChild(BookVBox);
 
 				UHorizontalBoxSlot* SSlotRef = SlotsRow->AddChildToHorizontalBox(BookSize);
-				if (SSlotRef) { SSlotRef->SetPadding(FMargin(1.0f, 0.0f)); SSlotRef->SetVerticalAlignment(VAlign_Bottom); }
+				if (SSlotRef) { SSlotRef->SetPadding(FMargin(4.0f, 0.0f)); SSlotRef->SetVerticalAlignment(VAlign_Bottom); }
 			}
 			UHorizontalBoxSlot* SlotsSlotRef = MainRow->AddChildToHorizontalBox(SlotsRow);
 			if (SlotsSlotRef) { SlotsSlotRef->SetVerticalAlignment(VAlign_Center); SlotsSlotRef->SetPadding(FMargin(0, 0, 8, 0)); }
@@ -1379,5 +1379,40 @@ void UCoMWizardConfigWidget::BuildLayout()
 
 		UVerticalBoxSlot* BottomSlot = ContentBox->AddChildToVerticalBox(BottomRow);
 		if (BottomSlot) { BottomSlot->SetPadding(FMargin(0, 0, 0, 8)); }
+	}
+}
+
+// Plane selection callbacks
+void UCoMWizardConfigWidget::OnPlane0() { SelectPlane(0); }
+void UCoMWizardConfigWidget::OnPlane1() { SelectPlane(1); }
+void UCoMWizardConfigWidget::OnPlane2() { SelectPlane(2); }
+void UCoMWizardConfigWidget::OnPlane3() { SelectPlane(3); }
+void UCoMWizardConfigWidget::OnPlane4() { SelectPlane(4); }
+void UCoMWizardConfigWidget::OnPlane5() { SelectPlane(5); }
+void UCoMWizardConfigWidget::OnPlane6() { SelectPlane(6); }
+void UCoMWizardConfigWidget::OnPlane7() { SelectPlane(7); }
+
+void UCoMWizardConfigWidget::SelectPlane(int32 PlaneIndex)
+{
+	SelectedPlane = static_cast<ECoMPlane>(FMath::Clamp(PlaneIndex, 0, 7));
+	UpdatePlaneHighlights();
+	UE_LOG(LogTemp, Log, TEXT("Selected plane: %d"), PlaneIndex);
+}
+
+void UCoMWizardConfigWidget::UpdatePlaneHighlights()
+{
+	for (int32 i = 0; i < 8; ++i)
+	{
+		if (PlaneBorders[i])
+		{
+			if (i == static_cast<int32>(SelectedPlane))
+			{
+				PlaneBorders[i]->SetBrushColor(FLinearColor(0.855f, 0.647f, 0.125f, 1.0f));
+			}
+			else
+			{
+				PlaneBorders[i]->SetBrushColor(FLinearColor(0.2f, 0.15f, 0.05f, 0.4f));
+			}
+		}
 	}
 }
