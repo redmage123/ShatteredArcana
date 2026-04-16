@@ -278,6 +278,74 @@ bool CoMSpellDatabase::Contains(FName SpellID)
 	return SpellTable.Contains(SpellID);
 }
 
+TArray<FName> CoMSpellDatabase::GetSpellsForRealmAndRarity(ECoMSpellRealm Realm, ECoMSpellRarity Rarity)
+{
+	EnsureInitialized();
+	TArray<FName> Result;
+	for (const auto& Pair : SpellTable)
+	{
+		if (Pair.Value.Realm == Realm && Pair.Value.Rarity == Rarity)
+		{
+			Result.Add(Pair.Key);
+		}
+	}
+	return Result;
+}
+
+void CoMSpellDatabase::GetSpellsForBookCount(ECoMSpellRealm Realm, int32 BookCount,
+	TArray<FName>& OutLearnableSpells, TArray<FName>& OutStartingSpells)
+{
+	OutLearnableSpells.Empty();
+	OutStartingSpells.Empty();
+
+	if (BookCount <= 0 || Realm == ECoMSpellRealm::None) return;
+
+	// Determine which tiers are accessible based on book count (MoM rules)
+	// 1 book: Common only
+	// 2-3 books: Common + Uncommon
+	// 4-5 books: Common + Uncommon + Rare
+	// 6+ books: Common + Uncommon + Rare + Very Rare
+	TArray<ECoMSpellRarity> AccessibleTiers;
+	AccessibleTiers.Add(ECoMSpellRarity::Common);
+	if (BookCount >= 2) AccessibleTiers.Add(ECoMSpellRarity::Uncommon);
+	if (BookCount >= 4) AccessibleTiers.Add(ECoMSpellRarity::Rare);
+	if (BookCount >= 6) AccessibleTiers.Add(ECoMSpellRarity::VeryRare);
+
+	// Gather all learnable spells from accessible tiers
+	for (ECoMSpellRarity Tier : AccessibleTiers)
+	{
+		TArray<FName> TierSpells = GetSpellsForRealmAndRarity(Realm, Tier);
+		OutLearnableSpells.Append(TierSpells);
+	}
+
+	// Starting spells: 1 guaranteed Common spell per 2 books (MoM rule)
+	// Plus 1 guaranteed Uncommon at 4+ books, 1 Rare at 8+ books
+	TArray<FName> CommonSpells = GetSpellsForRealmAndRarity(Realm, ECoMSpellRarity::Common);
+	int32 GuaranteedCommon = FMath::Min(BookCount / 2, CommonSpells.Num());
+	for (int32 i = 0; i < GuaranteedCommon; ++i)
+	{
+		OutStartingSpells.Add(CommonSpells[i]);
+	}
+
+	if (BookCount >= 4)
+	{
+		TArray<FName> UncommonSpells = GetSpellsForRealmAndRarity(Realm, ECoMSpellRarity::Uncommon);
+		if (UncommonSpells.Num() > 0)
+		{
+			OutStartingSpells.Add(UncommonSpells[0]);
+		}
+	}
+
+	if (BookCount >= 8)
+	{
+		TArray<FName> RareSpells = GetSpellsForRealmAndRarity(Realm, ECoMSpellRarity::Rare);
+		if (RareSpells.Num() > 0)
+		{
+			OutStartingSpells.Add(RareSpells[0]);
+		}
+	}
+}
+
 // =====================================================================
 // Explicit Spell Registrations — representative spells per realm/tier
 // The remaining ~550 spells use the tier-based fallback system.

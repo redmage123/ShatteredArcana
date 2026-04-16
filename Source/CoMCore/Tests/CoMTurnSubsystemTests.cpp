@@ -17,7 +17,7 @@
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMTurnInitialState,
 	"CoM.Turn.InitialState",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTurnInitialState::RunTest(const FString& /*Params*/)
 {
@@ -37,7 +37,7 @@ bool FCoMTurnInitialState::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMTurnStartGame,
 	"CoM.Turn.StartGame",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTurnStartGame::RunTest(const FString& /*Params*/)
 {
@@ -58,7 +58,7 @@ bool FCoMTurnStartGame::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMTurnWizardPhaseAdvance,
 	"CoM.Turn.WizardPhaseAdvance",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTurnWizardPhaseAdvance::RunTest(const FString& /*Params*/)
 {
@@ -98,7 +98,7 @@ bool FCoMTurnWizardPhaseAdvance::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMTurnSkipToNextWizard,
 	"CoM.Turn.SkipToNextWizard",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTurnSkipToNextWizard::RunTest(const FString& /*Params*/)
 {
@@ -127,7 +127,7 @@ bool FCoMTurnSkipToNextWizard::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMTurnCounterIncrement,
 	"CoM.Turn.CounterIncrement",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTurnCounterIncrement::RunTest(const FString& /*Params*/)
 {
@@ -156,7 +156,7 @@ bool FCoMTurnCounterIncrement::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMTurnWizardCountClamp,
 	"CoM.Turn.WizardCountClamp",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTurnWizardCountClamp::RunTest(const FString& /*Params*/)
 {

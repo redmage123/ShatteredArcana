@@ -10,11 +10,27 @@
 #include "Components/Overlay.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "Components/Border.h"
+#include "Components/SizeBox.h"
 #include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "CoMCore/Economy/CoMCitySubsystem.h"
 #include "CoMCore/Units/CoMUnitSubsystem.h"
+#include "Blueprint/WidgetTree.h"
 #include "CoMUI/CoMUISubsystem.h"
+
+TSharedRef<SWidget> UCoMCityScreenWidget::RebuildWidget()
+{
+	BuildLayout();
+	return Super::RebuildWidget();
+}
+
+void UCoMCityScreenWidget::BuildLayout()
+{
+	// CityScreenWidget uses BindWidgetOptional — the root and all static widgets
+	// come from the UMG blueprint. Nothing to construct here, but we ensure
+	// WidgetTree->RootWidget is set if needed by the blueprint.
+}
 
 void UCoMCityScreenWidget::NativeConstruct()
 {
@@ -208,6 +224,7 @@ void UCoMCityScreenWidget::SetCity(int32 CityId)
 	RefreshBuildings();
 	RefreshQueue();
 	RefreshGarrison();
+	RefreshEnchantments();
 	RefreshFocusButtons();
 
 	// Update queue header with "(Auto)" if governor is active.
@@ -427,10 +444,10 @@ void UCoMCityScreenWidget::RefreshQueue()
 			FontInfo.Size = 12;
 			NameText->SetFont(FontInfo);
 
-			UHorizontalBoxSlot* Slot = Row->AddChildToHorizontalBox(NameText);
-			if (Slot)
+			UHorizontalBoxSlot* SlotRef = Row->AddChildToHorizontalBox(NameText);
+			if (SlotRef)
 			{
-				Slot->SetPadding(FMargin(4.f, 2.f));
+				SlotRef->SetPadding(FMargin(4.f, 2.f));
 			}
 		}
 
@@ -453,10 +470,10 @@ void UCoMCityScreenWidget::RefreshQueue()
 			FontInfo.Size = 11;
 			TurnsText->SetFont(FontInfo);
 
-			UHorizontalBoxSlot* Slot = Row->AddChildToHorizontalBox(TurnsText);
-			if (Slot)
+			UHorizontalBoxSlot* SlotRef = Row->AddChildToHorizontalBox(TurnsText);
+			if (SlotRef)
 			{
-				Slot->SetPadding(FMargin(8.f, 2.f));
+				SlotRef->SetPadding(FMargin(8.f, 2.f));
 			}
 		}
 
@@ -713,3 +730,167 @@ void UCoMCityScreenWidget::OnFocusMilitaryClicked()   { SetCityFocus(ECoMCityFoc
 void UCoMCityScreenWidget::OnFocusEconomyClicked()    { SetCityFocus(ECoMCityFocus::Economy); }
 void UCoMCityScreenWidget::OnFocusResearchClicked()   { SetCityFocus(ECoMCityFocus::Research); }
 void UCoMCityScreenWidget::OnFocusProductionClicked() { SetCityFocus(ECoMCityFocus::Production); }
+
+// =============================================================================
+// City Enchantments Display
+// =============================================================================
+
+// Enchantment visual config: spell name → display color and icon symbol
+namespace EnchantmentVisuals
+{
+	struct FEnchantmentStyle
+	{
+		FLinearColor Color;
+		FString Symbol;
+	};
+
+	static FEnchantmentStyle GetStyleForSpell(FName SpellID)
+	{
+		FString Name = SpellID.ToString().ToLower();
+
+		// Life / Holy enchantments — gold/white
+		if (Name.Contains(TEXT("heavenly")) || Name.Contains(TEXT("holy")) ||
+		    Name.Contains(TEXT("divine")) || Name.Contains(TEXT("consecrate")))
+		{
+			return { FLinearColor(1.0f, 0.9f, 0.4f, 1.0f), TEXT("\u2600") }; // Sun symbol
+		}
+		// Fire enchantments — red/orange
+		if (Name.Contains(TEXT("fire")) || Name.Contains(TEXT("flame")) ||
+		    Name.Contains(TEXT("inferno")) || Name.Contains(TEXT("blaze")))
+		{
+			return { FLinearColor(1.0f, 0.3f, 0.1f, 1.0f), TEXT("\u2668") }; // Fire symbol
+		}
+		// Nature enchantments — green
+		if (Name.Contains(TEXT("nature")) || Name.Contains(TEXT("growth")) ||
+		    Name.Contains(TEXT("earth")) || Name.Contains(TEXT("gaia")))
+		{
+			return { FLinearColor(0.2f, 0.8f, 0.2f, 1.0f), TEXT("\u2618") }; // Shamrock
+		}
+		// Death/Dark enchantments — purple
+		if (Name.Contains(TEXT("death")) || Name.Contains(TEXT("dark")) ||
+		    Name.Contains(TEXT("curse")) || Name.Contains(TEXT("blight")))
+		{
+			return { FLinearColor(0.6f, 0.1f, 0.6f, 1.0f), TEXT("\u2620") }; // Skull
+		}
+		// Chaos enchantments — red
+		if (Name.Contains(TEXT("chaos")) || Name.Contains(TEXT("corruption")) ||
+		    Name.Contains(TEXT("doom")))
+		{
+			return { FLinearColor(0.8f, 0.1f, 0.1f, 1.0f), TEXT("\u26A0") }; // Warning
+		}
+		// Sorcery — blue
+		if (Name.Contains(TEXT("sorcery")) || Name.Contains(TEXT("ward")) ||
+		    Name.Contains(TEXT("counter")) || Name.Contains(TEXT("spell")))
+		{
+			return { FLinearColor(0.2f, 0.4f, 1.0f, 1.0f), TEXT("\u2728") }; // Sparkle
+		}
+
+		// Default — silver arcane
+		return { FLinearColor(0.7f, 0.7f, 0.8f, 1.0f), TEXT("\u2726") }; // Star
+	}
+}
+
+void UCoMCityScreenWidget::RefreshEnchantments()
+{
+	if (!EnchantmentsScrollBox) { return; }
+
+	EnchantmentsScrollBox->ClearChildren();
+
+	UCoMCitySubsystem* CitySub = GetCitySubsystem();
+	if (!CitySub || CurrentCityId < 0) { return; }
+
+	const FCoMCityData* City = CitySub->GetCity(CurrentCityId);
+	if (!City) { return; }
+
+	// Show/hide the enchantments header based on whether any exist
+	if (EnchantmentsHeaderText)
+	{
+		if (City->CityEnchantments.Num() > 0)
+		{
+			EnchantmentsHeaderText->SetText(FText::FromString(
+				FString::Printf(TEXT("Active Enchantments (%d)"), City->CityEnchantments.Num())));
+			EnchantmentsHeaderText->SetVisibility(ESlateVisibility::Visible);
+		}
+		else
+		{
+			EnchantmentsHeaderText->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+
+	// Create a row for each active enchantment
+	for (const FCoMEnchantmentInstance& Ench : City->CityEnchantments)
+	{
+		const auto Style = EnchantmentVisuals::GetStyleForSpell(Ench.SpellID);
+
+		UHorizontalBox* Row = NewObject<UHorizontalBox>(this);
+
+		// Enchantment color indicator bar
+		UBorder* ColorBar = NewObject<UBorder>(this);
+		ColorBar->SetBrushColor(Style.Color);
+
+		USizeBox* BarSize = NewObject<USizeBox>(this);
+		BarSize->SetWidthOverride(4.0f);
+		BarSize->SetHeightOverride(24.0f);
+		BarSize->AddChild(ColorBar);
+
+		UHorizontalBoxSlot* BarSlotRef = Row->AddChildToHorizontalBox(BarSize);
+		if (BarSlotRef)
+		{
+			BarSlotRef->SetVerticalAlignment(VAlign_Center);
+			BarSlotRef->SetPadding(FMargin(0, 2, 6, 2));
+		}
+
+		// Symbol + spell name
+		UTextBlock* NameText = NewObject<UTextBlock>(this);
+		FString DisplayName = FString::Printf(TEXT("%s %s"), *Style.Symbol, *Ench.SpellID.ToString());
+		NameText->SetText(FText::FromString(DisplayName));
+		NameText->SetColorAndOpacity(FSlateColor(Style.Color));
+
+		FSlateFontInfo Font = NameText->GetFont();
+		Font.Size = 12;
+		NameText->SetFont(Font);
+
+		UHorizontalBoxSlot* NameSlotRef = Row->AddChildToHorizontalBox(NameText);
+		if (NameSlotRef)
+		{
+			NameSlotRef->SetVerticalAlignment(VAlign_Center);
+		}
+
+		// Mana cost
+		UTextBlock* CostText = NewObject<UTextBlock>(this);
+		int32 ManaCost = static_cast<int32>(Ench.UpkeepManaCost.ToDouble());
+		FString CostStr = (ManaCost > 0)
+			? FString::Printf(TEXT("  (%d mana/turn)"), ManaCost)
+			: TEXT("  (permanent)");
+		CostText->SetText(FText::FromString(CostStr));
+		CostText->SetColorAndOpacity(FSlateColor(FLinearColor(0.5f, 0.5f, 0.55f, 1.0f)));
+
+		FSlateFontInfo CostFont = CostText->GetFont();
+		CostFont.Size = 10;
+		CostText->SetFont(CostFont);
+
+		UHorizontalBoxSlot* CostSlotRef = Row->AddChildToHorizontalBox(CostText);
+		if (CostSlotRef)
+		{
+			CostSlotRef->SetVerticalAlignment(VAlign_Center);
+			CostSlotRef->SetPadding(FMargin(4, 0, 0, 0));
+		}
+
+		// Turns remaining (if not permanent)
+		if (Ench.TurnsRemaining > 0)
+		{
+			UTextBlock* TurnsText = NewObject<UTextBlock>(this);
+			TurnsText->SetText(FText::FromString(
+				FString::Printf(TEXT("  [%d turns]"), Ench.TurnsRemaining)));
+			TurnsText->SetColorAndOpacity(FSlateColor(FLinearColor(0.6f, 0.4f, 0.2f, 1.0f)));
+			FSlateFontInfo TurnsFont = TurnsText->GetFont();
+			TurnsFont.Size = 10;
+			TurnsText->SetFont(TurnsFont);
+
+			UHorizontalBoxSlot* TurnsSlotRef = Row->AddChildToHorizontalBox(TurnsText);
+			if (TurnsSlotRef) { TurnsSlotRef->SetVerticalAlignment(VAlign_Center); }
+		}
+
+		EnchantmentsScrollBox->AddChild(Row);
+	}
+}

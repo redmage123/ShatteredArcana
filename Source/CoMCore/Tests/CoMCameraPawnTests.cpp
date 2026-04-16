@@ -16,7 +16,7 @@
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMCameraZoomClampMin,
 	"CoM.Camera.ZoomClampMin",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMCameraZoomClampMin::RunTest(const FString& /*Params*/)
 {
@@ -54,7 +54,7 @@ bool FCoMCameraZoomClampMin::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMCameraZoomClampMax,
 	"CoM.Camera.ZoomClampMax",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMCameraZoomClampMax::RunTest(const FString& /*Params*/)
 {
@@ -74,7 +74,7 @@ bool FCoMCameraZoomClampMax::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMCameraPanSpeedScalesWithZoom,
 	"CoM.Camera.PanSpeedScalesWithZoom",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMCameraPanSpeedScalesWithZoom::RunTest(const FString& /*Params*/)
 {
@@ -94,7 +94,7 @@ bool FCoMCameraPanSpeedScalesWithZoom::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMCameraEdgeScrollMarginSanity,
 	"CoM.Camera.EdgeScrollMarginSanity",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMCameraEdgeScrollMarginSanity::RunTest(const FString& /*Params*/)
 {

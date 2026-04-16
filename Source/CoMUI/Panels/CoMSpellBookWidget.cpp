@@ -9,11 +9,329 @@
 #include "Components/ScrollBox.h"
 #include "Components/ProgressBar.h"
 #include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Components/Slider.h"
+#include "Components/Border.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
+#include "Components/SizeBox.h"
+#include "Components/Spacer.h"
+#include "Blueprint/WidgetTree.h"
 #include "Engine/GameInstance.h"
+#include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "CoMCore/Magic/CoMMagicSubsystem.h"
 #include "CoMUI/CoMUISubsystem.h"
+
+// Realm colours for tabs
+namespace SpellColours
+{
+	static const FLinearColor BgDark     = FLinearColor(0.015f, 0.010f, 0.040f, 1.0f);
+	static const FLinearColor PanelBg    = FLinearColor(0.035f, 0.025f, 0.080f, 0.95f);
+	static const FLinearColor Gold       = FLinearColor(0.855f, 0.647f, 0.125f, 1.0f);
+	static const FLinearColor GoldDim    = FLinearColor(0.500f, 0.380f, 0.080f, 0.5f);
+	static const FLinearColor Silver     = FLinearColor(0.820f, 0.820f, 0.860f, 1.0f);
+	static const FLinearColor Grey       = FLinearColor(0.400f, 0.400f, 0.450f, 1.0f);
+	static const FLinearColor BtnNormal  = FLinearColor(0.055f, 0.040f, 0.120f, 1.0f);
+	static const FLinearColor BtnHover   = FLinearColor(0.090f, 0.060f, 0.180f, 1.0f);
+
+	// Realm-specific colours
+	static const FLinearColor Life       = FLinearColor(1.0f, 1.0f, 0.9f, 1.0f);
+	static const FLinearColor Death      = FLinearColor(0.5f, 0.0f, 0.5f, 1.0f);
+	static const FLinearColor Chaos      = FLinearColor(1.0f, 0.2f, 0.0f, 1.0f);
+	static const FLinearColor Nature     = FLinearColor(0.0f, 0.8f, 0.0f, 1.0f);
+	static const FLinearColor Sorcery    = FLinearColor(0.2f, 0.4f, 1.0f, 1.0f);
+	static const FLinearColor Arcane     = FLinearColor(0.8f, 0.6f, 0.0f, 1.0f);
+	static const FLinearColor Binding    = FLinearColor(0.6f, 0.0f, 0.0f, 1.0f);
+	static const FLinearColor Spirit     = FLinearColor(0.6f, 0.4f, 1.0f, 1.0f);
+	static const FLinearColor Glamour    = FLinearColor(1.0f, 0.4f, 0.8f, 1.0f);
+}
+
+// =============================================================================
+// RebuildWidget — build the spell book layout before Slate finalizes
+// =============================================================================
+
+TSharedRef<SWidget> UCoMSpellBookWidget::RebuildWidget()
+{
+	if (WidgetTree)
+	{
+		BuildLayout();
+	}
+	return Super::RebuildWidget();
+}
+
+void UCoMSpellBookWidget::BuildLayout()
+{
+	// ── Full-screen dark background ──────────────────────────────────────
+	UBorder* Background = WidgetTree->ConstructWidget<UBorder>();
+	Background->SetBrushColor(SpellColours::BgDark);
+	Background->SetPadding(FMargin(0.0f));
+	WidgetTree->RootWidget = Background;
+
+	UOverlay* ScreenOverlay = WidgetTree->ConstructWidget<UOverlay>();
+	Background->AddChild(ScreenOverlay);
+
+	// ── Center panel ─────────────────────────────────────────────────────
+	UBorder* PanelBorder = WidgetTree->ConstructWidget<UBorder>();
+	PanelBorder->SetBrushColor(SpellColours::GoldDim);
+	PanelBorder->SetPadding(FMargin(1.5f));
+
+	UBorder* PanelInner = WidgetTree->ConstructWidget<UBorder>();
+	PanelInner->SetBrushColor(SpellColours::PanelBg);
+	PanelInner->SetPadding(FMargin(20.0f, 15.0f));
+	PanelBorder->AddChild(PanelInner);
+
+	USizeBox* PanelSize = WidgetTree->ConstructWidget<USizeBox>();
+	PanelSize->SetWidthOverride(900.0f);
+	PanelSize->SetHeightOverride(700.0f);
+	PanelSize->AddChild(PanelBorder);
+
+	UOverlaySlot* PanelSlot = ScreenOverlay->AddChildToOverlay(PanelSize);
+	if (PanelSlot)
+	{
+		PanelSlot->SetHorizontalAlignment(HAlign_Center);
+		PanelSlot->SetVerticalAlignment(VAlign_Center);
+	}
+
+	// ── Content column ───────────────────────────────────────────────────
+	RootContentBox = WidgetTree->ConstructWidget<UVerticalBox>();
+	PanelInner->AddChild(RootContentBox);
+
+	// ── Header: "Spell Book" + wizard info ───────────────────────────────
+	{
+		UHorizontalBox* HeaderRow = WidgetTree->ConstructWidget<UHorizontalBox>();
+
+		WizardNameText = WidgetTree->ConstructWidget<UTextBlock>();
+		WizardNameText->SetText(FText::FromString(TEXT("SPELL BOOK")));
+		WizardNameText->SetColorAndOpacity(FSlateColor(SpellColours::Gold));
+		FSlateFontInfo TitleFont = WizardNameText->GetFont();
+		TitleFont.Size = 28;
+		TitleFont.TypefaceFontName = FName(TEXT("Bold"));
+		WizardNameText->SetFont(TitleFont);
+
+		UHorizontalBoxSlot* TitleSlotRef = HeaderRow->AddChildToHorizontalBox(WizardNameText);
+		if (TitleSlotRef) { TitleSlotRef->SetVerticalAlignment(VAlign_Center); }
+
+		// Mana display on the right
+		ManaText = WidgetTree->ConstructWidget<UTextBlock>();
+		ManaText->SetText(FText::FromString(TEXT("Mana: -- / --")));
+		ManaText->SetColorAndOpacity(FSlateColor(SpellColours::Silver));
+		FSlateFontInfo ManaFont = ManaText->GetFont();
+		ManaFont.Size = 14;
+		ManaText->SetFont(ManaFont);
+
+		UHorizontalBoxSlot* ManaSlotRef = HeaderRow->AddChildToHorizontalBox(ManaText);
+		if (ManaSlotRef)
+		{
+			ManaSlotRef->SetVerticalAlignment(VAlign_Center);
+			ManaSlotRef->SetHorizontalAlignment(HAlign_Right);
+			ManaSlotRef->SetPadding(FMargin(20.0f, 0.0f, 0.0f, 0.0f));
+		}
+
+		UVerticalBoxSlot* HeaderSlotRef = RootContentBox->AddChildToVerticalBox(HeaderRow);
+		if (HeaderSlotRef) { HeaderSlotRef->SetPadding(FMargin(0, 0, 0, 10)); }
+	}
+
+	// ── Realm tabs ───────────────────────────────────────────────────────
+	{
+		RealmTabsBox = WidgetTree->ConstructWidget<UHorizontalBox>();
+
+		LifeTab    = CreateRealmTab(TEXT("Life"),    SpellColours::Life);
+		DeathTab   = CreateRealmTab(TEXT("Death"),   SpellColours::Death);
+		ChaosTab   = CreateRealmTab(TEXT("Chaos"),   SpellColours::Chaos);
+		NatureTab  = CreateRealmTab(TEXT("Nature"),  SpellColours::Nature);
+		SorceryTab = CreateRealmTab(TEXT("Sorcery"), SpellColours::Sorcery);
+		ArcaneTab  = CreateRealmTab(TEXT("Arcane"),  SpellColours::Arcane);
+		BindingTab = CreateRealmTab(TEXT("Binding"), SpellColours::Binding);
+		SpiritTab  = CreateRealmTab(TEXT("Spirit"),  SpellColours::Spirit);
+		GlamourTab = CreateRealmTab(TEXT("Glamour"), SpellColours::Glamour);
+
+		UVerticalBoxSlot* TabSlotRef = RootContentBox->AddChildToVerticalBox(RealmTabsBox);
+		if (TabSlotRef) { TabSlotRef->SetPadding(FMargin(0, 0, 0, 8)); }
+	}
+
+	// ── Current realm label ──────────────────────────────────────────────
+	{
+		CurrentRealmText = WidgetTree->ConstructWidget<UTextBlock>();
+		CurrentRealmText->SetText(FText::FromString(TEXT("Arcane")));
+		CurrentRealmText->SetColorAndOpacity(FSlateColor(SpellColours::Gold));
+		FSlateFontInfo RealmFont = CurrentRealmText->GetFont();
+		RealmFont.Size = 18;
+		CurrentRealmText->SetFont(RealmFont);
+
+		UVerticalBoxSlot* RealmSlotRef = RootContentBox->AddChildToVerticalBox(CurrentRealmText);
+		if (RealmSlotRef) { RealmSlotRef->SetPadding(FMargin(0, 0, 0, 5)); }
+	}
+
+	// ── Research progress ────────────────────────────────────────────────
+	{
+		ResearchText = WidgetTree->ConstructWidget<UTextBlock>();
+		ResearchText->SetText(FText::FromString(TEXT("No active research")));
+		ResearchText->SetColorAndOpacity(FSlateColor(SpellColours::Silver));
+		FSlateFontInfo ResFont = ResearchText->GetFont();
+		ResFont.Size = 13;
+		ResearchText->SetFont(ResFont);
+
+		UVerticalBoxSlot* ResSlotRef = RootContentBox->AddChildToVerticalBox(ResearchText);
+		if (ResSlotRef) { ResSlotRef->SetPadding(FMargin(0, 0, 0, 4)); }
+
+		ResearchProgressBar = WidgetTree->ConstructWidget<UProgressBar>();
+		ResearchProgressBar->SetPercent(0.0f);
+		ResearchProgressBar->SetFillColorAndOpacity(FLinearColor(0.2f, 0.5f, 1.0f, 1.0f));
+
+		USizeBox* BarSize = WidgetTree->ConstructWidget<USizeBox>();
+		BarSize->SetHeightOverride(16.0f);
+		BarSize->AddChild(ResearchProgressBar);
+
+		UVerticalBoxSlot* BarSlotRef = RootContentBox->AddChildToVerticalBox(BarSize);
+		if (BarSlotRef) { BarSlotRef->SetPadding(FMargin(0, 0, 0, 10)); }
+	}
+
+	// ── Spell list (scrollable) ──────────────────────────────────────────
+	{
+		SpellListScrollBox = WidgetTree->ConstructWidget<UScrollBox>();
+
+		USizeBox* ListSize = WidgetTree->ConstructWidget<USizeBox>();
+		ListSize->SetHeightOverride(300.0f);
+		ListSize->AddChild(SpellListScrollBox);
+
+		UVerticalBoxSlot* ListSlotRef = RootContentBox->AddChildToVerticalBox(ListSize);
+		if (ListSlotRef) { ListSlotRef->SetPadding(FMargin(0, 0, 0, 10)); }
+	}
+
+	// ── Selected spell info ──────────────────────────────────────────────
+	{
+		SelectedSpellText = WidgetTree->ConstructWidget<UTextBlock>();
+		SelectedSpellText->SetText(FText::FromString(TEXT("No spell selected")));
+		SelectedSpellText->SetColorAndOpacity(FSlateColor(SpellColours::Silver));
+		FSlateFontInfo SelFont = SelectedSpellText->GetFont();
+		SelFont.Size = 14;
+		SelectedSpellText->SetFont(SelFont);
+
+		UVerticalBoxSlot* SelSlotRef = RootContentBox->AddChildToVerticalBox(SelectedSpellText);
+		if (SelSlotRef) { SelSlotRef->SetPadding(FMargin(0, 0, 0, 8)); }
+	}
+
+	// ── Mana allocation slider ───────────────────────────────────────────
+	{
+		ManaAllocationLabel = WidgetTree->ConstructWidget<UTextBlock>();
+		ManaAllocationLabel->SetText(FText::FromString(TEXT("Mana Allocation: Research / Casting")));
+		ManaAllocationLabel->SetColorAndOpacity(FSlateColor(SpellColours::Grey));
+		FSlateFontInfo AllocFont = ManaAllocationLabel->GetFont();
+		AllocFont.Size = 12;
+		ManaAllocationLabel->SetFont(AllocFont);
+
+		UVerticalBoxSlot* AllocLabelSlotRef = RootContentBox->AddChildToVerticalBox(ManaAllocationLabel);
+		if (AllocLabelSlotRef) { AllocLabelSlotRef->SetPadding(FMargin(0, 0, 0, 2)); }
+
+		ManaAllocationSlider = WidgetTree->ConstructWidget<USlider>();
+		ManaAllocationSlider->SetValue(0.5f);
+
+		USizeBox* SliderSize = WidgetTree->ConstructWidget<USizeBox>();
+		SliderSize->SetHeightOverride(24.0f);
+		SliderSize->AddChild(ManaAllocationSlider);
+
+		UVerticalBoxSlot* SliderSlotRef = RootContentBox->AddChildToVerticalBox(SliderSize);
+		if (SliderSlotRef) { SliderSlotRef->SetPadding(FMargin(0, 0, 0, 10)); }
+	}
+
+	// ── Bottom buttons: Research / Cast / Close ──────────────────────────
+	{
+		UHorizontalBox* ButtonRow = WidgetTree->ConstructWidget<UHorizontalBox>();
+
+		USizeBox* ResBox = nullptr;
+		USizeBox* CastBox = nullptr;
+		USizeBox* CloseBox = nullptr;
+		ResearchButton = CreateActionButton(TEXT("Research"), 140.f, &ResBox);
+		CastButton     = CreateActionButton(TEXT("Cast Spell"), 140.f, &CastBox);
+		CloseButton    = CreateActionButton(TEXT("Close"), 140.f, &CloseBox);
+
+		if (ResBox)   { UHorizontalBoxSlot* S = ButtonRow->AddChildToHorizontalBox(ResBox);   if (S) S->SetPadding(FMargin(0, 0, 10, 0)); }
+		if (CastBox)  { UHorizontalBoxSlot* S = ButtonRow->AddChildToHorizontalBox(CastBox);  if (S) S->SetPadding(FMargin(0, 0, 10, 0)); }
+		if (CloseBox) { UHorizontalBoxSlot* S = ButtonRow->AddChildToHorizontalBox(CloseBox); if (S) S->SetHorizontalAlignment(HAlign_Right); }
+
+		UVerticalBoxSlot* BtnRowSlotRef = RootContentBox->AddChildToVerticalBox(ButtonRow);
+		if (BtnRowSlotRef) { BtnRowSlotRef->SetPadding(FMargin(0, 5, 0, 0)); }
+	}
+}
+
+UButton* UCoMSpellBookWidget::CreateRealmTab(const FString& Label, const FLinearColor& Color)
+{
+	UButton* Btn = WidgetTree->ConstructWidget<UButton>();
+
+	FButtonStyle Style = Btn->GetStyle();
+	Style.Normal.DrawAs = ESlateBrushDrawType::Box;
+	Style.Normal.TintColor = FSlateColor(SpellColours::BtnNormal);
+	Style.Hovered.DrawAs = ESlateBrushDrawType::Box;
+	Style.Hovered.TintColor = FSlateColor(SpellColours::BtnHover);
+	Style.Pressed.DrawAs = ESlateBrushDrawType::Box;
+	Style.Pressed.TintColor = FSlateColor(SpellColours::BtnNormal);
+	Btn->SetStyle(Style);
+
+	UTextBlock* Text = WidgetTree->ConstructWidget<UTextBlock>();
+	Text->SetText(FText::FromString(Label));
+	Text->SetColorAndOpacity(FSlateColor(Color));
+	Text->SetJustification(ETextJustify::Center);
+	FSlateFontInfo Font = Text->GetFont();
+	Font.Size = 11;
+	Text->SetFont(Font);
+
+	Btn->AddChild(Text);
+
+	USizeBox* SizeBox = WidgetTree->ConstructWidget<USizeBox>();
+	SizeBox->SetWidthOverride(88.0f);
+	SizeBox->SetHeightOverride(32.0f);
+	SizeBox->AddChild(Btn);
+
+	UHorizontalBoxSlot* TabSlotRef = RealmTabsBox->AddChildToHorizontalBox(SizeBox);
+	if (TabSlotRef) { TabSlotRef->SetPadding(FMargin(2.0f, 0.0f)); }
+
+	return Btn;
+}
+
+UButton* UCoMSpellBookWidget::CreateActionButton(const FString& Label, float Width, USizeBox** OutSizeBox)
+{
+	UBorder* BtnBorder = WidgetTree->ConstructWidget<UBorder>();
+	BtnBorder->SetBrushColor(SpellColours::GoldDim);
+	BtnBorder->SetPadding(FMargin(1.0f));
+
+	UButton* Btn = WidgetTree->ConstructWidget<UButton>();
+	FButtonStyle Style = Btn->GetStyle();
+	Style.Normal.DrawAs = ESlateBrushDrawType::Box;
+	Style.Normal.TintColor = FSlateColor(SpellColours::BtnNormal);
+	Style.Hovered.DrawAs = ESlateBrushDrawType::Box;
+	Style.Hovered.TintColor = FSlateColor(SpellColours::BtnHover);
+	Style.Pressed.DrawAs = ESlateBrushDrawType::Box;
+	Style.Pressed.TintColor = FSlateColor(SpellColours::BtnNormal);
+	Btn->SetStyle(Style);
+
+	UTextBlock* Text = WidgetTree->ConstructWidget<UTextBlock>();
+	Text->SetText(FText::FromString(Label));
+	Text->SetColorAndOpacity(FSlateColor(SpellColours::Silver));
+	Text->SetJustification(ETextJustify::Center);
+	FSlateFontInfo Font = Text->GetFont();
+	Font.Size = 15;
+	Text->SetFont(Font);
+	Text->SetShadowOffset(FVector2D(1, 1));
+	Text->SetShadowColorAndOpacity(FLinearColor(0, 0, 0, 0.4f));
+
+	Btn->AddChild(Text);
+	BtnBorder->AddChild(Btn);
+
+	USizeBox* SizeBox = WidgetTree->ConstructWidget<USizeBox>();
+	SizeBox->SetWidthOverride(Width);
+	SizeBox->SetHeightOverride(40.0f);
+	SizeBox->AddChild(BtnBorder);
+
+	if (OutSizeBox) { *OutSizeBox = SizeBox; }
+	return Btn;
+}
+
+// =============================================================================
+// NativeConstruct — bind delegates (widgets already created by RebuildWidget)
+// =============================================================================
 
 void UCoMSpellBookWidget::NativeConstruct()
 {

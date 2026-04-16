@@ -18,7 +18,7 @@
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMWorldMapLayerCount,
 	"CoM.WorldMap.LayerCount",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMWorldMapLayerCount::RunTest(const FString& /*Params*/)
 {
@@ -34,7 +34,7 @@ bool FCoMWorldMapLayerCount::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMWorldMapTileCount,
 	"CoM.WorldMap.TileCountPerLayer",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMWorldMapTileCount::RunTest(const FString& /*Params*/)
 {
@@ -51,7 +51,7 @@ bool FCoMWorldMapTileCount::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMWorldMapMemoryBudget,
 	"CoM.WorldMap.MemoryBudget",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMWorldMapMemoryBudget::RunTest(const FString& /*Params*/)
 {
@@ -77,7 +77,7 @@ bool FCoMWorldMapMemoryBudget::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMWorldMapWrapX,
 	"CoM.WorldMap.WrapX",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMWorldMapWrapX::RunTest(const FString& /*Params*/)
 {
@@ -107,7 +107,7 @@ bool FCoMWorldMapWrapX::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMWorldMapFogDefault,
 	"CoM.WorldMap.FogDefault",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMWorldMapFogDefault::RunTest(const FString& /*Params*/)
 {
@@ -128,7 +128,7 @@ bool FCoMWorldMapFogDefault::RunTest(const FString& /*Params*/)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCoMWorldMapFogIsolation,
 	"CoM.WorldMap.FogIsolation",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMWorldMapFogIsolation::RunTest(const FString& /*Params*/)
 {

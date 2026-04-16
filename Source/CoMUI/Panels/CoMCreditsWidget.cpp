@@ -28,14 +28,18 @@ namespace CreditsColours
 // Lifecycle
 // =============================================================================
 
+TSharedRef<SWidget> UCoMCreditsWidget::RebuildWidget()
+{
+	BuildCreditsContent();
+	return Super::RebuildWidget();
+}
+
 void UCoMCreditsWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	bIsFocusable = true;
+	SetIsFocusable(true);
 	SetVisibility(ESlateVisibility::Visible);
-
-	BuildCreditsContent();
 }
 
 void UCoMCreditsWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -106,13 +110,16 @@ void UCoMCreditsWidget::BuildCreditsContent()
 {
 	// -- Full-screen dark background ------------------------------------------
 
-	BackgroundBorder = NewObject<UBorder>(this);
+	BackgroundBorder = WidgetTree->ConstructWidget<UBorder>();
 	BackgroundBorder->SetBrushColor(CreditsColours::Background);
 	BackgroundBorder->SetPadding(FMargin(0.0f));
 
+	// Set the background as the root widget BEFORE adding children.
+	WidgetTree->RootWidget = BackgroundBorder;
+
 	// -- Scroll box fills the background --------------------------------------
 
-	CreditsScrollBox = NewObject<UScrollBox>(this);
+	CreditsScrollBox = WidgetTree->ConstructWidget<UScrollBox>();
 	CreditsScrollBox->SetScrollBarVisibility(ESlateVisibility::Collapsed);
 	CreditsScrollBox->SetConsumeMouseWheel(EConsumeMouseWheel::Always);
 	CreditsScrollBox->SetOrientation(Orient_Vertical);
@@ -121,15 +128,8 @@ void UCoMCreditsWidget::BuildCreditsContent()
 
 	// -- Vertical box holds all credit lines ----------------------------------
 
-	ContentBox = NewObject<UVerticalBox>(this);
+	ContentBox = WidgetTree->ConstructWidget<UVerticalBox>();
 	CreditsScrollBox->AddChild(ContentBox);
-
-	// -- Set the background as the root widget content ------------------------
-
-	if (WidgetTree)
-	{
-		WidgetTree->RootWidget = BackgroundBorder;
-	}
 
 	// -- Build the credit lines -----------------------------------------------
 
@@ -292,7 +292,7 @@ void UCoMCreditsWidget::AddTextLine(const FString& Text, const FLinearColor& Col
 		return;
 	}
 
-	UTextBlock* TextBlock = NewObject<UTextBlock>(this);
+	UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>();
 	TextBlock->SetText(FText::FromString(Text));
 	TextBlock->SetColorAndOpacity(FSlateColor(Color));
 	TextBlock->SetJustification(ETextJustify::Center);
@@ -305,11 +305,11 @@ void UCoMCreditsWidget::AddTextLine(const FString& Text, const FLinearColor& Col
 	}
 	TextBlock->SetFont(FontInfo);
 
-	UVerticalBoxSlot* Slot = ContentBox->AddChildToVerticalBox(TextBlock);
-	if (Slot)
+	UVerticalBoxSlot* SlotRef = ContentBox->AddChildToVerticalBox(TextBlock);
+	if (SlotRef)
 	{
-		Slot->SetHorizontalAlignment(HAlign_Center);
-		Slot->SetPadding(FMargin(0.0f, 2.0f));
+		SlotRef->SetHorizontalAlignment(HAlign_Center);
+		SlotRef->SetPadding(FMargin(0.0f, 2.0f));
 	}
 }
 
@@ -320,15 +320,15 @@ void UCoMCreditsWidget::AddSeparator()
 		return;
 	}
 
-	UImage* Line = NewObject<UImage>(this);
+	UImage* Line = WidgetTree->ConstructWidget<UImage>();
 	Line->SetColorAndOpacity(CreditsColours::Gold);
 	Line->SetDesiredSizeOverride(FVector2D(400.0f, 2.0f));
 
-	UVerticalBoxSlot* Slot = ContentBox->AddChildToVerticalBox(Line);
-	if (Slot)
+	UVerticalBoxSlot* SlotRef = ContentBox->AddChildToVerticalBox(Line);
+	if (SlotRef)
 	{
-		Slot->SetHorizontalAlignment(HAlign_Center);
-		Slot->SetPadding(FMargin(0.0f, 8.0f));
+		SlotRef->SetHorizontalAlignment(HAlign_Center);
+		SlotRef->SetPadding(FMargin(0.0f, 8.0f));
 	}
 }
 
@@ -339,12 +339,12 @@ void UCoMCreditsWidget::AddSpacer(float Height)
 		return;
 	}
 
-	USpacer* SpacerWidget = NewObject<USpacer>(this);
+	USpacer* SpacerWidget = WidgetTree->ConstructWidget<USpacer>();
 	SpacerWidget->SetSize(FVector2D(1.0f, Height));
 
-	UVerticalBoxSlot* Slot = ContentBox->AddChildToVerticalBox(SpacerWidget);
-	if (Slot)
+	UVerticalBoxSlot* SlotRef = ContentBox->AddChildToVerticalBox(SpacerWidget);
+	if (SlotRef)
 	{
-		Slot->SetHorizontalAlignment(HAlign_Fill);
+		SlotRef->SetHorizontalAlignment(HAlign_Fill);
 	}
 }

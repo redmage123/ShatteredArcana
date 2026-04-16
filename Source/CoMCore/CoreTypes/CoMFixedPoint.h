@@ -101,7 +101,7 @@ struct COMCORE_API FFixed64
 	 */
 	FORCEINLINE FFixed64 operator*(const FFixed64& O) const
 	{
-#if PLATFORM_COMPILER_CLANG || PLATFORM_COMPILER_GCC
+#if PLATFORM_COMPILER_CLANG || (defined(PLATFORM_COMPILER_GCC) && PLATFORM_COMPILER_GCC)
 		// GCC/Clang: native __int128 support
 		const __int128 Wide = static_cast<__int128>(RawValue) * static_cast<__int128>(O.RawValue);
 		return FromRaw(static_cast<int64>(Wide >> FRAC_BITS));
@@ -124,7 +124,7 @@ struct COMCORE_API FFixed64
 	FORCEINLINE FFixed64 operator/(const FFixed64& O) const
 	{
 		if (O.RawValue == 0) { return FromRaw(0); }
-#if PLATFORM_COMPILER_CLANG || PLATFORM_COMPILER_GCC
+#if PLATFORM_COMPILER_CLANG || (defined(PLATFORM_COMPILER_GCC) && PLATFORM_COMPILER_GCC)
 		const __int128 Wide = static_cast<__int128>(RawValue) << FRAC_BITS;
 		return FromRaw(static_cast<int64>(Wide / static_cast<__int128>(O.RawValue)));
 #elif PLATFORM_WINDOWS

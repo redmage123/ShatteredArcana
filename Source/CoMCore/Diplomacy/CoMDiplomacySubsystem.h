@@ -198,6 +198,33 @@ public:
     void SendGift(int32 SenderId, int32 ReceiverId,
                   const TMap<ECoMResource, int32>& Resources, int32 Mana);
 
+    // ── Spell Trading ────────────────────────────────────────────────────────
+
+    /**
+     * Propose a spell trade between two wizards.
+     * Each wizard offers spells they know that the other doesn't.
+     * Requires Peace or Alliance treaty. Improves reputation.
+     * @return true if the trade was accepted (AI auto-evaluates; player gets UI prompt).
+     */
+    UFUNCTION(BlueprintCallable, Category = "Diplomacy")
+    bool ProposeSpellTrade(int32 OffererWizardId, int32 TargetWizardId,
+                           const TArray<FName>& OfferedSpells, const TArray<FName>& RequestedSpells);
+
+    /**
+     * Get spells that WizardA knows but WizardB doesn't (tradeable to B).
+     * Only includes spells in realms where B has at least 1 book.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Diplomacy")
+    TArray<FName> GetTradeableSpells(int32 FromWizardId, int32 ToWizardId) const;
+
+    /**
+     * AI evaluates a spell trade offer. Returns true if acceptable.
+     * Considers: spell rarity balance, reputation, personality, realm value.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Diplomacy")
+    bool AIEvaluateSpellTrade(int32 AIWizardId,
+                              const TArray<FName>& OfferedToAI, const TArray<FName>& RequestedFromAI) const;
+
     // ── First Contact ────────────────────────────────────────────────────────
 
     UFUNCTION(BlueprintCallable, Category = "Diplomacy")

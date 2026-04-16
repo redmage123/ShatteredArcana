@@ -67,7 +67,7 @@ namespace CoMTerrainDistTestHelpers
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_DataAssetLoadsByPlane,
 	"CoM.TerrainDist.DataAssetLoadsByPlane",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_DataAssetLoadsByPlane::RunTest(const FString& Parameters)
 {
@@ -99,7 +99,7 @@ bool FCoMTerrainDist_DataAssetLoadsByPlane::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_SurfaceWeightsSumPositive,
 	"CoM.TerrainDist.SurfaceWeightsSumPositive",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_SurfaceWeightsSumPositive::RunTest(const FString& Parameters)
 {
@@ -126,7 +126,7 @@ bool FCoMTerrainDist_SurfaceWeightsSumPositive::RunTest(const FString& Parameter
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_WeightedPickStayInBounds,
 	"CoM.TerrainDist.WeightedPickStayInBounds",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_WeightedPickStayInBounds::RunTest(const FString& Parameters)
 {
@@ -181,7 +181,7 @@ bool FCoMTerrainDist_WeightedPickStayInBounds::RunTest(const FString& Parameters
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_UnderdarkWeightsPresent,
 	"CoM.TerrainDist.UnderdarkWeightsPresent",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_UnderdarkWeightsPresent::RunTest(const FString& Parameters)
 {
@@ -204,7 +204,7 @@ bool FCoMTerrainDist_UnderdarkWeightsPresent::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_PlaneFieldMatchesAssetName,
 	"CoM.TerrainDist.PlaneFieldMatchesAssetName",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_PlaneFieldMatchesAssetName::RunTest(const FString& Parameters)
 {
@@ -242,7 +242,7 @@ bool FCoMTerrainDist_PlaneFieldMatchesAssetName::RunTest(const FString& Paramete
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_FallbackToHardcodedWhenNoAsset,
 	"CoM.TerrainDist.FallbackToHardcodedWhenNoAsset",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_FallbackToHardcodedWhenNoAsset::RunTest(const FString& Parameters)
 {

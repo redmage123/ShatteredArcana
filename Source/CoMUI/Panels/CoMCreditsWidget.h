@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetTree.h"
 #include "CoMCreditsWidget.generated.h"
 
 class UScrollBox;
@@ -36,6 +37,8 @@ public:
 	/** Scroll speed in pixels per second. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|Credits")
 	float ScrollSpeed = 30.0f;
+
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 protected:
 	virtual void NativeConstruct() override;

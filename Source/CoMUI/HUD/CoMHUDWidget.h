@@ -106,6 +106,12 @@ public:
 	FOnDiplomacyRequested OnDiplomacyRequested;
 
 protected:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+
+private:
+	void BuildLayout();
+
+protected:
 	// -- Button callbacks ------------------------------------------------------
 
 	UFUNCTION()

@@ -14,6 +14,11 @@ class UImage;
 class UTextBlock;
 class UButton;
 class UTexture2D;
+class UBorder;
+class USizeBox;
+class UVerticalBox;
+class UHorizontalBox;
+class UOverlay;
 class UCoMMinimapSubsystem;
 class UCoMCitySubsystem;
 class UCoMUnitSubsystem;
@@ -91,6 +96,7 @@ public:
 protected:
 	// -- UUserWidget overrides ------------------------------------------------
 
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
@@ -114,6 +120,9 @@ protected:
 
 private:
 	// -- Internal helpers -----------------------------------------------------
+
+	/** Build the entire minimap layout in C++. */
+	void BuildLayout();
 
 	/** Create the 160x100 dynamic texture. */
 	void CreateMinimapTexture();
@@ -143,6 +152,9 @@ private:
 	void OnNextPlaneClicked();
 
 	// -- State ----------------------------------------------------------------
+
+	UPROPERTY()
+	TObjectPtr<UBorder> RootBorder;
 
 	UPROPERTY()
 	TObjectPtr<UTexture2D> MinimapTexture;

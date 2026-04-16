@@ -1,4 +1,5 @@
-// TESTS DISABLED — fix after main build is clean
+// Terrain distribution tests — requires WorldGenerator fixes for UE 5.7 NewObject API
+// TODO: Fix UCoMWorldGenerator to accept Outer parameter, then remove this guard
 #if 0
 // Copyright Mythforge Studios. All Rights Reserved.
 // COM-S3-T2: Unit tests for UCoMTerrainDistributionDataAsset.
@@ -54,7 +55,7 @@ namespace CoMTerrainDistTestPrivate
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_WeightSumsToOnePerPlane,
 	"CoM.WorldGen.TerrainDist.WeightSumsToOnePerPlane",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_WeightSumsToOnePerPlane::RunTest(const FString& Parameters)
 {
@@ -75,7 +76,7 @@ bool FCoMTerrainDist_WeightSumsToOnePerPlane::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_AllPlanesHaveValidAsset,
 	"CoM.WorldGen.TerrainDist.AllPlanesHaveValidAsset",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_AllPlanesHaveValidAsset::RunTest(const FString& Parameters)
 {
@@ -113,7 +114,7 @@ bool FCoMTerrainDist_AllPlanesHaveValidAsset::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_UnderdarkWeightsSumToOne,
 	"CoM.WorldGen.TerrainDist.UnderdarkWeightsSumToOne",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_UnderdarkWeightsSumToOne::RunTest(const FString& Parameters)
 {
@@ -139,7 +140,7 @@ bool FCoMTerrainDist_UnderdarkWeightsSumToOne::RunTest(const FString& Parameters
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_UnderwaterWeightsSumToOne,
 	"CoM.WorldGen.TerrainDist.UnderwaterWeightsSumToOne",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_UnderwaterWeightsSumToOne::RunTest(const FString& Parameters)
 {
@@ -165,14 +166,14 @@ bool FCoMTerrainDist_UnderwaterWeightsSumToOne::RunTest(const FString& Parameter
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_InvalidWeightRejected,
 	"CoM.WorldGen.TerrainDist.InvalidWeightRejected",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_InvalidWeightRejected::RunTest(const FString& Parameters)
 {
 	// Build a distribution with one valid plane and one with a negative weight.
-	UCoMTerrainDistributionDataAsset* Dist = NewObject<UCoMTerrainDistributionDataAsset>();
+	UCoMTerrainDistributionDataAsset* Dist = NewObject<UCoMTerrainDistributionDataAsset>(GetTransientPackage());
 
-	UCoMTerrainWeightDataAsset* BadAsset = NewObject<UCoMTerrainWeightDataAsset>();
+	UCoMTerrainWeightDataAsset* BadAsset = NewObject<UCoMTerrainWeightDataAsset>(GetTransientPackage());
 	BadAsset->Plane = ECoMPlane::Aurelith;
 
 	FCoMTerrainWeightEntry Good;
@@ -202,11 +203,11 @@ bool FCoMTerrainDist_InvalidWeightRejected::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_NullEntryRejected,
 	"CoM.WorldGen.TerrainDist.NullEntryRejected",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_NullEntryRejected::RunTest(const FString& Parameters)
 {
-	UCoMTerrainDistributionDataAsset* Dist = NewObject<UCoMTerrainDistributionDataAsset>();
+	UCoMTerrainDistributionDataAsset* Dist = NewObject<UCoMTerrainDistributionDataAsset>(GetTransientPackage());
 	Dist->PlaneWeights.Add(nullptr); // deliberately null
 
 	TArray<FString> Errors;
@@ -228,7 +229,7 @@ bool FCoMTerrainDist_NullEntryRejected::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_GeneratorReadsDataAsset,
 	"CoM.WorldGen.TerrainDist.GeneratorReadsDataAsset",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_GeneratorReadsDataAsset::RunTest(const FString& Parameters)
 {
@@ -238,8 +239,8 @@ bool FCoMTerrainDist_GeneratorReadsDataAsset::RunTest(const FString& Parameters)
 	UCoMTerrainDistributionDataAsset* Dist = UCoMTerrainDistributionDataAsset::CreateDefaults();
 	if (!TestNotNull("Dist not null", Dist)) return false;
 
-	UCoMWorldMapSubsystem* Map = NewObject<UCoMWorldMapSubsystem>();
-	UCoMWorldGenerator*    Gen = NewObject<UCoMWorldGenerator>();
+	UCoMWorldMapSubsystem* Map = NewObject<UCoMWorldMapSubsystem>(GetTransientPackage());
+	UCoMWorldGenerator*    Gen = NewObject<UCoMWorldGenerator>(GetTransientPackage());
 	if (!TestNotNull("Map not null", Map) || !TestNotNull("Gen not null", Gen)) return false;
 
 	Map->InitializeLayers();
@@ -278,15 +279,15 @@ bool FCoMTerrainDist_GeneratorReadsDataAsset::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_DistinctPlanesDistinctTerrain,
 	"CoM.WorldGen.TerrainDist.DistinctPlanesDistinctTerrain",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_DistinctPlanesDistinctTerrain::RunTest(const FString& Parameters)
 {
 	using namespace CoM;
 
 	UCoMTerrainDistributionDataAsset* Dist = UCoMTerrainDistributionDataAsset::CreateDefaults();
-	UCoMWorldMapSubsystem* Map = NewObject<UCoMWorldMapSubsystem>();
-	UCoMWorldGenerator*    Gen = NewObject<UCoMWorldGenerator>();
+	UCoMWorldMapSubsystem* Map = NewObject<UCoMWorldMapSubsystem>(GetTransientPackage());
+	UCoMWorldGenerator*    Gen = NewObject<UCoMWorldGenerator>(GetTransientPackage());
 
 	Map->InitializeLayers();
 	Gen->GenerateWorld(Map, /*Seed=*/7777, Dist);
@@ -343,7 +344,7 @@ bool FCoMTerrainDist_DistinctPlanesDistinctTerrain::RunTest(const FString& Param
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_GetWeightsForPlane,
 	"CoM.WorldGen.TerrainDist.GetWeightsForPlane",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_GetWeightsForPlane::RunTest(const FString& Parameters)
 {
@@ -377,14 +378,14 @@ bool FCoMTerrainDist_GetWeightsForPlane::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMTerrainDist_NullDistributionFallsBack,
 	"CoM.WorldGen.TerrainDist.NullDistributionFallsBack",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMTerrainDist_NullDistributionFallsBack::RunTest(const FString& Parameters)
 {
 	using namespace CoM;
 
-	UCoMWorldMapSubsystem* Map = NewObject<UCoMWorldMapSubsystem>();
-	UCoMWorldGenerator*    Gen = NewObject<UCoMWorldGenerator>();
+	UCoMWorldMapSubsystem* Map = NewObject<UCoMWorldMapSubsystem>(GetTransientPackage());
+	UCoMWorldGenerator*    Gen = NewObject<UCoMWorldGenerator>(GetTransientPackage());
 
 	Map->InitializeLayers();
 

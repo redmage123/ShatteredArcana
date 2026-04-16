@@ -12,6 +12,10 @@ class UButton;
 class UScrollBox;
 class UVerticalBox;
 class UProgressBar;
+class UBorder;
+class USizeBox;
+class UHorizontalBox;
+class UOverlay;
 class UCoMUnitSubsystem;
 class UCoMCitySubsystem;
 
@@ -34,6 +38,7 @@ class COMUI_API UCoMArmyPanelWidget : public UUserWidget
 
 public:
 	virtual void NativeConstruct() override;
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 	// -- Army Data -------------------------------------------------------------
 
@@ -148,7 +153,31 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> CloseButton;
 
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> DisbandButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> TotalStrengthText;
+
+	UPROPERTY()
+	TObjectPtr<UVerticalBox> ContentBox;
+
+	UPROPERTY()
+	TObjectPtr<UBorder> BackgroundBorder;
+
+	UFUNCTION()
+	void OnDisbandButtonClicked();
+
 private:
+	/** Build the entire panel layout in C++. */
+	void BuildLayout();
+
+	/** Create a styled action button and add it to a parent vertical box. */
+	UButton* CreateStyledButton(const FString& Label, UVerticalBox* Parent);
+
+	/** Helper: add a label to a vertical box. */
+	UTextBlock* AddLabelToBox(const FString& Text, const FLinearColor& Color, int32 FontSize, UVerticalBox* Parent, const FMargin& Pad = FMargin(0));
+
 	UCoMUnitSubsystem* GetUnitSubsystem();
 	UCoMCitySubsystem* GetCitySubsystem();
 

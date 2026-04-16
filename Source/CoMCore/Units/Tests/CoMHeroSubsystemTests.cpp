@@ -20,7 +20,7 @@ static UCoMHeroSubsystem* GetTestHeroSubsystem()
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMHeroInitPersonalityTest,
 	"CoM.Hero.InitializePersonality",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMHeroInitPersonalityTest::RunTest(const FString& Parameters)
 {
@@ -57,7 +57,7 @@ bool FCoMHeroInitPersonalityTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMHeroGetLoyaltyTest,
 	"CoM.Hero.GetLoyalty",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMHeroGetLoyaltyTest::RunTest(const FString& Parameters)
 {
@@ -83,7 +83,7 @@ bool FCoMHeroGetLoyaltyTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMHeroModifyLoyaltyTest,
 	"CoM.Hero.ModifyLoyalty",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMHeroModifyLoyaltyTest::RunTest(const FString& Parameters)
 {
@@ -118,7 +118,7 @@ bool FCoMHeroModifyLoyaltyTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMHeroCheckDesertionTest,
 	"CoM.Hero.CheckDesertion",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMHeroCheckDesertionTest::RunTest(const FString& Parameters)
 {
@@ -154,7 +154,7 @@ bool FCoMHeroCheckDesertionTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMHeroTierConfigTest,
 	"CoM.Hero.TierConfig",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMHeroTierConfigTest::RunTest(const FString& Parameters)
 {
@@ -187,7 +187,7 @@ bool FCoMHeroTierConfigTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMHeroCanRecruitTierTest,
 	"CoM.Hero.CanRecruitTier",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMHeroCanRecruitTierTest::RunTest(const FString& Parameters)
 {
@@ -224,7 +224,7 @@ bool FCoMHeroCanRecruitTierTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMHeroAvailableClassesTest,
 	"CoM.Hero.AvailableClasses",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMHeroAvailableClassesTest::RunTest(const FString& Parameters)
 {

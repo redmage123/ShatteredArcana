@@ -9,7 +9,7 @@
 #include "CoMCore/CoreTypes/CoMEnums.h"
 
 /**
- * Static building info — all 34 universal buildings + 45 racial buildings.
+ * Static building info — all 46 universal buildings + 45 racial buildings = 91 total.
  * This struct mirrors UCoMBuildingDataAsset fields but lives in code
  * so the game has real data without needing editor-authored data assets.
  */
@@ -73,7 +73,7 @@ struct COMCORE_API FCoMBuildingInfo
 };
 
 /**
- * Static database of all 34 buildings. No UObject overhead.
+ * Static database of all 91 buildings. No UObject overhead.
  * Call GetBuildingInfo() to look up by FName.
  */
 class COMCORE_API CoMBuildingDatabase

@@ -13,6 +13,7 @@
 #include "Panels/CoMCreditsWidget.h"
 #include "Panels/CoMSettingsWidget.h"
 #include "Panels/CoMWizardCreationWidget.h"
+#include "Panels/CoMWizardConfigWidget.h"
 #include "HUD/CoMMainMenuWidget.h"
 #include "HUD/CoMLoadScreenWidget.h"
 #include "Panels/CoMVictoryScreenWidget.h"
@@ -20,27 +21,64 @@
 #include "HUD/CoMTurnNotificationWidget.h"
 #include "HUD/CoMSpellTargetingWidget.h"
 #include "Panels/CoMPreBattleWidget.h"
+#include "Panels/CoMUnitCardWidget.h"
+#include "Panels/CoMArmyStackWidget.h"
+#include "Panels/CoMHeroScreenWidget.h"
+#include "HUD/CoMSpellVFXWidget.h"
 #include "Framework/CoMGameInstance.h"
 #include "CoMCore/Combat/CoMCombatSubsystem.h"
+#include "CoMCore/Magic/CoMSpellVFXSubsystem.h"
+#include "CoMCore/Turn/CoMTurnSubsystem.h"
+#include "Engine/Texture2D.h"
 
 void UCoMUISubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
-	// Bind to the main menu delegate so ACoMMainMenuGameMode can trigger
-	// ShowMainMenu() without a compile-time dependency on CoMUI.
+	// Set widget class defaults so they work without Blueprint configuration.
+	if (!MainMenuWidgetClass)      { MainMenuWidgetClass      = UCoMMainMenuWidget::StaticClass(); }
+	if (!HUDWidgetClass)           { HUDWidgetClass           = UCoMHUDWidget::StaticClass(); }
+	if (!CityScreenWidgetClass)    { CityScreenWidgetClass    = UCoMCityScreenWidget::StaticClass(); }
+	if (!SpellBookWidgetClass)     { SpellBookWidgetClass     = UCoMSpellBookWidget::StaticClass(); }
+	if (!DiplomacyWidgetClass)     { DiplomacyWidgetClass     = UCoMDiplomacyWidget::StaticClass(); }
+	if (!ArmyPanelWidgetClass)     { ArmyPanelWidgetClass     = UCoMArmyPanelWidget::StaticClass(); }
+	if (!SettingsWidgetClass)      { SettingsWidgetClass       = UCoMSettingsWidget::StaticClass(); }
+	if (!CreditsWidgetClass)       { CreditsWidgetClass       = UCoMCreditsWidget::StaticClass(); }
+	if (!WizardCreationWidgetClass){ WizardCreationWidgetClass = UCoMWizardCreationWidget::StaticClass(); }
+	if (!WizardConfigWidgetClass) { WizardConfigWidgetClass  = UCoMWizardConfigWidget::StaticClass(); }
+	if (!LoadScreenWidgetClass)    { LoadScreenWidgetClass    = UCoMLoadScreenWidget::StaticClass(); }
+	if (!VictoryScreenWidgetClass) { VictoryScreenWidgetClass = UCoMVictoryScreenWidget::StaticClass(); }
+	if (!TooltipWidgetClass)       { TooltipWidgetClass       = UCoMTooltipWidget::StaticClass(); }
+	if (!TurnNotificationWidgetClass) { TurnNotificationWidgetClass = UCoMTurnNotificationWidget::StaticClass(); }
+	if (!SpellTargetingWidgetClass){ SpellTargetingWidgetClass = UCoMSpellTargetingWidget::StaticClass(); }
+	if (!PreBattleWidgetClass)     { PreBattleWidgetClass     = UCoMPreBattleWidget::StaticClass(); }
+	if (!UnitCardWidgetClass)      { UnitCardWidgetClass      = UCoMUnitCardWidget::StaticClass(); }
+	if (!ArmyStackWidgetClass)     { ArmyStackWidgetClass     = UCoMArmyStackWidget::StaticClass(); }
+	if (!HeroScreenWidgetClass)    { HeroScreenWidgetClass    = UCoMHeroScreenWidget::StaticClass(); }
+	if (!SpellVFXWidgetClass)      { SpellVFXWidgetClass      = UCoMSpellVFXWidget::StaticClass(); }
+
+	// Bind to GameInstance delegates so game modes can trigger UI
+	// without a compile-time dependency on CoMUI.
 	if (UCoMGameInstance* CoMGI = Cast<UCoMGameInstance>(GetGameInstance()))
 	{
 		CoMGI->OnMainMenuRequested.AddUObject(this, &UCoMUISubsystem::ShowMainMenu);
+		CoMGI->OnHUDRequested.AddUObject(this, &UCoMUISubsystem::ShowHUD);
+		CoMGI->OnHideMenusRequested.AddUObject(this, &UCoMUISubsystem::HandleHideMenus);
+		CoMGI->OnCityScreenRequested.AddUObject(this, &UCoMUISubsystem::ShowCityScreen);
+		CoMGI->OnArmyStackRequested.AddUObject(this, &UCoMUISubsystem::ShowArmyStack);
 	}
 }
 
 void UCoMUISubsystem::Deinitialize()
 {
-	// Unbind delegate before teardown.
+	// Unbind delegates before teardown.
 	if (UCoMGameInstance* CoMGI = Cast<UCoMGameInstance>(GetGameInstance()))
 	{
 		CoMGI->OnMainMenuRequested.RemoveAll(this);
+		CoMGI->OnHUDRequested.RemoveAll(this);
+		CoMGI->OnHideMenusRequested.RemoveAll(this);
+		CoMGI->OnCityScreenRequested.RemoveAll(this);
+		CoMGI->OnArmyStackRequested.RemoveAll(this);
 	}
 
 	HideAll();
@@ -122,6 +160,12 @@ void UCoMUISubsystem::ShowHUD()
 {
 	CreateAndShowWidget<UCoMHUDWidget>(HUDWidgetClass, HUDWidgetInstance, 0);
 
+	// Bind End Turn button delegate from HUD.
+	if (HUDWidgetInstance)
+	{
+		HUDWidgetInstance->OnEndTurnRequested.AddDynamic(this, &UCoMUISubsystem::OnEndTurnFromHUD);
+	}
+
 	// Create the turn notification overlay (lives on top of HUD).
 	if (!TurnNotificationInstance)
 	{
@@ -153,6 +197,21 @@ void UCoMUISubsystem::ShowHUD()
 	{
 		CreateAndShowWidget<UCoMSpellTargetingWidget>(SpellTargetingWidgetClass, SpellTargetingInstance, 150);
 	}
+
+	// Create the spell VFX overlay (Z-order 300 — above everything).
+	if (!SpellVFXInstance)
+	{
+		CreateAndShowWidget<UCoMSpellVFXWidget>(SpellVFXWidgetClass, SpellVFXInstance, 300);
+	}
+
+	// Bind to the VFX subsystem's effect-requested delegate.
+	if (UGameInstance* VFXGI = GetGameInstance())
+	{
+		if (UCoMSpellVFXSubsystem* VFXSub = VFXGI->GetSubsystem<UCoMSpellVFXSubsystem>())
+		{
+			VFXSub->OnEffectRequested.AddDynamic(this, &UCoMUISubsystem::OnSpellVFXRequested);
+		}
+	}
 }
 
 void UCoMUISubsystem::HideHUD()
@@ -166,6 +225,17 @@ void UCoMUISubsystem::HideHUD()
 	RemoveWidget(TurnNotificationInstance);
 	RemoveWidget(TooltipInstance);
 	RemoveWidget(SpellTargetingInstance);
+	RemoveWidget(SpellVFXInstance);
+
+	// Unbind from VFX subsystem delegate.
+	if (UGameInstance* VFXGI = GetGameInstance())
+	{
+		if (UCoMSpellVFXSubsystem* VFXSub = VFXGI->GetSubsystem<UCoMSpellVFXSubsystem>())
+		{
+			VFXSub->OnEffectRequested.RemoveAll(this);
+		}
+	}
+
 	RemoveWidget(HUDWidgetInstance);
 }
 
@@ -275,7 +345,36 @@ void UCoMUISubsystem::ShowWizardCreation()
 
 void UCoMUISubsystem::HideWizardCreation()
 {
+	HideWizardConfig();
 	RemoveWidget(WizardCreationInstance);
+}
+
+// =============================================================================
+// Wizard Config (Screen 2)
+// =============================================================================
+
+void UCoMUISubsystem::ShowWizardConfig(int32 PortraitIndex)
+{
+	// Hide any previous config instance.
+	HideWizardConfig();
+
+	UGameInstance* GI = GetGameInstance();
+	if (!GI || !WizardConfigWidgetClass) { return; }
+
+	UWorld* World = GI->GetWorld();
+	if (!World) { return; }
+
+	WizardConfigInstance = CreateWidget<UCoMWizardConfigWidget>(World, WizardConfigWidgetClass);
+	if (WizardConfigInstance)
+	{
+		WizardConfigInstance->SetPortraitIndex(PortraitIndex);
+		WizardConfigInstance->AddToViewport(101);
+	}
+}
+
+void UCoMUISubsystem::HideWizardConfig()
+{
+	RemoveWidget(WizardConfigInstance);
 }
 
 // =============================================================================
@@ -480,6 +579,143 @@ void UCoMUISubsystem::CancelSpellTargeting()
 }
 
 // =============================================================================
+// Unit Card
+// =============================================================================
+
+void UCoMUISubsystem::ShowUnitCard(int32 UnitId)
+{
+	UCoMUnitCardWidget* Widget = CreateAndShowWidget<UCoMUnitCardWidget>(
+		UnitCardWidgetClass, UnitCardInstance, 15);
+
+	if (Widget)
+	{
+		Widget->SetUnit(UnitId);
+	}
+}
+
+void UCoMUISubsystem::HideUnitCard()
+{
+	RemoveWidget(UnitCardInstance);
+}
+
+// =============================================================================
+// Army Stack
+// =============================================================================
+
+void UCoMUISubsystem::ShowArmyStack(int32 ArmyId)
+{
+	UCoMArmyStackWidget* Widget = CreateAndShowWidget<UCoMArmyStackWidget>(
+		ArmyStackWidgetClass, ArmyStackInstance, 12);
+
+	if (Widget)
+	{
+		Widget->SetArmy(ArmyId);
+	}
+}
+
+void UCoMUISubsystem::HideArmyStack()
+{
+	RemoveWidget(ArmyStackInstance);
+}
+
+// =============================================================================
+// Hero Screen
+// =============================================================================
+
+void UCoMUISubsystem::ShowHeroScreen(int32 HeroUnitId)
+{
+	HideAllPanels();
+
+	UCoMHeroScreenWidget* Widget = CreateAndShowWidget<UCoMHeroScreenWidget>(
+		HeroScreenWidgetClass, HeroScreenInstance, 10);
+
+	if (Widget)
+	{
+		Widget->SetHero(HeroUnitId);
+	}
+}
+
+void UCoMUISubsystem::HideHeroScreen()
+{
+	RemoveWidget(HeroScreenInstance);
+}
+
+// =============================================================================
+// Spell VFX Overlay
+// =============================================================================
+
+void UCoMUISubsystem::ShowSpellVFX()
+{
+	CreateAndShowWidget<UCoMSpellVFXWidget>(SpellVFXWidgetClass, SpellVFXInstance, 300);
+}
+
+void UCoMUISubsystem::HideSpellVFX()
+{
+	if (SpellVFXInstance)
+	{
+		SpellVFXInstance->StopAllSpellAnimations();
+	}
+	RemoveWidget(SpellVFXInstance);
+}
+
+void UCoMUISubsystem::OnSpellVFXRequested(int32 PlaybackID, FName EffectID,
+                                           FVector WorldPosition, FVector TargetPosition)
+{
+	if (!SpellVFXInstance)
+	{
+		return;
+	}
+
+	UGameInstance* GI = GetGameInstance();
+	if (!GI)
+	{
+		return;
+	}
+
+	UCoMSpellVFXSubsystem* VFXSub = GI->GetSubsystem<UCoMSpellVFXSubsystem>();
+	if (!VFXSub)
+	{
+		return;
+	}
+
+	FCoMSpellVFXDef Def;
+	if (!VFXSub->GetEffectDef(EffectID, Def))
+	{
+		return;
+	}
+
+	// Load the sprite sheet texture.
+	UTexture2D* SheetTexture = Cast<UTexture2D>(
+		StaticLoadObject(UTexture2D::StaticClass(), nullptr, *Def.SpriteSheetPath));
+
+	if (!SheetTexture)
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("CoMUISubsystem::OnSpellVFXRequested: Failed to load sprite sheet '%s' for effect '%s'"),
+			*Def.SpriteSheetPath, *EffectID.ToString());
+		return;
+	}
+
+	// Convert world position to screen position.
+	// For now, use a simple projection: center of screen as fallback.
+	FVector2D ScreenPos(400.0f, 300.0f);
+
+	APlayerController* PC = GI->GetFirstLocalPlayerController();
+	if (PC)
+	{
+		FVector2D ProjectedPos;
+		if (PC->ProjectWorldLocationToScreen(WorldPosition, ProjectedPos, false))
+		{
+			ScreenPos = ProjectedPos;
+		}
+	}
+
+	SpellVFXInstance->PlaySpellAnimation(PlaybackID, SheetTexture,
+	                                Def.FrameCount, Def.FrameDuration,
+	                                ScreenPos, Def.Scale);
+}
+
+// =============================================================================
 // Bulk operations
 // =============================================================================
 
@@ -492,13 +728,54 @@ void UCoMUISubsystem::HideAllPanels()
 	HideSettings();
 	HideCredits();
 	HideWizardCreation();
+	HideWizardConfig();
 	HideLoadScreen();
 	HideVictoryScreen();
+	HideUnitCard();
+	HideArmyStack();
+	HideHeroScreen();
 }
 
 void UCoMUISubsystem::HideAll()
 {
 	HideMainMenu();
 	HideAllPanels();
+	HideSpellVFX();
 	HideHUD();
+}
+
+void UCoMUISubsystem::HandleHideMenus()
+{
+	HideMainMenu();
+	HideWizardCreation();
+	HideWizardConfig();
+	HideLoadScreen();
+}
+
+void UCoMUISubsystem::OnEndTurnFromHUD()
+{
+	UGameInstance* GI = GetGameInstance();
+	if (!GI) { return; }
+
+	UCoMTurnSubsystem* TurnSub = GI->GetSubsystem<UCoMTurnSubsystem>();
+	if (TurnSub)
+	{
+		TurnSub->ProcessFullTurn();
+	}
+
+	// Refresh HUD with fresh data.
+	if (HUDWidgetInstance)
+	{
+		int32 Gold = 0, Mana = 0, Food = 0, Prod = 0, Turn = 0;
+		FString WizName = TEXT("Player");
+
+		if (TurnSub)
+		{
+			Turn = TurnSub->GetCurrentTurn();
+		}
+
+		HUDWidgetInstance->UpdateResources(Gold, Mana, Food, Prod);
+		HUDWidgetInstance->UpdateTurnInfo(Turn, WizName);
+		HUDWidgetInstance->AddNotification(FString::Printf(TEXT("Turn %d complete."), Turn));
+	}
 }

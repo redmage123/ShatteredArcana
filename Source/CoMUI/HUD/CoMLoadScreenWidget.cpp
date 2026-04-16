@@ -57,12 +57,17 @@ void UCoMSlotButtonHelper::OnClicked()
 // Lifecycle
 // =============================================================================
 
+TSharedRef<SWidget> UCoMLoadScreenWidget::RebuildWidget()
+{
+    BuildLayout();
+    return Super::RebuildWidget();
+}
+
 void UCoMLoadScreenWidget::NativeConstruct()
 {
     Super::NativeConstruct();
-    bIsFocusable = true;
+    SetIsFocusable(true);
     SetVisibility(ESlateVisibility::Visible);
-    BuildLayout();
     RefreshSlotList();
 }
 
@@ -72,14 +77,19 @@ void UCoMLoadScreenWidget::NativeConstruct()
 
 void UCoMLoadScreenWidget::BuildLayout()
 {
-    BackgroundBorder = NewObject<UBorder>(this);
+    BackgroundBorder = WidgetTree->ConstructWidget<UBorder>();
     BackgroundBorder->SetBrushColor(LoadScreenColours::Background);
     BackgroundBorder->SetPadding(FMargin(0.0f));
 
-    UOverlay* RootOverlay = NewObject<UOverlay>(this);
+    if (WidgetTree)
+    {
+        WidgetTree->RootWidget = BackgroundBorder;
+    }
+
+    UOverlay* RootOverlay = WidgetTree->ConstructWidget<UOverlay>();
     BackgroundBorder->AddChild(RootOverlay);
 
-    ContentBox = NewObject<UVerticalBox>(this);
+    ContentBox = WidgetTree->ConstructWidget<UVerticalBox>();
     UOverlaySlot* ContentSlot = RootOverlay->AddChildToOverlay(ContentBox);
     if (ContentSlot)
     {
@@ -87,14 +97,9 @@ void UCoMLoadScreenWidget::BuildLayout()
         ContentSlot->SetVerticalAlignment(VAlign_Center);
     }
 
-    if (WidgetTree)
-    {
-        WidgetTree->RootWidget = BackgroundBorder;
-    }
-
     // Title
     {
-        UTextBlock* TitleText = NewObject<UTextBlock>(this);
+        UTextBlock* TitleText = WidgetTree->ConstructWidget<UTextBlock>();
         TitleText->SetText(FText::FromString(TEXT("LOAD GAME")));
         TitleText->SetColorAndOpacity(FSlateColor(LoadScreenColours::Gold));
         TitleText->SetJustification(ETextJustify::Center);
@@ -104,46 +109,67 @@ void UCoMLoadScreenWidget::BuildLayout()
         TitleFont.TypefaceFontName = FName(TEXT("Bold"));
         TitleText->SetFont(TitleFont);
 
-        UVerticalBoxSlot* Slot = ContentBox->AddChildToVerticalBox(TitleText);
-        if (Slot)
+        UVerticalBoxSlot* SlotRef = ContentBox->AddChildToVerticalBox(TitleText);
+        if (SlotRef)
         {
-            Slot->SetHorizontalAlignment(HAlign_Center);
-            Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
+            SlotRef->SetHorizontalAlignment(HAlign_Center);
+            SlotRef->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
         }
     }
 
     // Scrollable slot list
-    SlotScrollBox = NewObject<UScrollBox>(this);
+    SlotScrollBox = WidgetTree->ConstructWidget<UScrollBox>();
     {
-        USizeBox* ScrollSizeBox = NewObject<USizeBox>(this);
+        USizeBox* ScrollSizeBox = WidgetTree->ConstructWidget<USizeBox>();
         ScrollSizeBox->SetWidthOverride(600.0f);
         ScrollSizeBox->SetHeightOverride(400.0f);
         ScrollSizeBox->AddChild(SlotScrollBox);
 
-        UVerticalBoxSlot* Slot = ContentBox->AddChildToVerticalBox(ScrollSizeBox);
-        if (Slot)
+        UVerticalBoxSlot* SlotRef = ContentBox->AddChildToVerticalBox(ScrollSizeBox);
+        if (SlotRef)
         {
-            Slot->SetHorizontalAlignment(HAlign_Center);
-            Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
+            SlotRef->SetHorizontalAlignment(HAlign_Center);
+            SlotRef->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
         }
     }
 
     // Back button
     {
-        USizeBox* BackSizeBox = NewObject<USizeBox>(this);
+        USizeBox* BackSizeBox = WidgetTree->ConstructWidget<USizeBox>();
         BackSizeBox->SetWidthOverride(200.0f);
         BackSizeBox->SetHeightOverride(45.0f);
 
-        BackButton = CreateActionButton(TEXT("Back"),
-                                        LoadScreenColours::ButtonBg,
-                                        LoadScreenColours::ButtonHover);
+        BackButton = WidgetTree->ConstructWidget<UButton>();
+
+        // Style the back button (same as CreateActionButton but using WidgetTree)
+        FButtonStyle Style = BackButton->GetStyle();
+        Style.Normal.DrawAs = ESlateBrushDrawType::Box;
+        Style.Normal.TintColor = FSlateColor(LoadScreenColours::ButtonBg);
+        Style.Normal.OutlineSettings.Color = FSlateColor(LoadScreenColours::Gold);
+        Style.Normal.OutlineSettings.Width = 1.0f;
+        Style.Hovered.DrawAs = ESlateBrushDrawType::Box;
+        Style.Hovered.TintColor = FSlateColor(LoadScreenColours::ButtonHover);
+        Style.Hovered.OutlineSettings.Color = FSlateColor(LoadScreenColours::Gold);
+        Style.Hovered.OutlineSettings.Width = 1.0f;
+        Style.Pressed = Style.Normal;
+        BackButton->SetStyle(Style);
+
+        UTextBlock* BackLabel = WidgetTree->ConstructWidget<UTextBlock>();
+        BackLabel->SetText(FText::FromString(TEXT("Back")));
+        BackLabel->SetColorAndOpacity(FSlateColor(LoadScreenColours::White));
+        BackLabel->SetJustification(ETextJustify::Center);
+        FSlateFontInfo BtnFont = BackLabel->GetFont();
+        BtnFont.Size = 14;
+        BackLabel->SetFont(BtnFont);
+        BackButton->AddChild(BackLabel);
+
         BackButton->OnClicked.AddDynamic(this, &UCoMLoadScreenWidget::OnBackClicked);
         BackSizeBox->AddChild(BackButton);
 
-        UVerticalBoxSlot* Slot = ContentBox->AddChildToVerticalBox(BackSizeBox);
-        if (Slot)
+        UVerticalBoxSlot* SlotRef = ContentBox->AddChildToVerticalBox(BackSizeBox);
+        if (SlotRef)
         {
-            Slot->SetHorizontalAlignment(HAlign_Center);
+            SlotRef->SetHorizontalAlignment(HAlign_Center);
         }
     }
 }
@@ -289,11 +315,11 @@ UButton* UCoMLoadScreenWidget::CreateActionButton(const FString& Label,
     UButton* Button = NewObject<UButton>(this);
 
     FButtonStyle Style = Button->GetStyle();
-    Style.Normal.DrawAs = ESlateBrushDrawType::RoundedBox;
+    Style.Normal.DrawAs = ESlateBrushDrawType::Box;
     Style.Normal.TintColor = FSlateColor(NormalColor);
     Style.Normal.OutlineSettings.Color = FSlateColor(LoadScreenColours::Gold);
     Style.Normal.OutlineSettings.Width = 1.0f;
-    Style.Hovered.DrawAs = ESlateBrushDrawType::RoundedBox;
+    Style.Hovered.DrawAs = ESlateBrushDrawType::Box;
     Style.Hovered.TintColor = FSlateColor(HoverColor);
     Style.Hovered.OutlineSettings.Color = FSlateColor(LoadScreenColours::Gold);
     Style.Hovered.OutlineSettings.Width = 1.0f;

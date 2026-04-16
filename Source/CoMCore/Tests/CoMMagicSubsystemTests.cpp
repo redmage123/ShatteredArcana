@@ -23,7 +23,7 @@ UCoMMagicSubsystem* CreateTestSubsystem()
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicInitialState,
     "CoM.Magic.InitialState",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicInitialState::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -41,7 +41,7 @@ bool FMagicInitialState::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicClaimNode,
     "CoM.Magic.ClaimManaNode",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicClaimNode::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -59,7 +59,7 @@ bool FMagicClaimNode::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicReleaseNode,
     "CoM.Magic.ReleaseManaNode",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicReleaseNode::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -78,7 +78,7 @@ bool FMagicReleaseNode::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicCanCastSpell,
     "CoM.Magic.CanCastSpell",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicCanCastSpell::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -102,7 +102,7 @@ bool FMagicCanCastSpell::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicCastSpellInstant,
     "CoM.Magic.CastSpellInstant",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicCastSpellInstant::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -123,7 +123,7 @@ bool FMagicCastSpellInstant::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicCancelCasting,
     "CoM.Magic.CancelCasting",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicCancelCasting::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -150,7 +150,7 @@ bool FMagicCancelCasting::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicResearch,
     "CoM.Magic.StartResearch",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicResearch::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -172,7 +172,7 @@ bool FMagicResearch::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicRitual,
     "CoM.Magic.BeginRitual",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicRitual::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -189,7 +189,7 @@ bool FMagicRitual::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicInterruptRitual,
     "CoM.Magic.InterruptRitual",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicInterruptRitual::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -208,7 +208,7 @@ bool FMagicInterruptRitual::RunTest(const FString& Parameters)
 // REGRESSION: InscribeRune should not allow mana to go negative
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicInscribeRuneNoUnderflow,
     "CoM.Magic.InscribeRuneNoUnderflow",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicInscribeRuneNoUnderflow::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -223,7 +223,7 @@ bool FMagicInscribeRuneNoUnderflow::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicInscribeRuneSuccess,
     "CoM.Magic.InscribeRune",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicInscribeRuneSuccess::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -241,7 +241,7 @@ bool FMagicInscribeRuneSuccess::RunTest(const FString& Parameters)
 // REGRESSION: RemoveRune should actually remove the rune
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicRemoveRune,
     "CoM.Magic.RemoveRune",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicRemoveRune::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -266,7 +266,7 @@ bool FMagicRemoveRune::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicEnchantment,
     "CoM.Magic.MaintainEnchantment",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicEnchantment::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -290,7 +290,7 @@ bool FMagicEnchantment::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicProcessTurn,
     "CoM.Magic.ProcessTurn",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicProcessTurn::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -306,7 +306,7 @@ bool FMagicProcessTurn::RunTest(const FString& Parameters)
 // REGRESSION: ResearchSpend should never go negative
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicProcessTurnNegativeResearch,
     "CoM.Magic.ProcessTurnNegativeResearch",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicProcessTurnNegativeResearch::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -339,7 +339,7 @@ bool FMagicProcessTurnNegativeResearch::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMagicCounterSpell,
     "CoM.Magic.CounterSpell",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FMagicCounterSpell::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();

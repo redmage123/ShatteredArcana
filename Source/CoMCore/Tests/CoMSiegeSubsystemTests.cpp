@@ -23,7 +23,7 @@ UCoMSiegeSubsystem* CreateTestSubsystem()
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSiegeBeginSiege,
 	"CoM.Siege.BeginSiege",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FSiegeBeginSiege::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -42,7 +42,7 @@ bool FSiegeBeginSiege::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSiegeBeginSiegeDuplicate,
 	"CoM.Siege.BeginSiegeDuplicate",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FSiegeBeginSiegeDuplicate::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -55,7 +55,7 @@ bool FSiegeBeginSiegeDuplicate::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSiegeEndSiege,
 	"CoM.Siege.EndSiege",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FSiegeEndSiege::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -72,7 +72,7 @@ bool FSiegeEndSiege::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSiegeProcessTurn,
 	"CoM.Siege.ProcessSiegeTurn",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FSiegeProcessTurn::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -96,7 +96,7 @@ bool FSiegeProcessTurn::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSiegeCutSupplyLines,
 	"CoM.Siege.CutSupplyLines",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FSiegeCutSupplyLines::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -124,7 +124,7 @@ bool FSiegeCutSupplyLines::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSiegeAutoSurrender,
 	"CoM.Siege.AutoSurrender",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FSiegeAutoSurrender::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();

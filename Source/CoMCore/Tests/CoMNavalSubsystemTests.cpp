@@ -23,7 +23,7 @@ UCoMNavalSubsystem* CreateTestSubsystem()
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FNavalCreateFleet,
 	"CoM.Naval.CreateFleet",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FNavalCreateFleet::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -46,7 +46,7 @@ bool FNavalCreateFleet::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FNavalAddRemoveShip,
 	"CoM.Naval.AddRemoveShip",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FNavalAddRemoveShip::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -78,7 +78,7 @@ bool FNavalAddRemoveShip::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FNavalEstablishBlockade,
 	"CoM.Naval.EstablishBlockade",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FNavalEstablishBlockade::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -92,7 +92,7 @@ bool FNavalEstablishBlockade::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FNavalLiftBlockade,
 	"CoM.Naval.LiftBlockade",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FNavalLiftBlockade::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -107,7 +107,7 @@ bool FNavalLiftBlockade::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FNavalIsPortBlockaded,
 	"CoM.Naval.IsPortBlockaded",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FNavalIsPortBlockaded::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -129,7 +129,7 @@ bool FNavalIsPortBlockaded::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FNavalProcessTurn,
 	"CoM.Naval.ProcessNavalTurn",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FNavalProcessTurn::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();

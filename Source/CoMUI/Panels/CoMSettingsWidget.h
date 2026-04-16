@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetTree.h"
 #include "CoMSettingsWidget.generated.h"
 
 class UBorder;
@@ -37,6 +38,8 @@ public:
 	/** Close the settings panel via the UI subsystem. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Settings")
 	void CloseSettings();
+
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 protected:
 	virtual void NativeConstruct() override;

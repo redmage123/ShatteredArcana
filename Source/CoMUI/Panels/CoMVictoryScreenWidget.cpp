@@ -38,7 +38,7 @@ namespace VictoryColours
 void UCoMVictoryScreenWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	bIsFocusable = true;
+	SetIsFocusable(true);
 	SetVisibility(ESlateVisibility::Visible);
 	BuildLayout();
 }
@@ -297,11 +297,11 @@ void UCoMVictoryScreenWidget::AddTextLine(const FString& Text, const FLinearColo
 	}
 	TextBlock->SetFont(Font);
 
-	UVerticalBoxSlot* Slot = ContentBox->AddChildToVerticalBox(TextBlock);
-	if (Slot)
+	UVerticalBoxSlot* SlotRef = ContentBox->AddChildToVerticalBox(TextBlock);
+	if (SlotRef)
 	{
-		Slot->SetHorizontalAlignment(HAlign_Center);
-		Slot->SetPadding(FMargin(0.0f, 2.0f));
+		SlotRef->SetHorizontalAlignment(HAlign_Center);
+		SlotRef->SetPadding(FMargin(0.0f, 2.0f));
 	}
 }
 
@@ -313,11 +313,11 @@ void UCoMVictoryScreenWidget::AddSeparator()
 		UBorder::StaticClass(), *FString::Printf(TEXT("Sep_%d"), ContentBox->GetChildrenCount()));
 	Sep->SetBrushColor(VictoryColours::SepGold);
 
-	UVerticalBoxSlot* Slot = ContentBox->AddChildToVerticalBox(Sep);
-	if (Slot)
+	UVerticalBoxSlot* SlotRef = ContentBox->AddChildToVerticalBox(Sep);
+	if (SlotRef)
 	{
-		Slot->SetHorizontalAlignment(HAlign_Fill);
-		Slot->SetPadding(FMargin(80.0f, 0.0f));
+		SlotRef->SetHorizontalAlignment(HAlign_Fill);
+		SlotRef->SetPadding(FMargin(80.0f, 0.0f));
 	}
 
 	Sep->SetDesiredSizeScale(FVector2D(1.0f, 2.0f));

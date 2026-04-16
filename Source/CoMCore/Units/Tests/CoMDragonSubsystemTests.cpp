@@ -20,7 +20,7 @@ static UCoMDragonSubsystem* GetTestDragonSubsystem()
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMDragonSpawnTest,
 	"CoM.Dragon.SpawnDragon",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMDragonSpawnTest::RunTest(const FString& Parameters)
 {
@@ -57,7 +57,7 @@ bool FCoMDragonSpawnTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMDragonCreateDomainTest,
 	"CoM.Dragon.CreateDomain",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMDragonCreateDomainTest::RunTest(const FString& Parameters)
 {
@@ -102,7 +102,7 @@ bool FCoMDragonCreateDomainTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMDragonLayEggTest,
 	"CoM.Dragon.LayEgg",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMDragonLayEggTest::RunTest(const FString& Parameters)
 {
@@ -129,7 +129,7 @@ bool FCoMDragonLayEggTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMDragonHatchEggTest,
 	"CoM.Dragon.HatchEgg",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMDragonHatchEggTest::RunTest(const FString& Parameters)
 {
@@ -171,7 +171,7 @@ bool FCoMDragonHatchEggTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FCoMDragonProcessTurnTest,
 	"CoM.Dragon.ProcessDragonTurn",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 
 bool FCoMDragonProcessTurnTest::RunTest(const FString& Parameters)
 {

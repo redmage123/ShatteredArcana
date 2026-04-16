@@ -1,12 +1,10 @@
 // Copyright Mythforge Studios. All Rights Reserved.
-// CoMWizardCreationWidget.h -- Wizard creation screen for new game setup.
+// CoMWizardCreationWidget.h -- Screen 1: Wizard portrait selection grid.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "CoreTypes/CoMEnums.h"
-#include "Framework/CoMGameInstance.h"
 #include "CoMWizardCreationWidget.generated.h"
 
 class UBorder;
@@ -14,169 +12,64 @@ class UVerticalBox;
 class UHorizontalBox;
 class UButton;
 class UTextBlock;
-class UEditableTextBox;
 class USizeBox;
 class UOverlay;
+class UImage;
 
 /**
  * UCoMWizardCreationWidget
  *
- * Wizard creation screen — name, class, realm affinity, and difficulty.
- * Built entirely in C++ using UMG components. Dark fantasy aesthetic.
+ * Screen 1 of the two-screen wizard creation flow.
+ * Shows a fullscreen grid of 14 wizard portraits (7x2).
+ * Clicking a portrait selects that wizard and transitions to the config screen.
+ * "Custom Wizard" goes to config with empty settings.
  */
 UCLASS()
 class COMUI_API UCoMWizardCreationWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
-public:
-	// -- Public API ---------------------------------------------------------------
-
-	/** Construct the settings struct from current UI state. */
-	UFUNCTION(BlueprintCallable, Category = "CoM|WizardCreation")
-	FCoMNewGameSettings BuildSettings() const;
-
 protected:
 	virtual void NativeConstruct() override;
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 private:
-	// -- Callbacks ----------------------------------------------------------------
-
-	UFUNCTION()
-	void OnClassWizardClicked();
-
-	UFUNCTION()
-	void OnClassPsykerClicked();
-
-	UFUNCTION()
-	void OnClassWarlockClicked();
-
-	UFUNCTION()
-	void OnBackClicked();
-
-	UFUNCTION()
-	void OnStartGameClicked();
-
-	// Difficulty callbacks
-	UFUNCTION()
-	void OnDiffEasyClicked();
-
-	UFUNCTION()
-	void OnDiffNormalClicked();
-
-	UFUNCTION()
-	void OnDiffHardClicked();
-
-	UFUNCTION()
-	void OnDiffLunaticClicked();
-
-	UFUNCTION()
-	void OnDiffImpossibleClicked();
-
-	// Realm callbacks
-	UFUNCTION()
-	void OnRealmLifeClicked();
-
-	UFUNCTION()
-	void OnRealmDeathClicked();
-
-	UFUNCTION()
-	void OnRealmChaosClicked();
-
-	UFUNCTION()
-	void OnRealmNatureClicked();
-
-	UFUNCTION()
-	void OnRealmSorceryClicked();
-
-	UFUNCTION()
-	void OnRealmArcaneClicked();
-
-	UFUNCTION()
-	void OnRealmBindingClicked();
-
-	UFUNCTION()
-	void OnRealmSpiritClicked();
-
-	UFUNCTION()
-	void OnRealmGlamourClicked();
-
-	// -- Logic --------------------------------------------------------------------
-
-	/** Highlights the selected class and shows/hides realm section. */
-	void OnClassSelected(ECoMWizardClass Class);
-
-	/** Toggle realm selection (max 3 selected). */
-	void OnRealmToggled(ECoMSpellRealm Realm);
-
-	/** Set the active difficulty level. */
-	void OnDifficultySelected(int32 Level);
-
 	// -- Layout construction ------------------------------------------------------
 
 	void BuildLayout();
 
-	/** Helper: create a styled section label. */
-	UTextBlock* CreateSectionLabel(const FString& Text);
+	// -- Portrait callbacks -------------------------------------------------------
 
-	/** Helper: create a styled button with given size. */
-	UButton* CreateStyledButton(float Width, float Height);
+	UFUNCTION() void OnPortrait0();  UFUNCTION() void OnPortrait1();
+	UFUNCTION() void OnPortrait2();  UFUNCTION() void OnPortrait3();
+	UFUNCTION() void OnPortrait4();  UFUNCTION() void OnPortrait5();
+	UFUNCTION() void OnPortrait6();  UFUNCTION() void OnPortrait7();
+	UFUNCTION() void OnPortrait8();  UFUNCTION() void OnPortrait9();
+	UFUNCTION() void OnPortrait10(); UFUNCTION() void OnPortrait11();
+	UFUNCTION() void OnPortrait12(); UFUNCTION() void OnPortrait13();
 
-	/** Helper: update class button visuals based on SelectedClass. */
-	void UpdateClassButtonStyles();
+	void SelectPortrait(int32 Index);
+	void UpdatePortraitHighlights();
 
-	/** Helper: update difficulty button visuals. */
-	void UpdateDifficultyButtonStyles();
+	// -- Navigation callbacks -----------------------------------------------------
 
-	/** Helper: update realm button visuals. */
-	void UpdateRealmButtonStyles();
+	UFUNCTION() void OnCustomWizardClicked();
+	UFUNCTION() void OnBackClicked();
+
+	// -- Constants ----------------------------------------------------------------
+
+	static constexpr int32 NumPortraits = 14;
 
 	// -- State --------------------------------------------------------------------
 
-	ECoMWizardClass SelectedClass = ECoMWizardClass::Wizard;
-	int32 SelectedDifficulty = 1;
-	TArray<ECoMSpellRealm> SelectedRealms;
+	int32 SelectedPortraitIndex = -1;
 
 	// -- Widget references --------------------------------------------------------
 
-	UPROPERTY()
-	UBorder* BackgroundBorder = nullptr;
-
-	UPROPERTY()
-	UVerticalBox* ContentBox = nullptr;
-
-	UPROPERTY()
-	UEditableTextBox* NameInputBox = nullptr;
-
-	// Class buttons
-	UPROPERTY()
-	UButton* ClassWizardButton = nullptr;
-
-	UPROPERTY()
-	UButton* ClassPsykerButton = nullptr;
-
-	UPROPERTY()
-	UButton* ClassWarlockButton = nullptr;
-
-	// Realm section (hidden for non-Wizard classes)
-	UPROPERTY()
-	UVerticalBox* RealmSectionBox = nullptr;
-
-	// Realm buttons (9 total)
-	UPROPERTY()
-	UButton* RealmButtons[9] = {};
-
-	UPROPERTY()
-	UBorder* RealmButtonBorders[9] = {};
-
-	// Difficulty buttons
-	UPROPERTY()
-	UButton* DifficultyButtons[5] = {};
-
-	// Bottom buttons
-	UPROPERTY()
-	UButton* BackButton = nullptr;
-
-	UPROPERTY()
-	UButton* StartGameButton = nullptr;
+	UPROPERTY() UBorder* BackgroundBorder = nullptr;
+	UPROPERTY() UButton* PortraitButtons[14] = {};
+	UPROPERTY() UBorder* PortraitBorders[14] = {};
+	UPROPERTY() UImage* PortraitImages[14] = {};
+	UPROPERTY() UButton* CustomWizardButton = nullptr;
+	UPROPERTY() UButton* BackButton = nullptr;
 };

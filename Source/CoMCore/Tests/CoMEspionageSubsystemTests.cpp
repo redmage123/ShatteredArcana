@@ -23,7 +23,7 @@ UCoMEspionageSubsystem* CreateTestSubsystem()
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspRecruitAgent,
     "CoM.Espionage.RecruitAgent",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspRecruitAgent::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -40,7 +40,7 @@ bool FEspRecruitAgent::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspGetAgents,
     "CoM.Espionage.GetAgents",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspGetAgents::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -56,7 +56,7 @@ bool FEspGetAgents::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspDismissAgent,
     "CoM.Espionage.DismissAgent",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspDismissAgent::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -69,7 +69,7 @@ bool FEspDismissAgent::RunTest(const FString& Parameters)
 // REGRESSION: Dismissing a counter-spy should decrement CounterSpyAgents
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspDismissCounterSpy,
     "CoM.Espionage.DismissCounterSpy",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspDismissCounterSpy::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -89,7 +89,7 @@ bool FEspDismissCounterSpy::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspAssignMission,
     "CoM.Espionage.AssignMission",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspAssignMission::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -105,7 +105,7 @@ bool FEspAssignMission::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspAssignMissionBusy,
     "CoM.Espionage.AssignMissionBusy",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspAssignMissionBusy::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -118,7 +118,7 @@ bool FEspAssignMissionBusy::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspCancelMission,
     "CoM.Espionage.CancelMission",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspCancelMission::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -132,7 +132,7 @@ bool FEspCancelMission::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspMissionSuccessChance,
     "CoM.Espionage.MissionSuccessChance",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspMissionSuccessChance::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -156,7 +156,7 @@ bool FEspMissionSuccessChance::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspProcessTurn,
     "CoM.Espionage.ProcessTurn",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspProcessTurn::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -171,7 +171,7 @@ bool FEspProcessTurn::RunTest(const FString& Parameters)
 // REGRESSION: ResolveMission should not crash when agent is killed
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspNoUseAfterFree,
     "CoM.Espionage.ResolveMissionNoUseAfterFree",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspNoUseAfterFree::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -197,7 +197,7 @@ bool FEspNoUseAfterFree::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspCounterIntel,
     "CoM.Espionage.CounterIntel",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspCounterIntel::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -219,7 +219,7 @@ bool FEspCounterIntel::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspRansomAgent,
     "CoM.Espionage.RansomCapturedAgent",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspRansomAgent::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -237,7 +237,7 @@ bool FEspRansomAgent::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEspLevelUp,
     "CoM.Espionage.LevelUp",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FEspLevelUp::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();

@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip list:*)",
+      "Bash(npx playwright:*)",
+      "Bash(ls /c/Users/Braun/repos/ShatteredArcana/tools/*.py)",
+      "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Binaries/DotNET/UnrealBuildTool/UnrealBuildTool.exe\" -projectfiles -project=\"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -game -engine)",
+      "Read(//c/Program Files/Epic Games/UE_5.7/Engine/Build/BatchFiles/**)",
+      "Bash(ls /c/Users/Braun/repos/ShatteredArcana/*.bat)",
+      "Bash(powershell:*)",
+      "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Build/BatchFiles/Build.bat\" ShatteredArcanaEditor Win64 Development -project=\"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -WaitMutex)",
+      "Bash(\"/c/Program Files \\(x86\\)/Microsoft Visual Studio/Installer/vswhere.exe\" -all -format json)",
+      "Bash(python -c ':*)",
+      "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Build/BatchFiles/RunUAT.bat\" BuildCookRun -project=\"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -noP4 -platform=Win64 -clientconfig=Development -cook -build -stage -pak -archive -archivedirectory=\"C:/Users/Braun/repos/ShatteredArcana/exports/WindowsBuild\" -MaxParallelActions=2)",
+      "Bash(start:*)",
+      "Bash(MSYS_NO_PATHCONV=1 \"/c/Program Files/Epic Games/UE_5.7/Engine/Binaries/Win64/UnrealEditor-Cmd.exe\" \"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -run=pythonscript -script=\"C:/Users/Braun/repos/ShatteredArcana/Scripts/import_menu_bg.py\" -unattended)",
+      "Bash(taskkill:*)",
+      "WebFetch(domain:explorethearchive.com)",
+      "Bash(ssh:*)",
+      "Bash(curl:*)",
+      "Bash(pip install:*)",
+      "Bash(python Scripts/generate_battle_painting.py)",
+      "Bash(python Scripts/generate_menu_music.py)",
+      "Bash(scp /c/Users/Braun/repos/ShatteredArcana/Content/Audio/Music/Menu/menu_orchestral_v*.wav bbrelin@176.9.99.103:/home/bbrelin/ai-elevate/mythforge/website/mythforge-site/public/test/)",
+      "Bash(scp /c/Users/Braun/repos/ShatteredArcana/Content/Textures/UI/T_MenuBackground_v*.png bbrelin@176.9.99.103:/home/bbrelin/ai-elevate/mythforge/website/mythforge-site/public/test/)",
+      "WebSearch",
+      "Bash(tasklist)",
+      "Bash(python:*)",
+      "Bash(grep:*)",
+      "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Build/BatchFiles/Build.bat\" ShatteredArcanaEditor Win64 Development -project=\"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -WaitMutex -MaxParallelActions=1)",
+      "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Build/BatchFiles/RunUAT.bat\" BuildCookRun -project=\"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -noP4 -platform=Win64 -clientconfig=Development -cook -build -stage -pak -archive -archivedirectory=\"C:/Users/Braun/repos/ShatteredArcana/exports/WindowsBuild\" -MaxParallelActions=1)"
+    ]
+  }
+}

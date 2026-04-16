@@ -1,6 +1,7 @@
 
 #include "CoMMagicSubsystem.h"
 #include "CoMCore/Data/CoMSpellDatabase.h"
+#include "CoMCore/World/CoMWorldMapSubsystem.h"
 
 
 
@@ -89,13 +90,172 @@ void UCoMMagicSubsystem::ReleaseManaNode(int32 WizardId, FIntPoint NodeTile)
 }
 int32 UCoMMagicSubsystem::GetNodeManaOutput(FIntPoint NodeTile, ECoMSpellRealm WizardRealm) const
 {
-    // Base mana output per node
-    int32 Output = 5;
-    // Realm-matched nodes produce double
-    // (In full implementation, nodes would have their own realm type stored in world data)
-    // For now, all nodes produce base output
+    // Look up the node's realm from world data
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) return 5;
+
+    UCoMWorldMapSubsystem* MapSub = GI->GetSubsystem<UCoMWorldMapSubsystem>();
+    if (!MapSub) return 5;
+
+    const FCoMTileData* Tile = MapSub->GetTile(ECoMPlane::Aurelith, ECoMMapLayer::Surface,
+                                                 NodeTile.X, NodeTile.Y);
+    if (!Tile || !Tile->bHasManaNode) return 0;
+
+    int32 Output = Tile->NodeManaOutput;
+
+    // Realm-matched books give bonus: +1 per book in matching realm
+    const FCoMWizardMagicState* State = WizardMagicStates.Find(0); // TODO: pass wizard ID
+    if (State && Tile->NodeRealm != ECoMSpellRealm::None)
+    {
+        if (const int32* Books = State->SpellBooks.Find(Tile->NodeRealm))
+        {
+            Output += *Books; // Each book in the node's realm adds +1 mana
+        }
+    }
+
     return Output;
 }
+
+// ── Spirit Melding ───────────────────────────────────────────────────────────
+
+bool UCoMMagicSubsystem::MeldSpiritWithNode(int32 WizardId, FIntPoint NodeTile, ECoMSpellRealm SpiritRealm)
+{
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) return false;
+
+    UCoMWorldMapSubsystem* MapSub = GI->GetSubsystem<UCoMWorldMapSubsystem>();
+    if (!MapSub) return false;
+
+    FCoMTileData* Tile = MapSub->GetTileMutable(ECoMPlane::Aurelith, ECoMMapLayer::Surface,
+                                                  NodeTile.X, NodeTile.Y);
+    if (!Tile || !Tile->bHasManaNode) return false;
+
+    // Node must be unguarded
+    if (Tile->bNodeGuarded)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("MeldSpirit: Node at (%d,%d) is still guarded."),
+               NodeTile.X, NodeTile.Y);
+        return false;
+    }
+
+    // Node must be unclaimed
+    if (Tile->NodeOwnerWizardIndex >= 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("MeldSpirit: Node at (%d,%d) already claimed by wizard %d."),
+               NodeTile.X, NodeTile.Y, Tile->NodeOwnerWizardIndex);
+        return false;
+    }
+
+    // Spirit realm must match node realm, or be Arcane (wild card)
+    if (SpiritRealm != ECoMSpellRealm::Arcane && SpiritRealm != Tile->NodeRealm)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("MeldSpirit: Spirit realm mismatch — spirit is %d, node is %d."),
+               static_cast<int32>(SpiritRealm), static_cast<int32>(Tile->NodeRealm));
+        return false;
+    }
+
+    // Claim the node
+    Tile->NodeOwnerWizardIndex = WizardId;
+    FCoMWizardMagicState& State = GetWizardMagic(WizardId);
+    State.ControlledNodes.AddUnique(NodeTile);
+
+    // Add realm mana income
+    int32 ManaOutput = Tile->NodeManaOutput;
+    State.RealmManaPerTurn.FindOrAdd(Tile->NodeRealm) += ManaOutput;
+
+    // Set max storage for this realm (base 50 + 10 per book in realm)
+    int32 Books = 0;
+    if (const int32* B = State.SpellBooks.Find(Tile->NodeRealm)) { Books = *B; }
+    State.RealmManaMax.FindOrAdd(Tile->NodeRealm) = FMath::Max(
+        State.RealmManaMax.FindOrAdd(Tile->NodeRealm), 50 + Books * 10);
+
+    UE_LOG(LogTemp, Log, TEXT("MeldSpirit: Wizard %d melded with %s node at (%d,%d). +%d %s mana/turn."),
+           WizardId,
+           *UEnum::GetValueAsString(Tile->NodeRealm),
+           NodeTile.X, NodeTile.Y, ManaOutput,
+           *UEnum::GetValueAsString(Tile->NodeRealm));
+
+    return true;
+}
+
+void UCoMMagicSubsystem::DispelNodeSpirit(FIntPoint NodeTile)
+{
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) return;
+
+    UCoMWorldMapSubsystem* MapSub = GI->GetSubsystem<UCoMWorldMapSubsystem>();
+    if (!MapSub) return;
+
+    FCoMTileData* Tile = MapSub->GetTileMutable(ECoMPlane::Aurelith, ECoMMapLayer::Surface,
+                                                  NodeTile.X, NodeTile.Y);
+    if (!Tile || !Tile->bHasManaNode || Tile->NodeOwnerWizardIndex < 0) return;
+
+    int32 OldOwner = Tile->NodeOwnerWizardIndex;
+    FCoMWizardMagicState& State = GetWizardMagic(OldOwner);
+
+    // Remove from controlled nodes
+    State.ControlledNodes.Remove(NodeTile);
+
+    // Reduce realm mana income
+    if (int32* Income = State.RealmManaPerTurn.Find(Tile->NodeRealm))
+    {
+        *Income = FMath::Max(0, *Income - Tile->NodeManaOutput);
+    }
+
+    Tile->NodeOwnerWizardIndex = -1;
+
+    UE_LOG(LogTemp, Log, TEXT("DispelNodeSpirit: Node at (%d,%d) released from wizard %d."),
+           NodeTile.X, NodeTile.Y, OldOwner);
+}
+
+TMap<ECoMSpellRealm, int32> UCoMMagicSubsystem::GetRealmManaIncome(int32 WizardId) const
+{
+    const FCoMWizardMagicState* State = WizardMagicStates.Find(WizardId);
+    if (!State) return {};
+    return State->RealmManaPerTurn;
+}
+
+int32 UCoMMagicSubsystem::GetRealmMana(int32 WizardId, ECoMSpellRealm Realm) const
+{
+    const FCoMWizardMagicState* State = WizardMagicStates.Find(WizardId);
+    if (!State) return 0;
+    const int32* Mana = State->RealmMana.Find(Realm);
+    return Mana ? *Mana : 0;
+}
+
+bool UCoMMagicSubsystem::SpendManaForSpell(int32 WizardId, ECoMSpellRealm SpellRealm, int32 Cost)
+{
+    FCoMWizardMagicState& State = GetWizardMagic(WizardId);
+
+    int32 Remaining = Cost;
+
+    // Draw from realm-specific pool first
+    if (SpellRealm != ECoMSpellRealm::None && SpellRealm != ECoMSpellRealm::Arcane)
+    {
+        int32& RealmPool = State.RealmMana.FindOrAdd(SpellRealm);
+        int32 FromRealm = FMath::Min(RealmPool, Remaining);
+        RealmPool -= FromRealm;
+        Remaining -= FromRealm;
+    }
+
+    // Draw remainder from generic pool
+    if (Remaining > 0)
+    {
+        if (State.CurrentMana < Remaining)
+        {
+            // Not enough mana total — refund realm mana and fail
+            if (SpellRealm != ECoMSpellRealm::None && SpellRealm != ECoMSpellRealm::Arcane)
+            {
+                State.RealmMana.FindOrAdd(SpellRealm) += (Cost - Remaining);
+            }
+            return false;
+        }
+        State.CurrentMana -= Remaining;
+    }
+
+    return true;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SPELL CASTING
 // ─────────────────────────────────────────────────────────────────────────────

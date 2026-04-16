@@ -12,6 +12,10 @@ class UButton;
 class UScrollBox;
 class UVerticalBox;
 class UProgressBar;
+class UBorder;
+class USizeBox;
+class UHorizontalBox;
+class UOverlay;
 class UCoMDiplomacySubsystem;
 
 /**
@@ -27,6 +31,7 @@ class COMUI_API UCoMDiplomacyWidget : public UUserWidget
 
 public:
 	virtual void NativeConstruct() override;
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 	// -- Data Loading ----------------------------------------------------------
 
@@ -72,6 +77,12 @@ protected:
 	UFUNCTION()
 	void OnTradeButtonClicked();
 
+	UFUNCTION()
+	void OnProposeTreatyButtonClicked();
+
+	UFUNCTION()
+	void OnSendGiftButtonClicked();
+
 	// -- Widget references -----------------------------------------------------
 
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -107,7 +118,34 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> CloseButton;
 
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> ProposeTreatyButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> SendGiftButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> HeaderText;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> TreatyTypeLabel;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UVerticalBox> ContentBox;
+
+	UPROPERTY()
+	TObjectPtr<UBorder> BackgroundBorder;
+
 private:
+	/** Build the entire panel layout in C++. */
+	void BuildLayout();
+
+	/** Create a styled action button and add it to a parent vertical box. */
+	UButton* CreateStyledButton(const FString& Label, UVerticalBox* Parent);
+
+	/** Helper: add a centered text block to a vertical box. */
+	UTextBlock* AddLabelToBox(const FString& Text, const FLinearColor& Color, int32 FontSize, UVerticalBox* Parent, const FMargin& Pad = FMargin(0));
+
 	UCoMDiplomacySubsystem* GetDiplomacySubsystem();
 
 	/** Convert reputation (-1000..+1000) to a normalized 0-1 bar value. */

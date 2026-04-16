@@ -77,6 +77,27 @@ struct FCoMWizardMagicState
     /** Number of spell books in each realm (determines available tiers). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TMap<ECoMSpellRealm, int32> SpellBooks;
+
+    // ── Per-Realm Mana Pools (MoM-style) ─────────────────────────────────
+
+    /**
+     * Mana pool per spell realm. Realm-typed mana comes from controlling
+     * mana nodes of that realm. Casting a spell draws from its realm pool
+     * first, then from the generic pool (CurrentMana) as overflow.
+     *
+     * Example: Controlling 2 Nature nodes gives Nature mana income.
+     * Casting a Nature spell costs from RealmMana[Nature] first.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    TMap<ECoMSpellRealm, int32> RealmMana;
+
+    /** Per-realm mana income per turn (from nodes of that realm). */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    TMap<ECoMSpellRealm, int32> RealmManaPerTurn;
+
+    /** Maximum per-realm mana storage (scales with books in that realm). */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    TMap<ECoMSpellRealm, int32> RealmManaMax;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -212,6 +233,43 @@ public:
     /** Get mana output of a specific node (affected by realm, corruption). */
     UFUNCTION(BlueprintCallable, Category = "Magic")
     int32 GetNodeManaOutput(FIntPoint NodeTile, ECoMSpellRealm WizardRealm) const;
+
+    // ── Spirit Melding (MoM-style node claiming) ─────────────────────────────
+
+    /**
+     * Meld a magic spirit with a mana node to claim it for a wizard.
+     * The spirit type must match the node's realm (or be Arcane for any realm).
+     * Node must be unguarded (guardian defeated) and unclaimed.
+     * On success: node produces realm-typed mana each turn for this wizard.
+     * @return true if melding succeeded.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Magic")
+    bool MeldSpiritWithNode(int32 WizardId, FIntPoint NodeTile, ECoMSpellRealm SpiritRealm);
+
+    /**
+     * Dispel the spirit melded at a node, releasing it from wizard control.
+     * Can be done to own nodes voluntarily, or to enemy nodes via Dispel Magic.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Magic")
+    void DispelNodeSpirit(FIntPoint NodeTile);
+
+    /** Get the realm-typed mana income for a wizard from all their controlled nodes. */
+    UFUNCTION(BlueprintCallable, Category = "Magic")
+    TMap<ECoMSpellRealm, int32> GetRealmManaIncome(int32 WizardId) const;
+
+    /**
+     * Get a wizard's current realm-specific mana pool.
+     * Returns 0 for realms with no pool.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Magic")
+    int32 GetRealmMana(int32 WizardId, ECoMSpellRealm Realm) const;
+
+    /**
+     * Spend mana to cast a spell. Draws from realm pool first, then generic.
+     * @return true if enough mana was available and was spent.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Magic")
+    bool SpendManaForSpell(int32 WizardId, ECoMSpellRealm SpellRealm, int32 Cost);
 
     // ── Spell Casting ────────────────────────────────────────────────────────
 

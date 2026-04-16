@@ -24,7 +24,7 @@ UCoMUnitSubsystem* CreateTestSubsystem()
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FUnitCreateArmy,
 	"CoM.Unit.CreateArmy",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FUnitCreateArmy::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -48,7 +48,7 @@ bool FUnitCreateArmy::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FUnitAddToArmy,
 	"CoM.Unit.AddUnitToArmy",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FUnitAddToArmy::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -82,7 +82,7 @@ bool FUnitAddToArmy::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FUnitMergeArmies,
 	"CoM.Unit.MergeArmies",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FUnitMergeArmies::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -123,7 +123,7 @@ bool FUnitMergeArmies::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FUnitSplitArmy,
 	"CoM.Unit.SplitArmy",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FUnitSplitArmy::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();
@@ -155,7 +155,7 @@ bool FUnitSplitArmy::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FUnitWrapX,
 	"CoM.Unit.WrapX",
-	EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FUnitWrapX::RunTest(const FString& Parameters)
 {
 	auto* Sub = CreateTestSubsystem();

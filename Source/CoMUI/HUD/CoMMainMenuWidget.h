@@ -10,6 +10,7 @@
 class UBorder;
 class UVerticalBox;
 class UButton;
+class UImage;
 
 /**
  * UCoMMainMenuWidget
@@ -25,6 +26,7 @@ class COMUI_API UCoMMainMenuWidget : public UUserWidget
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 private:
 	// -- Button callbacks --------------------------------------------------------
@@ -54,6 +56,9 @@ private:
 
 	/** Helper: show a temporary notification message on screen. */
 	void ShowNotification(const FString& Message);
+
+	/** Helper: add a centered text block to ContentBox. */
+	void AddCenteredText(const FString& Text, const FLinearColor& Color, int32 FontSize, const FMargin& Pad);
 
 	// -- Widget references (created in C++) --------------------------------------
 

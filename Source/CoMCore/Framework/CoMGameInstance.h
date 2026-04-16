@@ -230,4 +230,24 @@ public:
 	/** Fired when a game mode requests the main menu be shown (e.g. title screen). */
 	DECLARE_MULTICAST_DELEGATE(FOnMainMenuRequested);
 	FOnMainMenuRequested OnMainMenuRequested;
+
+	/** Fired when a game mode requests the HUD be shown (game started). */
+	DECLARE_MULTICAST_DELEGATE(FOnHUDRequested);
+	FOnHUDRequested OnHUDRequested;
+
+	/** Fired when a game mode requests all menus be hidden (transitioning to gameplay). */
+	DECLARE_MULTICAST_DELEGATE(FOnHideMenusRequested);
+	FOnHideMenusRequested OnHideMenusRequested;
+
+	/** Fired when a new game is starting (after world gen, before turn loop). */
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnNewGameStarting, int32 /*NumWizards*/);
+	FOnNewGameStarting OnNewGameStarting;
+
+	/** Fired when a city is selected (e.g. via overworld click). UI subsystem binds to this. */
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnCityScreenRequested, int32 /*CityId*/);
+	FOnCityScreenRequested OnCityScreenRequested;
+
+	/** Fired when an army is selected (e.g. via overworld click). UI subsystem binds to this. */
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnArmyStackRequested, int32 /*ArmyId*/);
+	FOnArmyStackRequested OnArmyStackRequested;
 };

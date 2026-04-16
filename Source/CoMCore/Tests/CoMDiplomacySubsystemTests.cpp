@@ -24,7 +24,7 @@ UCoMDiplomacySubsystem* CreateTestSubsystem()
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploInitialState,
     "CoM.Diplomacy.InitialState",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploInitialState::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -38,7 +38,7 @@ bool FDiploInitialState::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploGetRelationCreates,
     "CoM.Diplomacy.GetRelationCreatesDefault",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploGetRelationCreates::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -54,7 +54,7 @@ bool FDiploGetRelationCreates::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploModifyReputation,
     "CoM.Diplomacy.ModifyReputation",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploModifyReputation::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -73,7 +73,7 @@ bool FDiploModifyReputation::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploProposeTreaty,
     "CoM.Diplomacy.ProposeTreaty",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploProposeTreaty::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -88,7 +88,7 @@ bool FDiploProposeTreaty::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploAcceptTreaty,
     "CoM.Diplomacy.AcceptTreaty",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploAcceptTreaty::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -107,7 +107,7 @@ bool FDiploAcceptTreaty::RunTest(const FString& Parameters)
 // REGRESSION TEST: AcceptTreaty peace-from-war should clear LastWarStartTurn
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploAcceptTreatyEndWar,
     "CoM.Diplomacy.AcceptTreatyEndWar",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploAcceptTreatyEndWar::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -130,7 +130,7 @@ bool FDiploAcceptTreatyEndWar::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploRejectTreaty,
     "CoM.Diplomacy.RejectTreaty",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploRejectTreaty::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -151,7 +151,7 @@ bool FDiploRejectTreaty::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploDeclareWar,
     "CoM.Diplomacy.DeclareWar",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploDeclareWar::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -167,7 +167,7 @@ bool FDiploDeclareWar::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploDeclareWarMutualDefense,
     "CoM.Diplomacy.DeclareWarMutualDefense",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploDeclareWarMutualDefense::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -187,7 +187,7 @@ bool FDiploDeclareWarMutualDefense::RunTest(const FString& Parameters)
 // REGRESSION TEST: DeclareWar should not crash from TMap iterator invalidation
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploDeclareWarNoIteratorCrash,
     "CoM.Diplomacy.DeclareWarNoIteratorInvalidation",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploDeclareWarNoIteratorCrash::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -209,7 +209,7 @@ bool FDiploDeclareWarNoIteratorCrash::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploSendGift,
     "CoM.Diplomacy.SendGift",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploSendGift::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -228,7 +228,7 @@ bool FDiploSendGift::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploFirstContact,
     "CoM.Diplomacy.MakeFirstContact",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploFirstContact::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -243,7 +243,7 @@ bool FDiploFirstContact::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploVassal,
     "CoM.Diplomacy.MakeVassal",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploVassal::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -264,7 +264,7 @@ bool FDiploVassal::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploEvaluateProposal,
     "CoM.Diplomacy.EvaluateProposal",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploEvaluateProposal::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -289,7 +289,7 @@ bool FDiploEvaluateProposal::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploProcessTurn,
     "CoM.Diplomacy.ProcessTurn",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploProcessTurn::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -302,7 +302,7 @@ bool FDiploProcessTurn::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploWarWeariness,
     "CoM.Diplomacy.WarWeariness",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploWarWeariness::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -319,7 +319,7 @@ bool FDiploWarWeariness::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploCasusBelli,
     "CoM.Diplomacy.CasusBelli",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploCasusBelli::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();
@@ -334,7 +334,7 @@ bool FDiploCasusBelli::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FDiploBreakTreaty,
     "CoM.Diplomacy.BreakTreaty",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FDiploBreakTreaty::RunTest(const FString& Parameters)
 {
     auto* Sub = CreateTestSubsystem();

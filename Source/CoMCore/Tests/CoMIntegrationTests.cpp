@@ -34,7 +34,7 @@ struct FPhase7World
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FIntWarCascade,
     "CoM.Integration.WarDeclarationMutualDefenseCascade",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FIntWarCascade::RunTest(const FString& Parameters)
 {
     FPhase7World World;
@@ -68,7 +68,7 @@ bool FIntWarCascade::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FIntManaResearch,
     "CoM.Integration.ManaNodeClaimResearchCompletion",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FIntManaResearch::RunTest(const FString& Parameters)
 {
     FPhase7World World;
@@ -110,7 +110,7 @@ bool FIntManaResearch::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FIntSpyMissionLifecycle,
     "CoM.Integration.SpyMissionFullLifecycle",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FIntSpyMissionLifecycle::RunTest(const FString& Parameters)
 {
     FPhase7World World;
@@ -146,7 +146,7 @@ bool FIntSpyMissionLifecycle::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FIntTradeRelations,
     "CoM.Integration.TradeTreatyReputationGrowth",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FIntTradeRelations::RunTest(const FString& Parameters)
 {
     FPhase7World World;
@@ -189,7 +189,7 @@ bool FIntTradeRelations::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FE2EFullTurnSimulation,
     "CoM.E2E.FullTurnSimulation",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FE2EFullTurnSimulation::RunTest(const FString& Parameters)
 {
     FPhase7World World;
@@ -261,7 +261,7 @@ bool FE2EFullTurnSimulation::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FE2EMultiWizardDiplomacy,
     "CoM.E2E.MultiWizardDiplomacyScenario",
-    EAutomationTestFlags::ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+    EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
 bool FE2EMultiWizardDiplomacy::RunTest(const FString& Parameters)
 {
     FPhase7World World;

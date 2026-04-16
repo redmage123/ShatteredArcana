@@ -3,6 +3,8 @@
 // Phase 7 — Shattered Arcana
 
 #include "CoMDiplomacySubsystem.h"
+#include "CoMCore/Magic/CoMMagicSubsystem.h"
+#include "CoMCore/Data/CoMSpellDatabase.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LIFECYCLE
@@ -323,6 +325,113 @@ void UCoMDiplomacySubsystem::SendGift(int32 SenderId, int32 ReceiverId,
 
     if (SenderId == Rel.WizardA) Rel.GiftsGivenAtoB++;
     else Rel.GiftsGivenBtoA++;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPELL TRADING
+// ─────────────────────────────────────────────────────────────────────────────
+
+bool UCoMDiplomacySubsystem::ProposeSpellTrade(int32 OffererWizardId, int32 TargetWizardId,
+                                                const TArray<FName>& OfferedSpells, const TArray<FName>& RequestedSpells)
+{
+    // Require Peace or Alliance treaty
+    const FCoMDiplomaticRelation& Rel = GetRelation(OffererWizardId, TargetWizardId);
+    if (Rel.CurrentTreaty != ECoMTreatyType::NonAggression &&
+        Rel.CurrentTreaty != ECoMTreatyType::MilitaryAlliance &&
+        Rel.CurrentTreaty != ECoMTreatyType::TradeAgreement)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("SpellTrade: Requires Peace/Alliance/Trade treaty."));
+        return false;
+    }
+
+    // For AI targets, auto-evaluate
+    bool bAccepted = AIEvaluateSpellTrade(TargetWizardId, OfferedSpells, RequestedSpells);
+
+    if (bAccepted)
+    {
+        // Execute the trade via MagicSubsystem
+        UGameInstance* GI = GetGameInstance();
+        if (GI)
+        {
+            if (UCoMMagicSubsystem* Magic = GI->GetSubsystem<UCoMMagicSubsystem>())
+            {
+                // Give offered spells to target
+                FCoMWizardMagicState& TargetState = Magic->GetWizardMagic(TargetWizardId);
+                for (const FName& Spell : OfferedSpells)
+                {
+                    TargetState.KnownSpells.AddUnique(Spell);
+                }
+
+                // Give requested spells to offerer
+                FCoMWizardMagicState& OffererState = Magic->GetWizardMagic(OffererWizardId);
+                for (const FName& Spell : RequestedSpells)
+                {
+                    OffererState.KnownSpells.AddUnique(Spell);
+                }
+            }
+        }
+
+        // Boost reputation
+        ModifyReputation(OffererWizardId, TargetWizardId, 25, TEXT("Spell trade"));
+
+        UE_LOG(LogTemp, Log, TEXT("SpellTrade: Wizard %d traded %d spells with Wizard %d for %d spells."),
+               OffererWizardId, OfferedSpells.Num(), TargetWizardId, RequestedSpells.Num());
+    }
+
+    return bAccepted;
+}
+
+TArray<FName> UCoMDiplomacySubsystem::GetTradeableSpells(int32 FromWizardId, int32 ToWizardId) const
+{
+    TArray<FName> Result;
+
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) return Result;
+
+    UCoMMagicSubsystem* Magic = GI->GetSubsystem<UCoMMagicSubsystem>();
+    if (!Magic) return Result;
+
+    const FCoMWizardMagicState& FromState = const_cast<UCoMMagicSubsystem*>(Magic)->GetWizardMagic(FromWizardId);
+    const FCoMWizardMagicState& ToState = const_cast<UCoMMagicSubsystem*>(Magic)->GetWizardMagic(ToWizardId);
+
+    for (const FName& Spell : FromState.KnownSpells)
+    {
+        // Only tradeable if target doesn't already know it
+        if (!ToState.KnownSpells.Contains(Spell))
+        {
+            // Only tradeable if target has books in the spell's realm
+            FCoMSpellInfo Info = CoMSpellDatabase::GetSpellInfo(Spell);
+            if (const int32* Books = ToState.SpellBooks.Find(Info.Realm))
+            {
+                if (*Books > 0)
+                {
+                    Result.Add(Spell);
+                }
+            }
+        }
+    }
+
+    return Result;
+}
+
+bool UCoMDiplomacySubsystem::AIEvaluateSpellTrade(int32 AIWizardId,
+                                                    const TArray<FName>& OfferedToAI, const TArray<FName>& RequestedFromAI) const
+{
+    // Simple evaluation: compare total research cost of offered vs requested
+    int32 OfferedValue = 0;
+    for (const FName& Spell : OfferedToAI)
+    {
+        OfferedValue += CoMSpellDatabase::GetSpellInfo(Spell).ResearchCost;
+    }
+
+    int32 RequestedValue = 0;
+    for (const FName& Spell : RequestedFromAI)
+    {
+        RequestedValue += CoMSpellDatabase::GetSpellInfo(Spell).ResearchCost;
+    }
+
+    // AI accepts if offered value is at least 70% of requested value
+    return OfferedValue >= (RequestedValue * 7 / 10);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

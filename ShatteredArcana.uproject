@@ -1,8 +1,8 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "5.4",
+	"EngineAssociation": "5.7",
 	"Category": "",
-	"Description": "Caster of Magic \u2014 4X Turn-Based Fantasy Strategy",
+	"Description": "Shattered Arcana \u2014 4X Turn-Based Fantasy Strategy",
 	"Modules": [
 		{
 			"Name": "ShatteredArcana",

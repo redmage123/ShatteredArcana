@@ -70,6 +70,12 @@ private:
 
 	/** Triggered by IA_QuickLoad (F9). Loads game from the QuickSave slot. */
 	void Input_QuickLoad(const FInputActionValue& Value);
+
+	/** Handles left-click tile/city/army selection on the overworld. */
+	void OnSelectPressed();
+
+	/** Convert a world position to tile coordinates. */
+	static FIntPoint WorldToTile(const FVector& WorldPos);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

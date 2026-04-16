@@ -1,5 +1,5 @@
 // Copyright Shattered Arcana. All Rights Reserved.
-// CoMBuildingDatabase.cpp — Static building data for all 34 buildings
+// CoMBuildingDatabase.cpp — Static building data for all 46 universal + 45 racial = 91 buildings
 // Values inspired by Master of Magic / Caster of Magic
 
 #include "CoMBuildingDatabase.h"
@@ -65,7 +65,7 @@ TArray<FName> CoMBuildingDatabase::GetStarterBuildings()
 }
 
 // =====================================================================
-// Building Definitions — all 34 buildings
+// Building Definitions — 46 universal + 45 racial = 91 buildings
 // =====================================================================
 
 void CoMBuildingDatabase::InitializeDatabase()
@@ -282,8 +282,10 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Lighthouse"));
 		B.ProductionCost = 150;
 		B.UpkeepGold = 1;
+		B.GoldBonus = 3; // Trade income from maritime navigation
 		B.bCoastalOnly = true;
 		B.Prerequisites.Add(FName(TEXT("Docks")));
+		// Also grants +2 vision range over water (implemented in FogOfWarSubsystem)
 		RegisterBuilding(MoveTemp(B));
 	}
 
@@ -471,6 +473,153 @@ void CoMBuildingDatabase::InitializeDatabase()
 		RegisterBuilding(MoveTemp(B));
 	}
 
+	// ─── Farms / Agriculture ────────────────────────────────────────────
+
+	{
+		FCoMBuildingInfo B;
+		B.BuildingID = FName(TEXT("Farm"));
+		B.DisplayName = FText::FromString(TEXT("Farm"));
+		B.ProductionCost = 30;
+		B.UpkeepGold = 0;
+		B.FoodBonus = 3;
+		RegisterBuilding(MoveTemp(B));
+	}
+
+	{
+		FCoMBuildingInfo B;
+		B.BuildingID = FName(TEXT("Plantation"));
+		B.DisplayName = FText::FromString(TEXT("Plantation"));
+		B.ProductionCost = 120;
+		B.UpkeepGold = 1;
+		B.FoodBonus = 2;
+		B.GoldBonus = 2;
+		B.Prerequisites.Add(FName(TEXT("Granary")));
+		RegisterBuilding(MoveTemp(B));
+	}
+
+	// ─── Resource Gathering ─────────────────────────────────────────────
+
+	{
+		FCoMBuildingInfo B;
+		B.BuildingID = FName(TEXT("Sawmill"));
+		B.DisplayName = FText::FromString(TEXT("Sawmill"));
+		B.ProductionCost = 60;
+		B.UpkeepGold = 0;
+		B.ProductionBonus = 2;
+		RegisterBuilding(MoveTemp(B));
+	}
+
+	{
+		FCoMBuildingInfo B;
+		B.BuildingID = FName(TEXT("Mine"));
+		B.DisplayName = FText::FromString(TEXT("Mine"));
+		B.ProductionCost = 80;
+		B.UpkeepGold = 1;
+		B.GoldBonus = 2;
+		B.ProductionBonus = 1;
+		B.Prerequisites.Add(FName(TEXT("Smithy")));
+		RegisterBuilding(MoveTemp(B));
+	}
+
+	{
+		FCoMBuildingInfo B;
+		B.BuildingID = FName(TEXT("Quarry"));
+		B.DisplayName = FText::FromString(TEXT("Quarry"));
+		B.ProductionCost = 100;
+		B.UpkeepGold = 1;
+		B.ProductionBonus = 3;
+		B.Prerequisites.Add(FName(TEXT("Mine")));
+		RegisterBuilding(MoveTemp(B));
+	}
+
+	// ─── Military Training ──────────────────────────────────────────────
+
+	{
+		FCoMBuildingInfo B;
+		B.BuildingID = FName(TEXT("ArcheryRange"));
+		B.DisplayName = FText::FromString(TEXT("Archery Range"));
+		B.ProductionCost = 80;
+		B.UpkeepGold = 1;
+		B.EnablesUnitTag = TEXT("Ranged");
+		B.Prerequisites.Add(FName(TEXT("Barracks")));
+		RegisterBuilding(MoveTemp(B));
+	}
+
+	{
+		FCoMBuildingInfo B;
+		B.BuildingID = FName(TEXT("SiegeWorkshop"));
+		B.DisplayName = FText::FromString(TEXT("Siege Workshop"));
+		B.ProductionCost = 200;
+		B.UpkeepGold = 2;
+		B.EnablesUnitTag = TEXT("Siege");
+		B.Prerequisites.Add(FName(TEXT("Armory")));
+		RegisterBuilding(MoveTemp(B));
+	}
+
+	// ─── Social / Cultural ──────────────────────────────────────────────
+
+	{
+		FCoMBuildingInfo B;
+		B.BuildingID = FName(TEXT("Amphitheater"));
+		B.DisplayName = FText::FromString(TEXT("Amphitheater"));
+		B.ProductionCost = 150;
+		B.UpkeepGold = 1;
+		B.HappinessBonus = 3;
+		B.UnrestReduction = 1;
+		B.Prerequisites.Add(FName(TEXT("Memorial")));
+		RegisterBuilding(MoveTemp(B));
+	}
+
+	{
+		FCoMBuildingInfo B;
+		B.BuildingID = FName(TEXT("University"));
+		B.DisplayName = FText::FromString(TEXT("University"));
+		B.ProductionCost = 300;
+		B.UpkeepGold = 2;
+		B.ResearchBonus = 8;
+		B.Prerequisites.Add(FName(TEXT("Observatory")));
+		B.Prerequisites.Add(FName(TEXT("Library")));
+		RegisterBuilding(MoveTemp(B));
+	}
+
+	{
+		FCoMBuildingInfo B;
+		B.BuildingID = FName(TEXT("Hospital"));
+		B.DisplayName = FText::FromString(TEXT("Hospital"));
+		B.ProductionCost = 200;
+		B.UpkeepGold = 1;
+		B.FoodBonus = 1;
+		B.PopCapBonus = 2; // Population growth bonus
+		B.Prerequisites.Add(FName(TEXT("Aqueduct")));
+		RegisterBuilding(MoveTemp(B));
+	}
+
+	// ─── Magical ────────────────────────────────────────────────────────
+
+	{
+		FCoMBuildingInfo B;
+		B.BuildingID = FName(TEXT("ManaVault"));
+		B.DisplayName = FText::FromString(TEXT("Mana Vault"));
+		B.ProductionCost = 250;
+		B.UpkeepGold = 2;
+		B.ManaBonus = 5;
+		// Also stores excess mana (implemented in ManaSubsystem)
+		B.Prerequisites.Add(FName(TEXT("MageTower")));
+		RegisterBuilding(MoveTemp(B));
+	}
+
+	{
+		FCoMBuildingInfo B;
+		B.BuildingID = FName(TEXT("RuneForge"));
+		B.DisplayName = FText::FromString(TEXT("Rune Forge"));
+		B.ProductionCost = 350;
+		B.UpkeepGold = 2;
+		B.ProductionBonus = 2;
+		B.EnablesUnitTag = TEXT("Rune"); // Enables Rune inscription
+		B.Prerequisites.Add(FName(TEXT("EnchanterWorkshop")));
+		RegisterBuilding(MoveTemp(B));
+	}
+
 	// =====================================================================
 	// Racial Buildings — 45 buildings (3 per 15 major races)
 	// =====================================================================
@@ -557,8 +706,9 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Ancient Grove"));
 		B.ProductionCost = 250;
 		B.UpkeepGold = 1;
-		B.FoodBonus = 3;
-		B.ProductionBonus = 2;
+		B.FoodBonus = 2; // Living forest provides sustenance
+		B.ManaBonus = 1; // Nature magic from ancient trees
+		B.EnablesUnitTag = TEXT("Nature"); // Grants Nature units
 		B.RaceRequirement = CoMTags::Race::HighElves;
 		B.Architecture = ECoMArchitectureStyle::Elven;
 		RegisterBuilding(MoveTemp(B));
@@ -628,8 +778,8 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Volcanic Forge"));
 		B.ProductionCost = 350;
 		B.UpkeepGold = 2;
-		B.ProductionBonus = 4;
-		B.RecruitAttackBonus = 1; // Fire damage bonus represented as attack
+		B.ProductionBonus = 3; // Superior to Smithy
+		B.EnablesUnitTag = TEXT("Mithril"); // Enables Mithril weapons
 		B.Prerequisites.Add(FName(TEXT("Smithy")));
 		B.RaceRequirement = CoMTags::Race::Draconians;
 		B.Architecture = ECoMArchitectureStyle::Draconic;
@@ -642,6 +792,8 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Sky Roost"));
 		B.ProductionCost = 250;
 		B.UpkeepGold = 2;
+		B.EnablesUnitTag = TEXT("Flying"); // Enables Flying units
+		// +1 movement for air units (implemented in MovementSubsystem)
 		B.Prerequisites.Add(FName(TEXT("Barracks")));
 		B.RaceRequirement = CoMTags::Race::Draconians;
 		B.Architecture = ECoMArchitectureStyle::Draconic;
@@ -683,8 +835,8 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Web Citadel"));
 		B.ProductionCost = 350;
 		B.UpkeepGold = 2;
+		B.CityDefenseBonus = 2; // Web-reinforced fortification
 		B.WallHP = 20;
-		B.RecruitAttackBonus = 2;
 		B.Prerequisites.Add(FName(TEXT("WallsStone")));
 		B.RaceRequirement = CoMTags::Race::DarkElves;
 		B.Architecture = ECoMArchitectureStyle::Dark;
@@ -714,6 +866,7 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.ProductionCost = 300;
 		B.UpkeepGold = 2;
 		B.ProductionBonus = 3;
+		B.EnablesUnitTag = TEXT("Hellforged"); // Enables Hellforged weapons (damage bonus)
 		B.Prerequisites.Add(FName(TEXT("Smithy")));
 		B.RaceRequirement = CoMTags::Race::Demonkin;
 		B.Architecture = ECoMArchitectureStyle::Demonic;
@@ -726,6 +879,8 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Torture Chamber"));
 		B.ProductionCost = 200;
 		B.UpkeepGold = 1;
+		B.UnrestReduction = 2; // Fear keeps populace in line
+		B.EnablesUnitTag = TEXT("Torturer"); // Enables Torturer unit
 		B.bEnablesSpyRecruitment = true;
 		B.Prerequisites.Add(FName(TEXT("Barracks")));
 		B.RaceRequirement = CoMTags::Race::Demonkin;
@@ -741,7 +896,8 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Waaagh! Totem"));
 		B.ProductionCost = 150;
 		B.UpkeepGold = 1;
-		B.RecruitAttackBonus = 2;
+		B.RecruitAttackBonus = 2; // +2 attack bonus for all recruited units
+		B.HappinessBonus = 1; // Morale boost from battle fervor
 		B.CityDefenseBonus = -1; // -1 defense (bloodlust trade-off)
 		B.Prerequisites.Add(FName(TEXT("Barracks")));
 		B.RaceRequirement = CoMTags::Race::Orcs;
@@ -783,7 +939,8 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Tidal Pool"));
 		B.ProductionCost = 200;
 		B.UpkeepGold = 1;
-		B.FoodBonus = 3;
+		B.FoodBonus = 2; // Ocean harvest
+		B.EnablesUnitTag = TEXT("AquaticElite"); // Enables Aquatic Elite units
 		B.bCoastalOnly = true;
 		B.Prerequisites.Add(FName(TEXT("Docks")));
 		B.RaceRequirement = CoMTags::Race::Merfolk;
@@ -826,7 +983,8 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Necropolis"));
 		B.ProductionCost = 400;
 		B.UpkeepGold = 3;
-		B.EnablesUnitTag = TEXT("Skeleton");
+		B.ManaBonus = 3; // Death magic emanation
+		B.EnablesUnitTag = TEXT("Skeleton,Wraith"); // Enables Skeleton AND Wraith units
 		B.Prerequisites.Add(FName(TEXT("Temple")));
 		B.RaceRequirement = CoMTags::Race::Shades;
 		B.Architecture = ECoMArchitectureStyle::Dark;
@@ -840,6 +998,7 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.ProductionCost = 250;
 		B.UpkeepGold = 0; // No maintenance for undead theme
 		B.ProductionBonus = 2;
+		B.EnablesUnitTag = TEXT("Cursed"); // Enables Cursed weapons (life drain)
 		B.Prerequisites.Add(FName(TEXT("Smithy")));
 		B.RaceRequirement = CoMTags::Race::Shades;
 		B.Architecture = ECoMArchitectureStyle::Dark;
@@ -852,6 +1011,9 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Plague Cauldron"));
 		B.ProductionCost = 300;
 		B.UpkeepGold = 2;
+		B.UnrestReduction = 1; // Fear of plague keeps order
+		B.EnablesUnitTag = TEXT("Plague"); // Enables Plague spell at city
+		// Also causes -1 unrest in nearby enemy cities (implemented in UnrestSubsystem)
 		B.Prerequisites.Add(FName(TEXT("AlchemistLab")));
 		B.RaceRequirement = CoMTags::Race::Shades;
 		B.Architecture = ECoMArchitectureStyle::Dark;
@@ -866,7 +1028,8 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Lucky Clover Farm"));
 		B.ProductionCost = 100;
 		B.UpkeepGold = 0;
-		B.FoodBonus = 4;
+		B.FoodBonus = 4; // Extraordinary farming
+		B.HappinessBonus = 1; // Good harvests bring joy
 		B.Prerequisites.Add(FName(TEXT("Granary")));
 		B.RaceRequirement = CoMTags::Race::Halflings;
 		B.Architecture = ECoMArchitectureStyle::Human;
@@ -879,7 +1042,10 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Burglar's Guild"));
 		B.ProductionCost = 200;
 		B.UpkeepGold = 1;
+		B.GoldBonus = 3; // Ill-gotten gains
+		B.EnablesUnitTag = TEXT("Rogue"); // Enables Rogue units
 		B.bEnablesSpyRecruitment = true;
+		// +20% spy efficiency (implemented in EspionageSubsystem)
 		B.Prerequisites.Add(FName(TEXT("ThievesGuild")));
 		B.RaceRequirement = CoMTags::Race::Halflings;
 		B.Architecture = ECoMArchitectureStyle::Human;
@@ -893,6 +1059,7 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.ProductionCost = 150;
 		B.UpkeepGold = 1;
 		B.HappinessBonus = 3;
+		B.FoodBonus = 2; // Communal feasting
 		B.Prerequisites.Add(FName(TEXT("Tavern")));
 		B.RaceRequirement = CoMTags::Race::Halflings;
 		B.Architecture = ECoMArchitectureStyle::Human;
@@ -907,6 +1074,8 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Regeneration Pool"));
 		B.ProductionCost = 300;
 		B.UpkeepGold = 2;
+		B.ManaBonus = 1; // Primal regenerative magic
+		B.EnablesUnitTag = TEXT("Regeneration"); // All units gain Regeneration ability
 		B.Prerequisites.Add(FName(TEXT("Shrine")));
 		B.RaceRequirement = CoMTags::Race::Trolls;
 		B.Architecture = ECoMArchitectureStyle::Orcish;
@@ -920,6 +1089,7 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.ProductionCost = 200;
 		B.UpkeepGold = 1;
 		B.GoldBonus = 3;
+		// Also generates toll income from passing trade routes (implemented in TradeSubsystem)
 		B.RaceRequirement = CoMTags::Race::Trolls;
 		B.Architecture = ECoMArchitectureStyle::Orcish;
 		RegisterBuilding(MoveTemp(B));
@@ -931,7 +1101,8 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Carnage Pit"));
 		B.ProductionCost = 250;
 		B.UpkeepGold = 2;
-		B.RecruitAttackBonus = 3;
+		B.RecruitAttackBonus = 2; // +2 attack for recruited units
+		B.EnablesUnitTag = TEXT("Berserker"); // Enables Berserker units
 		B.Prerequisites.Add(FName(TEXT("FightersGuild")));
 		B.RaceRequirement = CoMTags::Race::Trolls;
 		B.Architecture = ECoMArchitectureStyle::Orcish;
@@ -960,6 +1131,7 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.ProductionCost = 200;
 		B.UpkeepGold = 1;
 		B.GoldBonus = 2;
+		B.EnablesUnitTag = TEXT("Scout"); // Enables Scout units
 		B.Prerequisites.Add(FName(TEXT("Barracks")));
 		B.RaceRequirement = CoMTags::Race::Gnolls;
 		B.Architecture = ECoMArchitectureStyle::Orcish;
@@ -973,6 +1145,7 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.ProductionCost = 100;
 		B.UpkeepGold = 0;
 		B.ManaBonus = 2;
+		B.ResearchBonus = 1; // Ancestral bone divination
 		B.Prerequisites.Add(FName(TEXT("Shrine")));
 		B.RaceRequirement = CoMTags::Race::Gnolls;
 		B.Architecture = ECoMArchitectureStyle::Orcish;
@@ -988,7 +1161,7 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.ProductionCost = 200;
 		B.UpkeepGold = 1;
 		B.FoodBonus = 3;
-		B.PopCapBonus = 2;
+		B.EnablesUnitTag = TEXT("Raptor"); // Enables Raptor cavalry
 		B.Prerequisites.Add(FName(TEXT("Granary")));
 		B.RaceRequirement = CoMTags::Race::Lizardmen;
 		B.Architecture = ECoMArchitectureStyle::Aquatic;
@@ -1001,7 +1174,8 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Venom Lab"));
 		B.ProductionCost = 250;
 		B.UpkeepGold = 2;
-		B.RecruitAttackBonus = 1; // Poison damage represented
+		B.ProductionBonus = 1; // Venom processing
+		B.EnablesUnitTag = TEXT("Poison"); // Enables Poison weapons for all units
 		B.Prerequisites.Add(FName(TEXT("AlchemistLab")));
 		B.RaceRequirement = CoMTags::Race::Lizardmen;
 		B.Architecture = ECoMArchitectureStyle::Aquatic;
@@ -1014,7 +1188,8 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Scale Forge"));
 		B.ProductionCost = 200;
 		B.UpkeepGold = 1;
-		B.CityDefenseBonus = 2;
+		B.ProductionBonus = 2; // Scale armor production
+		B.CityDefenseBonus = 1; // +1 defense for recruited units
 		B.Prerequisites.Add(FName(TEXT("Smithy")));
 		B.RaceRequirement = CoMTags::Race::Lizardmen;
 		B.Architecture = ECoMArchitectureStyle::Aquatic;
@@ -1044,6 +1219,7 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.ProductionCost = 200;
 		B.UpkeepGold = 1;
 		B.EnablesUnitTag = TEXT("EliteCavalry");
+		// +2 movement for cavalry units (implemented in MovementSubsystem)
 		B.Prerequisites.Add(FName(TEXT("Stable")));
 		B.RaceRequirement = CoMTags::Race::Nomads;
 		B.Architecture = ECoMArchitectureStyle::Human;
@@ -1057,6 +1233,7 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.ProductionCost = 150;
 		B.UpkeepGold = 0;
 		B.FoodBonus = 3;
+		B.GoldBonus = 1; // Oasis trade stop
 		B.HappinessBonus = 2;
 		B.RaceRequirement = CoMTags::Race::Nomads;
 		B.Architecture = ECoMArchitectureStyle::Human;
@@ -1072,6 +1249,7 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.ProductionCost = 200;
 		B.UpkeepGold = 1;
 		B.ManaBonus = 3;
+		B.EnablesUnitTag = TEXT("TotemGuard"); // Enables Totem Guard units
 		B.Prerequisites.Add(FName(TEXT("Shrine")));
 		B.Prerequisites.Add(FName(TEXT("Temple")));
 		B.RaceRequirement = CoMTags::Race::Beastmen;
@@ -1099,8 +1277,9 @@ void CoMBuildingDatabase::InitializeDatabase()
 		B.DisplayName = FText::FromString(TEXT("Totem Circle"));
 		B.ProductionCost = 250;
 		B.UpkeepGold = 2;
-		B.SummonCostReduction = 4;
-		B.bEnablesSummoning = true;
+		B.SummonCostReduction = 4; // -10% summon cost (Nature summoning focus)
+		B.bEnablesSummoning = true; // Enables Nature summoning
+		B.EnablesUnitTag = TEXT("NatureSummon"); // Nature-realm summons
 		B.Prerequisites.Add(FName(TEXT("SummoningCircle")));
 		B.RaceRequirement = CoMTags::Race::Beastmen;
 		B.Architecture = ECoMArchitectureStyle::Orcish;

@@ -1,5 +1,5 @@
 // Copyright Mythforge Studios. All Rights Reserved.
-// CoMWizardCreationWidget.cpp -- Wizard creation screen implementation.
+// CoMWizardCreationWidget.cpp -- Screen 1: Wizard portrait selection grid.
 
 #include "CoMWizardCreationWidget.h"
 
@@ -14,79 +14,35 @@
 #include "Components/SizeBox.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
-#include "Components/EditableTextBox.h"
-#include "Components/ScrollBox.h"
 #include "Components/Image.h"
 #include "Blueprint/WidgetTree.h"
+#include "Engine/Texture2D.h"
 
-#include "Kismet/GameplayStatics.h"
-#include "Framework/CoMGameInstance.h"
 #include "CoMUISubsystem.h"
 
 // =============================================================================
 // Colour constants
 // =============================================================================
 
-namespace WizCreationColours
+namespace WizPortraitColours
 {
-	static const FLinearColor Background   = FLinearColor(0.039f, 0.039f, 0.102f, 1.0f); // #0a0a1a
-	static const FLinearColor PanelBg      = FLinearColor(0.086f, 0.129f, 0.243f, 1.0f); // #16213e
-	static const FLinearColor Gold         = FLinearColor(0.855f, 0.647f, 0.125f, 1.0f); // #daa520
+	static const FLinearColor Background   = FLinearColor(0.039f, 0.039f, 0.102f, 1.0f);
+	static const FLinearColor Gold         = FLinearColor(0.855f, 0.647f, 0.125f, 1.0f);
 	static const FLinearColor GoldDim      = FLinearColor(0.855f, 0.647f, 0.125f, 0.4f);
+	static const FLinearColor GoldBright   = FLinearColor(1.0f, 0.82f, 0.2f, 1.0f);
 	static const FLinearColor White        = FLinearColor::White;
-	static const FLinearColor Grey         = FLinearColor(0.5f, 0.5f, 0.5f, 1.0f);
 	static const FLinearColor LightGrey    = FLinearColor(0.7f, 0.7f, 0.7f, 1.0f);
 	static const FLinearColor DarkButton   = FLinearColor(0.06f, 0.06f, 0.15f, 1.0f);
-	static const FLinearColor Purple       = FLinearColor(0.325f, 0.204f, 0.514f, 1.0f); // #533483
 	static const FLinearColor ButtonHover  = FLinearColor(0.102f, 0.165f, 0.306f, 1.0f);
-
-	// Realm colours
-	static const FLinearColor RealmLife    = FLinearColor::White;                                     // #ffffff
-	static const FLinearColor RealmDeath   = FLinearColor(0.4f, 0.0f, 0.4f, 1.0f);                  // #660066
-	static const FLinearColor RealmChaos   = FLinearColor(1.0f, 0.2f, 0.0f, 1.0f);                  // #ff3300
-	static const FLinearColor RealmNature  = FLinearColor(0.0f, 0.8f, 0.0f, 1.0f);                  // #00cc00
-	static const FLinearColor RealmSorcery = FLinearColor(0.2f, 0.4f, 1.0f, 1.0f);                  // #3366ff
-	static const FLinearColor RealmArcane  = FLinearColor(0.8f, 0.6f, 0.0f, 1.0f);                  // #cc9900
-	static const FLinearColor RealmBinding = FLinearColor(0.6f, 0.0f, 0.0f, 1.0f);                  // #990000
-	static const FLinearColor RealmSpirit  = FLinearColor(0.6f, 0.4f, 1.0f, 1.0f);                  // #9966ff
-	static const FLinearColor RealmGlamour = FLinearColor(1.0f, 0.4f, 0.8f, 1.0f);                  // #ff66cc
+	static const FLinearColor DimBorder    = FLinearColor(0.3f, 0.25f, 0.1f, 0.3f);
 }
 
-// Realm metadata
-struct FRealmInfo
-{
-	ECoMSpellRealm Realm;
-	FString Name;
-	FLinearColor Color;
-};
-
-static const FRealmInfo GRealmInfos[] =
-{
-	{ ECoMSpellRealm::Life,    TEXT("Life"),    WizCreationColours::RealmLife },
-	{ ECoMSpellRealm::Death,   TEXT("Death"),   WizCreationColours::RealmDeath },
-	{ ECoMSpellRealm::Chaos,   TEXT("Chaos"),   WizCreationColours::RealmChaos },
-	{ ECoMSpellRealm::Nature,  TEXT("Nature"),  WizCreationColours::RealmNature },
-	{ ECoMSpellRealm::Sorcery, TEXT("Sorcery"), WizCreationColours::RealmSorcery },
-	{ ECoMSpellRealm::Arcane,  TEXT("Arcane"),  WizCreationColours::RealmArcane },
-	{ ECoMSpellRealm::Binding, TEXT("Binding"), WizCreationColours::RealmBinding },
-	{ ECoMSpellRealm::Spirit,  TEXT("Spirit"),  WizCreationColours::RealmSpirit },
-	{ ECoMSpellRealm::Glamour, TEXT("Glamour"), WizCreationColours::RealmGlamour },
-};
-
-// Difficulty metadata
-struct FDifficultyInfo
-{
-	FString Name;
-	FString Description;
-};
-
-static const FDifficultyInfo GDifficultyInfos[] =
-{
-	{ TEXT("Easy"),       TEXT("AI gets penalties") },
-	{ TEXT("Normal"),     TEXT("Standard") },
-	{ TEXT("Hard"),       TEXT("+25% AI income") },
-	{ TEXT("Lunatic"),    TEXT("+50% income, +25% combat") },
-	{ TEXT("Impossible"), TEXT("+100% income, extra cities") },
+// Wizard portrait names
+static const FString GWizardNames[] = {
+	TEXT("Merlin"), TEXT("Morgana"), TEXT("Zephyros"), TEXT("Hecate"),
+	TEXT("Malachar"), TEXT("Lunara"), TEXT("Grimnar"), TEXT("Nekros"),
+	TEXT("Gaia"), TEXT("Pyraxis"), TEXT("Glaciel"), TEXT("Aldric"),
+	TEXT("Lilith"), TEXT("Solarius")
 };
 
 // =============================================================================
@@ -96,80 +52,88 @@ static const FDifficultyInfo GDifficultyInfos[] =
 void UCoMWizardCreationWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-
-	bIsFocusable = true;
+	SetIsFocusable(true);
 	SetVisibility(ESlateVisibility::Visible);
+}
 
+TSharedRef<SWidget> UCoMWizardCreationWidget::RebuildWidget()
+{
 	BuildLayout();
+	return Super::RebuildWidget();
 }
 
 // =============================================================================
-// Class callbacks (UFUNCTION wrappers)
+// Portrait callbacks
 // =============================================================================
 
-void UCoMWizardCreationWidget::OnClassWizardClicked()  { OnClassSelected(ECoMWizardClass::Wizard); }
-void UCoMWizardCreationWidget::OnClassPsykerClicked()  { OnClassSelected(ECoMWizardClass::Psyker); }
-void UCoMWizardCreationWidget::OnClassWarlockClicked() { OnClassSelected(ECoMWizardClass::Warlock); }
+void UCoMWizardCreationWidget::OnPortrait0()  { SelectPortrait(0); }
+void UCoMWizardCreationWidget::OnPortrait1()  { SelectPortrait(1); }
+void UCoMWizardCreationWidget::OnPortrait2()  { SelectPortrait(2); }
+void UCoMWizardCreationWidget::OnPortrait3()  { SelectPortrait(3); }
+void UCoMWizardCreationWidget::OnPortrait4()  { SelectPortrait(4); }
+void UCoMWizardCreationWidget::OnPortrait5()  { SelectPortrait(5); }
+void UCoMWizardCreationWidget::OnPortrait6()  { SelectPortrait(6); }
+void UCoMWizardCreationWidget::OnPortrait7()  { SelectPortrait(7); }
+void UCoMWizardCreationWidget::OnPortrait8()  { SelectPortrait(8); }
+void UCoMWizardCreationWidget::OnPortrait9()  { SelectPortrait(9); }
+void UCoMWizardCreationWidget::OnPortrait10() { SelectPortrait(10); }
+void UCoMWizardCreationWidget::OnPortrait11() { SelectPortrait(11); }
+void UCoMWizardCreationWidget::OnPortrait12() { SelectPortrait(12); }
+void UCoMWizardCreationWidget::OnPortrait13() { SelectPortrait(13); }
 
 // =============================================================================
-// Difficulty callbacks
+// Portrait selection — highlight then transition to config screen
 // =============================================================================
 
-void UCoMWizardCreationWidget::OnDiffEasyClicked()       { OnDifficultySelected(0); }
-void UCoMWizardCreationWidget::OnDiffNormalClicked()     { OnDifficultySelected(1); }
-void UCoMWizardCreationWidget::OnDiffHardClicked()       { OnDifficultySelected(2); }
-void UCoMWizardCreationWidget::OnDiffLunaticClicked()    { OnDifficultySelected(3); }
-void UCoMWizardCreationWidget::OnDiffImpossibleClicked() { OnDifficultySelected(4); }
-
-// =============================================================================
-// Realm callbacks
-// =============================================================================
-
-void UCoMWizardCreationWidget::OnRealmLifeClicked()    { OnRealmToggled(ECoMSpellRealm::Life); }
-void UCoMWizardCreationWidget::OnRealmDeathClicked()   { OnRealmToggled(ECoMSpellRealm::Death); }
-void UCoMWizardCreationWidget::OnRealmChaosClicked()   { OnRealmToggled(ECoMSpellRealm::Chaos); }
-void UCoMWizardCreationWidget::OnRealmNatureClicked()  { OnRealmToggled(ECoMSpellRealm::Nature); }
-void UCoMWizardCreationWidget::OnRealmSorceryClicked() { OnRealmToggled(ECoMSpellRealm::Sorcery); }
-void UCoMWizardCreationWidget::OnRealmArcaneClicked()  { OnRealmToggled(ECoMSpellRealm::Arcane); }
-void UCoMWizardCreationWidget::OnRealmBindingClicked() { OnRealmToggled(ECoMSpellRealm::Binding); }
-void UCoMWizardCreationWidget::OnRealmSpiritClicked()  { OnRealmToggled(ECoMSpellRealm::Spirit); }
-void UCoMWizardCreationWidget::OnRealmGlamourClicked() { OnRealmToggled(ECoMSpellRealm::Glamour); }
-
-// =============================================================================
-// Logic
-// =============================================================================
-
-void UCoMWizardCreationWidget::OnClassSelected(ECoMWizardClass Class)
+void UCoMWizardCreationWidget::SelectPortrait(int32 Index)
 {
-	SelectedClass = Class;
-	UpdateClassButtonStyles();
+	SelectedPortraitIndex = FMath::Clamp(Index, 0, NumPortraits - 1);
+	UpdatePortraitHighlights();
 
-	// Show realm section only for Wizard class.
-	if (RealmSectionBox)
+	// Transition to Screen 2 (wizard config) via UISubsystem
+	if (UGameInstance* GI = GetGameInstance())
 	{
-		RealmSectionBox->SetVisibility(
-			Class == ECoMWizardClass::Wizard ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		if (UCoMUISubsystem* UISS = GI->GetSubsystem<UCoMUISubsystem>())
+		{
+			UISS->ShowWizardConfig(SelectedPortraitIndex);
+		}
 	}
 }
 
-void UCoMWizardCreationWidget::OnRealmToggled(ECoMSpellRealm Realm)
+void UCoMWizardCreationWidget::UpdatePortraitHighlights()
 {
-	if (SelectedRealms.Contains(Realm))
+	for (int32 i = 0; i < NumPortraits; ++i)
 	{
-		SelectedRealms.Remove(Realm);
+		if (PortraitBorders[i])
+		{
+			if (i == SelectedPortraitIndex)
+			{
+				PortraitBorders[i]->SetBrushColor(WizPortraitColours::GoldBright);
+				PortraitBorders[i]->SetPadding(FMargin(3.0f));
+			}
+			else
+			{
+				PortraitBorders[i]->SetBrushColor(WizPortraitColours::DimBorder);
+				PortraitBorders[i]->SetPadding(FMargin(1.0f));
+			}
+		}
 	}
-	else if (SelectedRealms.Num() < 3)
-	{
-		SelectedRealms.Add(Realm);
-	}
-
-	UpdateRealmButtonStyles();
 }
 
-void UCoMWizardCreationWidget::OnDifficultySelected(int32 Level)
+// =============================================================================
+// Navigation
+// =============================================================================
+
+void UCoMWizardCreationWidget::OnCustomWizardClicked()
 {
-	SelectedDifficulty = FMath::Clamp(Level, 0, 4);
-	UpdateDifficultyButtonStyles();
+	// Go to config with no pre-selected portrait (index -1)
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMUISubsystem* UISS = GI->GetSubsystem<UCoMUISubsystem>())
+		{
+			UISS->ShowWizardConfig(-1);
+		}
+	}
 }
 
 void UCoMWizardCreationWidget::OnBackClicked()
@@ -184,187 +148,6 @@ void UCoMWizardCreationWidget::OnBackClicked()
 	}
 }
 
-void UCoMWizardCreationWidget::OnStartGameClicked()
-{
-	// Validate: name must not be empty.
-	FText CurrentName = NameInputBox ? NameInputBox->GetText() : FText::GetEmpty();
-	if (CurrentName.IsEmpty())
-	{
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, TEXT("Wizard name cannot be empty!"));
-		}
-		return;
-	}
-
-	UCoMGameInstance* CoMGI = Cast<UCoMGameInstance>(GetGameInstance());
-	if (!CoMGI)
-	{
-		UE_LOG(LogTemp, Error, TEXT("CoMWizardCreationWidget: Could not get CoMGameInstance."));
-		return;
-	}
-
-	// Populate settings.
-	CoMGI->NewGameSettings = BuildSettings();
-	CoMGI->LoadedSaveSlotName.Empty();
-
-	// Transition to the overworld.
-	UGameplayStatics::OpenLevel(this, FName(TEXT("L_Overworld")));
-}
-
-FCoMNewGameSettings UCoMWizardCreationWidget::BuildSettings() const
-{
-	FCoMNewGameSettings Settings;
-
-	Settings.WizardName = NameInputBox ? NameInputBox->GetText() : FText::FromString(TEXT("Archmage"));
-	Settings.WizardClass = SelectedClass;
-	Settings.DifficultyLevel = SelectedDifficulty;
-
-	// Convert selected realms to retort-style FName array for starting spellbook allocation.
-	for (const ECoMSpellRealm& Realm : SelectedRealms)
-	{
-		// Store realm name as FName for the starting spells system.
-		const UEnum* EnumPtr = StaticEnum<ECoMSpellRealm>();
-		if (EnumPtr)
-		{
-			FString RealmName = EnumPtr->GetNameStringByValue(static_cast<int64>(Realm));
-			Settings.ChosenRetorts.Add(FName(*RealmName));
-		}
-	}
-
-	return Settings;
-}
-
-// =============================================================================
-// Layout construction
-// =============================================================================
-
-UTextBlock* UCoMWizardCreationWidget::CreateSectionLabel(const FString& Text)
-{
-	UTextBlock* Label = NewObject<UTextBlock>(this);
-	Label->SetText(FText::FromString(Text));
-	Label->SetColorAndOpacity(FSlateColor(WizCreationColours::Gold));
-
-	FSlateFontInfo FontInfo = Label->GetFont();
-	FontInfo.Size = 18;
-	FontInfo.TypefaceFontName = FName(TEXT("Bold"));
-	Label->SetFont(FontInfo);
-
-	return Label;
-}
-
-UButton* UCoMWizardCreationWidget::CreateStyledButton(float Width, float Height)
-{
-	UButton* Button = NewObject<UButton>(this);
-
-	FButtonStyle Style = Button->GetStyle();
-
-	Style.Normal.DrawAs = ESlateBrushDrawType::RoundedBox;
-	Style.Normal.TintColor = FSlateColor(WizCreationColours::DarkButton);
-	Style.Normal.OutlineSettings.Color = FSlateColor(WizCreationColours::GoldDim);
-	Style.Normal.OutlineSettings.Width = 1.0f;
-
-	Style.Hovered.DrawAs = ESlateBrushDrawType::RoundedBox;
-	Style.Hovered.TintColor = FSlateColor(WizCreationColours::ButtonHover);
-	Style.Hovered.OutlineSettings.Color = FSlateColor(WizCreationColours::Gold);
-	Style.Hovered.OutlineSettings.Width = 1.0f;
-
-	Style.Pressed.DrawAs = ESlateBrushDrawType::RoundedBox;
-	Style.Pressed.TintColor = FSlateColor(WizCreationColours::DarkButton);
-	Style.Pressed.OutlineSettings.Color = FSlateColor(WizCreationColours::Gold);
-	Style.Pressed.OutlineSettings.Width = 1.0f;
-
-	Button->SetStyle(Style);
-
-	return Button;
-}
-
-void UCoMWizardCreationWidget::UpdateClassButtonStyles()
-{
-	UButton* ClassButtons[] = { ClassWizardButton, ClassPsykerButton, ClassWarlockButton };
-	ECoMWizardClass Classes[] = { ECoMWizardClass::Wizard, ECoMWizardClass::Psyker, ECoMWizardClass::Warlock };
-
-	for (int32 i = 0; i < 3; ++i)
-	{
-		if (!ClassButtons[i]) continue;
-
-		FButtonStyle Style = ClassButtons[i]->GetStyle();
-		bool bSelected = (Classes[i] == SelectedClass);
-
-		FLinearColor OutlineColor = bSelected ? WizCreationColours::Gold : WizCreationColours::GoldDim;
-		float OutlineWidth = bSelected ? 2.0f : 1.0f;
-		FLinearColor BgColor = bSelected ? WizCreationColours::PanelBg : WizCreationColours::DarkButton;
-
-		Style.Normal.TintColor = FSlateColor(BgColor);
-		Style.Normal.OutlineSettings.Color = FSlateColor(OutlineColor);
-		Style.Normal.OutlineSettings.Width = OutlineWidth;
-
-		Style.Hovered.TintColor = FSlateColor(WizCreationColours::ButtonHover);
-		Style.Hovered.OutlineSettings.Color = FSlateColor(WizCreationColours::Gold);
-		Style.Hovered.OutlineSettings.Width = 2.0f;
-
-		Style.Pressed.TintColor = FSlateColor(BgColor);
-		Style.Pressed.OutlineSettings.Color = FSlateColor(WizCreationColours::Gold);
-		Style.Pressed.OutlineSettings.Width = 2.0f;
-
-		ClassButtons[i]->SetStyle(Style);
-	}
-}
-
-void UCoMWizardCreationWidget::UpdateDifficultyButtonStyles()
-{
-	for (int32 i = 0; i < 5; ++i)
-	{
-		if (!DifficultyButtons[i]) continue;
-
-		FButtonStyle Style = DifficultyButtons[i]->GetStyle();
-		bool bSelected = (i == SelectedDifficulty);
-
-		FLinearColor OutlineColor = bSelected ? WizCreationColours::Gold : WizCreationColours::GoldDim;
-		float OutlineWidth = bSelected ? 2.0f : 1.0f;
-		FLinearColor BgColor = bSelected ? WizCreationColours::PanelBg : WizCreationColours::DarkButton;
-
-		Style.Normal.TintColor = FSlateColor(BgColor);
-		Style.Normal.OutlineSettings.Color = FSlateColor(OutlineColor);
-		Style.Normal.OutlineSettings.Width = OutlineWidth;
-
-		Style.Hovered.OutlineSettings.Color = FSlateColor(WizCreationColours::Gold);
-		Style.Hovered.OutlineSettings.Width = 2.0f;
-
-		DifficultyButtons[i]->SetStyle(Style);
-	}
-}
-
-void UCoMWizardCreationWidget::UpdateRealmButtonStyles()
-{
-	for (int32 i = 0; i < 9; ++i)
-	{
-		if (!RealmButtons[i] || !RealmButtonBorders[i]) continue;
-
-		bool bSelected = SelectedRealms.Contains(GRealmInfos[i].Realm);
-
-		FButtonStyle Style = RealmButtons[i]->GetStyle();
-
-		FLinearColor OutlineColor = bSelected ? GRealmInfos[i].Color : WizCreationColours::GoldDim;
-		float OutlineWidth = bSelected ? 2.0f : 1.0f;
-		FLinearColor BgColor = bSelected ? WizCreationColours::PanelBg : WizCreationColours::DarkButton;
-
-		Style.Normal.TintColor = FSlateColor(BgColor);
-		Style.Normal.OutlineSettings.Color = FSlateColor(OutlineColor);
-		Style.Normal.OutlineSettings.Width = OutlineWidth;
-
-		Style.Hovered.OutlineSettings.Color = FSlateColor(GRealmInfos[i].Color);
-		Style.Hovered.OutlineSettings.Width = 2.0f;
-
-		RealmButtons[i]->SetStyle(Style);
-
-		// Update the colour swatch border.
-		RealmButtonBorders[i]->SetBrushColor(bSelected
-			? GRealmInfos[i].Color
-			: FLinearColor(GRealmInfos[i].Color.R, GRealmInfos[i].Color.G, GRealmInfos[i].Color.B, 0.4f));
-	}
-}
-
 // =============================================================================
 // Full layout build
 // =============================================================================
@@ -373,57 +156,36 @@ void UCoMWizardCreationWidget::BuildLayout()
 {
 	// -- Full-screen dark background ------------------------------------------
 
-	BackgroundBorder = NewObject<UBorder>(this);
-	BackgroundBorder->SetBrushColor(WizCreationColours::Background);
+	BackgroundBorder = WidgetTree->ConstructWidget<UBorder>();
+	BackgroundBorder->SetBrushColor(WizPortraitColours::Background);
 	BackgroundBorder->SetPadding(FMargin(0.0f));
-
-	// -- Center overlay -------------------------------------------------------
-
-	UOverlay* RootOverlay = NewObject<UOverlay>(this);
-	BackgroundBorder->AddChild(RootOverlay);
-
-	// -- Scrollable content panel (700px wide) --------------------------------
-
-	USizeBox* PanelSizeBox = NewObject<USizeBox>(this);
-	PanelSizeBox->SetWidthOverride(700.0f);
-
-	UOverlaySlot* PanelSlot = RootOverlay->AddChildToOverlay(PanelSizeBox);
-	if (PanelSlot)
-	{
-		PanelSlot->SetHorizontalAlignment(HAlign_Center);
-		PanelSlot->SetVerticalAlignment(VAlign_Center);
-	}
-
-	// Panel background border.
-	UBorder* PanelBorder = NewObject<UBorder>(this);
-	PanelBorder->SetBrushColor(WizCreationColours::PanelBg);
-	PanelBorder->SetPadding(FMargin(32.0f, 24.0f));
-	PanelSizeBox->AddChild(PanelBorder);
-
-	// Scroll box for the panel contents (in case screen is small).
-	UScrollBox* PanelScroll = NewObject<UScrollBox>(this);
-	PanelScroll->SetScrollBarVisibility(ESlateVisibility::Collapsed);
-	PanelScroll->SetOrientation(Orient_Vertical);
-	PanelBorder->AddChild(PanelScroll);
-
-	ContentBox = NewObject<UVerticalBox>(this);
-	PanelScroll->AddChild(ContentBox);
-
-	// -- Set root widget ------------------------------------------------------
 
 	if (WidgetTree)
 	{
 		WidgetTree->RootWidget = BackgroundBorder;
 	}
 
+	// -- Root overlay for centering content -----------------------------------
+
+	UOverlay* RootOverlay = WidgetTree->ConstructWidget<UOverlay>();
+	BackgroundBorder->AddChild(RootOverlay);
+
+	UVerticalBox* ContentBox = WidgetTree->ConstructWidget<UVerticalBox>();
+	UOverlaySlot* ContentSlot = RootOverlay->AddChildToOverlay(ContentBox);
+	if (ContentSlot)
+	{
+		ContentSlot->SetHorizontalAlignment(HAlign_Center);
+		ContentSlot->SetVerticalAlignment(VAlign_Center);
+	}
+
 	// =========================================================================
-	// HEADER: "Create Your Wizard"
+	// TITLE: "CHOOSE YOUR WIZARD"
 	// =========================================================================
 
 	{
-		UTextBlock* Header = NewObject<UTextBlock>(this);
-		Header->SetText(FText::FromString(TEXT("Create Your Wizard")));
-		Header->SetColorAndOpacity(FSlateColor(WizCreationColours::Gold));
+		UTextBlock* Header = WidgetTree->ConstructWidget<UTextBlock>();
+		Header->SetText(FText::FromString(TEXT("CHOOSE YOUR WIZARD")));
+		Header->SetColorAndOpacity(FSlateColor(WizPortraitColours::Gold));
 		Header->SetJustification(ETextJustify::Center);
 
 		FSlateFontInfo FontInfo = Header->GetFont();
@@ -431,480 +193,238 @@ void UCoMWizardCreationWidget::BuildLayout()
 		FontInfo.TypefaceFontName = FName(TEXT("Bold"));
 		Header->SetFont(FontInfo);
 
-		UVerticalBoxSlot* Slot = ContentBox->AddChildToVerticalBox(Header);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = ContentBox->AddChildToVerticalBox(Header);
+		if (SlotRef)
 		{
-			Slot->SetHorizontalAlignment(HAlign_Center);
-			Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 16.0f));
+			SlotRef->SetHorizontalAlignment(HAlign_Center);
+			SlotRef->SetPadding(FMargin(0.0f, 20.0f, 0.0f, 8.0f));
 		}
 	}
 
 	// -- Gold separator -------------------------------------------------------
 
 	{
-		UImage* Sep = NewObject<UImage>(this);
-		Sep->SetColorAndOpacity(WizCreationColours::Gold);
-		Sep->SetDesiredSizeOverride(FVector2D(500.0f, 2.0f));
+		UImage* Sep = WidgetTree->ConstructWidget<UImage>();
+		Sep->SetColorAndOpacity(WizPortraitColours::Gold);
+		Sep->SetDesiredSizeOverride(FVector2D(900.0f, 2.0f));
 
-		UVerticalBoxSlot* Slot = ContentBox->AddChildToVerticalBox(Sep);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = ContentBox->AddChildToVerticalBox(Sep);
+		if (SlotRef)
 		{
-			Slot->SetHorizontalAlignment(HAlign_Center);
-			Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
+			SlotRef->SetHorizontalAlignment(HAlign_Center);
+			SlotRef->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
 		}
 	}
 
 	// =========================================================================
-	// NAME SECTION
+	// PORTRAIT GRID: 7 columns x 2 rows = 14 wizards
 	// =========================================================================
 
 	{
-		UTextBlock* NameLabel = CreateSectionLabel(TEXT("Wizard Name"));
-		UVerticalBoxSlot* LabelSlot = ContentBox->AddChildToVerticalBox(NameLabel);
-		if (LabelSlot)
+		UVerticalBox* PortraitGrid = WidgetTree->ConstructWidget<UVerticalBox>();
+
+		for (int32 Row = 0; Row < 2; ++Row)
 		{
-			LabelSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
-		}
+			UHorizontalBox* PortRow = WidgetTree->ConstructWidget<UHorizontalBox>();
 
-		NameInputBox = NewObject<UEditableTextBox>(this);
-		NameInputBox->SetText(FText::FromString(TEXT("Archmage")));
-
-		// Style the text box via WidgetStyle property.
-		FEditableTextBoxStyle& TextBoxStyle = const_cast<FEditableTextBoxStyle&>(NameInputBox->WidgetStyle);
-		TextBoxStyle.BackgroundImageNormal.TintColor = FSlateColor(WizCreationColours::DarkButton);
-		TextBoxStyle.BackgroundImageHovered.TintColor = FSlateColor(WizCreationColours::ButtonHover);
-		TextBoxStyle.BackgroundImageFocused.TintColor = FSlateColor(WizCreationColours::DarkButton);
-		TextBoxStyle.ForegroundColor = FSlateColor(WizCreationColours::White);
-
-		FSlateFontInfo InputFont = TextBoxStyle.TextStyle.Font;
-		InputFont.Size = 16;
-		TextBoxStyle.TextStyle.Font = InputFont;
-		TextBoxStyle.TextStyle.ColorAndOpacity = FSlateColor(WizCreationColours::White);
-
-		UVerticalBoxSlot* InputSlot = ContentBox->AddChildToVerticalBox(NameInputBox);
-		if (InputSlot)
-		{
-			InputSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
-		}
-	}
-
-	// =========================================================================
-	// CLASS SECTION
-	// =========================================================================
-
-	{
-		UTextBlock* ClassLabel = CreateSectionLabel(TEXT("Wizard Class"));
-		UVerticalBoxSlot* LabelSlot = ContentBox->AddChildToVerticalBox(ClassLabel);
-		if (LabelSlot)
-		{
-			LabelSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
-		}
-
-		UHorizontalBox* ClassRow = NewObject<UHorizontalBox>(this);
-
-		struct FClassInfo
-		{
-			FString Name;
-			FString Desc;
-		};
-
-		FClassInfo ClassInfos[] =
-		{
-			{ TEXT("Wizard"),  TEXT("Master of spellbooks and research") },
-			{ TEXT("Psyker"),  TEXT("Innate psychic powers, no spellbook") },
-			{ TEXT("Warlock"), TEXT("Pact magic, entity bargaining, soul harvest") },
-		};
-
-		UButton** ClassButtonPtrs[] = { &ClassWizardButton, &ClassPsykerButton, &ClassWarlockButton };
-
-		for (int32 i = 0; i < 3; ++i)
-		{
-			USizeBox* BtnSizeBox = NewObject<USizeBox>(this);
-			BtnSizeBox->SetWidthOverride(200.0f);
-			BtnSizeBox->SetHeightOverride(120.0f);
-
-			UButton* Btn = CreateStyledButton(200.0f, 120.0f);
-			*ClassButtonPtrs[i] = Btn;
-
-			// Button content: vertical box with name + description.
-			UVerticalBox* BtnContent = NewObject<UVerticalBox>(this);
-
-			// Class name.
-			UTextBlock* NameText = NewObject<UTextBlock>(this);
-			NameText->SetText(FText::FromString(ClassInfos[i].Name));
-			NameText->SetColorAndOpacity(FSlateColor(WizCreationColours::White));
-			NameText->SetJustification(ETextJustify::Center);
-			FSlateFontInfo NameFont = NameText->GetFont();
-			NameFont.Size = 16;
-			NameFont.TypefaceFontName = FName(TEXT("Bold"));
-			NameText->SetFont(NameFont);
-
-			UVerticalBoxSlot* NameSlot = BtnContent->AddChildToVerticalBox(NameText);
-			if (NameSlot)
+			for (int32 Col = 0; Col < 7; ++Col)
 			{
-				NameSlot->SetHorizontalAlignment(HAlign_Center);
-				NameSlot->SetPadding(FMargin(8.0f, 16.0f, 8.0f, 4.0f));
-			}
+				int32 Idx = Row * 7 + Col;
 
-			// Description.
-			UTextBlock* DescText = NewObject<UTextBlock>(this);
-			DescText->SetText(FText::FromString(ClassInfos[i].Desc));
-			DescText->SetColorAndOpacity(FSlateColor(WizCreationColours::Grey));
-			DescText->SetJustification(ETextJustify::Center);
-			DescText->SetAutoWrapText(true);
-			FSlateFontInfo DescFont = DescText->GetFont();
-			DescFont.Size = 10;
-			DescText->SetFont(DescFont);
+				// Outer border — changes thickness/color when selected
+				PortraitBorders[Idx] = WidgetTree->ConstructWidget<UBorder>();
+				PortraitBorders[Idx]->SetBrushColor(WizPortraitColours::DimBorder);
+				PortraitBorders[Idx]->SetPadding(FMargin(1.0f));
 
-			UVerticalBoxSlot* DescSlot = BtnContent->AddChildToVerticalBox(DescText);
-			if (DescSlot)
-			{
-				DescSlot->SetHorizontalAlignment(HAlign_Center);
-				DescSlot->SetPadding(FMargin(8.0f, 0.0f, 8.0f, 8.0f));
-			}
+				// Clickable button
+				PortraitButtons[Idx] = WidgetTree->ConstructWidget<UButton>();
+				FButtonStyle PStyle = PortraitButtons[Idx]->GetStyle();
+				PStyle.Normal.DrawAs = ESlateBrushDrawType::Box;
+				PStyle.Normal.TintColor = FSlateColor(FLinearColor(0.04f, 0.03f, 0.08f, 1.0f));
+				PStyle.Hovered.DrawAs = ESlateBrushDrawType::Box;
+				PStyle.Hovered.TintColor = FSlateColor(FLinearColor(0.08f, 0.06f, 0.15f, 1.0f));
+				PStyle.Pressed.DrawAs = ESlateBrushDrawType::Box;
+				PStyle.Pressed.TintColor = FSlateColor(FLinearColor(0.03f, 0.02f, 0.06f, 1.0f));
+				PortraitButtons[Idx]->SetStyle(PStyle);
 
-			Btn->AddChild(BtnContent);
-			BtnSizeBox->AddChild(Btn);
+				// Portrait content: image + name label
+				UVerticalBox* PortContent = WidgetTree->ConstructWidget<UVerticalBox>();
 
-			UHorizontalBoxSlot* HSlot = ClassRow->AddChildToHorizontalBox(BtnSizeBox);
-			if (HSlot)
-			{
-				HSlot->SetPadding(FMargin(4.0f));
-				HSlot->SetHorizontalAlignment(HAlign_Center);
-			}
-		}
-
-		// Bind click events.
-		ClassWizardButton->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnClassWizardClicked);
-		ClassPsykerButton->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnClassPsykerClicked);
-		ClassWarlockButton->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnClassWarlockClicked);
-
-		UVerticalBoxSlot* RowSlot = ContentBox->AddChildToVerticalBox(ClassRow);
-		if (RowSlot)
-		{
-			RowSlot->SetHorizontalAlignment(HAlign_Center);
-			RowSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
-		}
-	}
-
-	// Apply default class selection style.
-	UpdateClassButtonStyles();
-
-	// =========================================================================
-	// REALM AFFINITY SECTION (Wizard class only)
-	// =========================================================================
-
-	{
-		RealmSectionBox = NewObject<UVerticalBox>(this);
-
-		UTextBlock* RealmLabel = CreateSectionLabel(TEXT("Spell Realm Affinity (select up to 3)"));
-		UVerticalBoxSlot* LabelSlot = RealmSectionBox->AddChildToVerticalBox(RealmLabel);
-		if (LabelSlot)
-		{
-			LabelSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
-		}
-
-		// 3x3 grid of realm buttons.
-		// Callback function pointers in order.
-		typedef void (UCoMWizardCreationWidget::*FRealmCallback)();
-		FRealmCallback RealmCallbacks[] =
-		{
-			&UCoMWizardCreationWidget::OnRealmLifeClicked,
-			&UCoMWizardCreationWidget::OnRealmDeathClicked,
-			&UCoMWizardCreationWidget::OnRealmChaosClicked,
-			&UCoMWizardCreationWidget::OnRealmNatureClicked,
-			&UCoMWizardCreationWidget::OnRealmSorceryClicked,
-			&UCoMWizardCreationWidget::OnRealmArcaneClicked,
-			&UCoMWizardCreationWidget::OnRealmBindingClicked,
-			&UCoMWizardCreationWidget::OnRealmSpiritClicked,
-			&UCoMWizardCreationWidget::OnRealmGlamourClicked,
-		};
-
-		for (int32 Row = 0; Row < 3; ++Row)
-		{
-			UHorizontalBox* RowBox = NewObject<UHorizontalBox>(this);
-
-			for (int32 Col = 0; Col < 3; ++Col)
-			{
-				int32 Idx = Row * 3 + Col;
-
-				USizeBox* BtnSize = NewObject<USizeBox>(this);
-				BtnSize->SetWidthOverride(140.0f);
-				BtnSize->SetHeightOverride(50.0f);
-
-				UButton* Btn = CreateStyledButton(140.0f, 50.0f);
-				RealmButtons[Idx] = Btn;
-
-				// Button content: horizontal box with colour swatch + name.
-				UHorizontalBox* BtnContent = NewObject<UHorizontalBox>(this);
-
-				// Colour swatch.
-				UBorder* Swatch = NewObject<UBorder>(this);
-				Swatch->SetBrushColor(FLinearColor(
-					GRealmInfos[Idx].Color.R, GRealmInfos[Idx].Color.G, GRealmInfos[Idx].Color.B, 0.4f));
-				Swatch->SetDesiredSizeScale(FVector2D(1.0f, 1.0f));
-				RealmButtonBorders[Idx] = Swatch;
-
-				USizeBox* SwatchSize = NewObject<USizeBox>(this);
-				SwatchSize->SetWidthOverride(16.0f);
-				SwatchSize->SetHeightOverride(16.0f);
-				SwatchSize->AddChild(Swatch);
-
-				UHorizontalBoxSlot* SwatchSlot = BtnContent->AddChildToHorizontalBox(SwatchSize);
-				if (SwatchSlot)
+				// Portrait image (170x170)
+				PortraitImages[Idx] = WidgetTree->ConstructWidget<UImage>();
 				{
-					SwatchSlot->SetVerticalAlignment(VAlign_Center);
-					SwatchSlot->SetPadding(FMargin(8.0f, 0.0f, 6.0f, 0.0f));
+					FString AssetPath = FString::Printf(
+						TEXT("/Game/Textures/Wizards/wizard_%02d.wizard_%02d"), Idx + 1, Idx + 1);
+					UTexture2D* Tex = LoadObject<UTexture2D>(nullptr, *AssetPath);
+					FSlateBrush Brush;
+					if (Tex)
+					{
+						Brush.SetResourceObject(Tex);
+					}
+					else
+					{
+						Brush.DrawAs = ESlateBrushDrawType::Box;
+						float Hue = static_cast<float>(Idx) / 14.0f;
+						Brush.TintColor = FSlateColor(FLinearColor::MakeFromHSV8(
+							static_cast<uint8>(Hue * 255), 140, 180));
+					}
+					Brush.ImageSize = FVector2D(170.0f, 170.0f);
+					PortraitImages[Idx]->SetBrush(Brush);
 				}
 
-				// Realm name.
-				UTextBlock* RealmName = NewObject<UTextBlock>(this);
-				RealmName->SetText(FText::FromString(GRealmInfos[Idx].Name));
-				RealmName->SetColorAndOpacity(FSlateColor(WizCreationColours::LightGrey));
-				FSlateFontInfo RealmFont = RealmName->GetFont();
-				RealmFont.Size = 12;
-				RealmName->SetFont(RealmFont);
+				USizeBox* ImgSize = WidgetTree->ConstructWidget<USizeBox>();
+				ImgSize->SetWidthOverride(170.0f);
+				ImgSize->SetHeightOverride(170.0f);
+				ImgSize->AddChild(PortraitImages[Idx]);
 
-				UHorizontalBoxSlot* NameSlot = BtnContent->AddChildToHorizontalBox(RealmName);
-				if (NameSlot)
-				{
-					NameSlot->SetVerticalAlignment(VAlign_Center);
-				}
+				UVerticalBoxSlot* ImgSlot = PortContent->AddChildToVerticalBox(ImgSize);
+				if (ImgSlot) { ImgSlot->SetHorizontalAlignment(HAlign_Center); }
 
-				Btn->AddChild(BtnContent);
-				BtnSize->AddChild(Btn);
+				// Wizard name (size 14, centered)
+				UTextBlock* NameLabel = WidgetTree->ConstructWidget<UTextBlock>();
+				NameLabel->SetText(FText::FromString(GWizardNames[Idx]));
+				NameLabel->SetColorAndOpacity(FSlateColor(WizPortraitColours::LightGrey));
+				NameLabel->SetJustification(ETextJustify::Center);
+				FSlateFontInfo NFont = NameLabel->GetFont();
+				NFont.Size = 14;
+				NameLabel->SetFont(NFont);
 
-				Btn->OnClicked.AddDynamic(this, RealmCallbacks[Idx]);
+				UVerticalBoxSlot* NSlotRef = PortContent->AddChildToVerticalBox(NameLabel);
+				if (NSlotRef) { NSlotRef->SetHorizontalAlignment(HAlign_Center); NSlotRef->SetPadding(FMargin(0, 4, 0, 0)); }
 
-				UHorizontalBoxSlot* ColSlot = RowBox->AddChildToHorizontalBox(BtnSize);
-				if (ColSlot)
-				{
-					ColSlot->SetPadding(FMargin(4.0f, 2.0f));
-				}
+				PortraitButtons[Idx]->AddChild(PortContent);
+				PortraitBorders[Idx]->AddChild(PortraitButtons[Idx]);
+
+				// Cell size box: 180x220
+				USizeBox* CellSize = WidgetTree->ConstructWidget<USizeBox>();
+				CellSize->SetWidthOverride(180.0f);
+				CellSize->SetHeightOverride(220.0f);
+				CellSize->AddChild(PortraitBorders[Idx]);
+
+				UHorizontalBoxSlot* CellSlotRef = PortRow->AddChildToHorizontalBox(CellSize);
+				if (CellSlotRef) { CellSlotRef->SetPadding(FMargin(5.0f, 4.0f)); }
 			}
 
-			UVerticalBoxSlot* GridRowSlot = RealmSectionBox->AddChildToVerticalBox(RowBox);
-			if (GridRowSlot)
-			{
-				GridRowSlot->SetHorizontalAlignment(HAlign_Center);
-			}
+			UVerticalBoxSlot* RowSlot = PortraitGrid->AddChildToVerticalBox(PortRow);
+			if (RowSlot) { RowSlot->SetHorizontalAlignment(HAlign_Center); }
 		}
 
-		// Add realm section to main content.
-		UVerticalBoxSlot* RealmSecSlot = ContentBox->AddChildToVerticalBox(RealmSectionBox);
-		if (RealmSecSlot)
+		// Bind portrait clicks
+		PortraitButtons[0]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait0);
+		PortraitButtons[1]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait1);
+		PortraitButtons[2]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait2);
+		PortraitButtons[3]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait3);
+		PortraitButtons[4]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait4);
+		PortraitButtons[5]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait5);
+		PortraitButtons[6]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait6);
+		PortraitButtons[7]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait7);
+		PortraitButtons[8]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait8);
+		PortraitButtons[9]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait9);
+		PortraitButtons[10]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait10);
+		PortraitButtons[11]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait11);
+		PortraitButtons[12]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait12);
+		PortraitButtons[13]->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnPortrait13);
+
+		UVerticalBoxSlot* GridSlot = ContentBox->AddChildToVerticalBox(PortraitGrid);
+		if (GridSlot)
 		{
-			RealmSecSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
+			GridSlot->SetHorizontalAlignment(HAlign_Center);
+			GridSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
 		}
 	}
 
-	UpdateRealmButtonStyles();
-
 	// =========================================================================
-	// DIFFICULTY SECTION
+	// BOTTOM BUTTONS: Custom Wizard + Back
 	// =========================================================================
 
 	{
-		UTextBlock* DiffLabel = CreateSectionLabel(TEXT("Difficulty"));
-		UVerticalBoxSlot* LabelSlot = ContentBox->AddChildToVerticalBox(DiffLabel);
-		if (LabelSlot)
-		{
-			LabelSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
-		}
-
-		UHorizontalBox* DiffRow = NewObject<UHorizontalBox>(this);
-
-		typedef void (UCoMWizardCreationWidget::*FDiffCallback)();
-		FDiffCallback DiffCallbacks[] =
-		{
-			&UCoMWizardCreationWidget::OnDiffEasyClicked,
-			&UCoMWizardCreationWidget::OnDiffNormalClicked,
-			&UCoMWizardCreationWidget::OnDiffHardClicked,
-			&UCoMWizardCreationWidget::OnDiffLunaticClicked,
-			&UCoMWizardCreationWidget::OnDiffImpossibleClicked,
-		};
-
-		for (int32 i = 0; i < 5; ++i)
-		{
-			USizeBox* BtnSize = NewObject<USizeBox>(this);
-			BtnSize->SetWidthOverride(120.0f);
-			BtnSize->SetHeightOverride(70.0f);
-
-			UButton* Btn = CreateStyledButton(120.0f, 70.0f);
-			DifficultyButtons[i] = Btn;
-
-			// Content: name + description.
-			UVerticalBox* BtnContent = NewObject<UVerticalBox>(this);
-
-			UTextBlock* DiffName = NewObject<UTextBlock>(this);
-			DiffName->SetText(FText::FromString(GDifficultyInfos[i].Name));
-			DiffName->SetColorAndOpacity(FSlateColor(WizCreationColours::White));
-			DiffName->SetJustification(ETextJustify::Center);
-			FSlateFontInfo DNameFont = DiffName->GetFont();
-			DNameFont.Size = 12;
-			DNameFont.TypefaceFontName = FName(TEXT("Bold"));
-			DiffName->SetFont(DNameFont);
-
-			UVerticalBoxSlot* DNameSlot = BtnContent->AddChildToVerticalBox(DiffName);
-			if (DNameSlot)
-			{
-				DNameSlot->SetHorizontalAlignment(HAlign_Center);
-				DNameSlot->SetPadding(FMargin(4.0f, 8.0f, 4.0f, 2.0f));
-			}
-
-			UTextBlock* DiffDesc = NewObject<UTextBlock>(this);
-			DiffDesc->SetText(FText::FromString(GDifficultyInfos[i].Description));
-			DiffDesc->SetColorAndOpacity(FSlateColor(WizCreationColours::Grey));
-			DiffDesc->SetJustification(ETextJustify::Center);
-			DiffDesc->SetAutoWrapText(true);
-			FSlateFontInfo DDescFont = DiffDesc->GetFont();
-			DDescFont.Size = 8;
-			DiffDesc->SetFont(DDescFont);
-
-			UVerticalBoxSlot* DDescSlot = BtnContent->AddChildToVerticalBox(DiffDesc);
-			if (DDescSlot)
-			{
-				DDescSlot->SetHorizontalAlignment(HAlign_Center);
-				DDescSlot->SetPadding(FMargin(4.0f, 0.0f, 4.0f, 4.0f));
-			}
-
-			Btn->AddChild(BtnContent);
-			BtnSize->AddChild(Btn);
-
-			Btn->OnClicked.AddDynamic(this, DiffCallbacks[i]);
-
-			UHorizontalBoxSlot* HSlot = DiffRow->AddChildToHorizontalBox(BtnSize);
-			if (HSlot)
-			{
-				HSlot->SetPadding(FMargin(2.0f));
-			}
-		}
-
-		UVerticalBoxSlot* DiffRowSlot = ContentBox->AddChildToVerticalBox(DiffRow);
-		if (DiffRowSlot)
-		{
-			DiffRowSlot->SetHorizontalAlignment(HAlign_Center);
-			DiffRowSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 24.0f));
-		}
-	}
-
-	UpdateDifficultyButtonStyles();
-
-	// =========================================================================
-	// BOTTOM BUTTONS: Back + Start Game
-	// =========================================================================
-
-	{
-		UImage* Sep = NewObject<UImage>(this);
-		Sep->SetColorAndOpacity(WizCreationColours::Gold);
-		Sep->SetDesiredSizeOverride(FVector2D(500.0f, 2.0f));
-
-		UVerticalBoxSlot* SepSlot = ContentBox->AddChildToVerticalBox(Sep);
-		if (SepSlot)
-		{
-			SepSlot->SetHorizontalAlignment(HAlign_Center);
-			SepSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 16.0f));
-		}
-
-		UHorizontalBox* BottomRow = NewObject<UHorizontalBox>(this);
+		UHorizontalBox* BottomRow = WidgetTree->ConstructWidget<UHorizontalBox>();
 
 		// -- Back button --
 		{
-			USizeBox* BackSize = NewObject<USizeBox>(this);
+			USizeBox* BackSize = WidgetTree->ConstructWidget<USizeBox>();
 			BackSize->SetWidthOverride(150.0f);
-			BackSize->SetHeightOverride(45.0f);
+			BackSize->SetHeightOverride(44.0f);
 
-			BackButton = CreateStyledButton(150.0f, 45.0f);
+			BackButton = WidgetTree->ConstructWidget<UButton>();
+			FButtonStyle BackStyle = BackButton->GetStyle();
+			BackStyle.Normal.DrawAs = ESlateBrushDrawType::Box;
+			BackStyle.Normal.TintColor = FSlateColor(WizPortraitColours::DarkButton);
+			BackStyle.Normal.OutlineSettings.Color = FSlateColor(WizPortraitColours::GoldDim);
+			BackStyle.Normal.OutlineSettings.Width = 1.0f;
+			BackStyle.Hovered.DrawAs = ESlateBrushDrawType::Box;
+			BackStyle.Hovered.TintColor = FSlateColor(WizPortraitColours::ButtonHover);
+			BackStyle.Hovered.OutlineSettings.Color = FSlateColor(WizPortraitColours::Gold);
+			BackStyle.Hovered.OutlineSettings.Width = 1.0f;
+			BackStyle.Pressed.DrawAs = ESlateBrushDrawType::Box;
+			BackStyle.Pressed.TintColor = FSlateColor(WizPortraitColours::DarkButton);
+			BackButton->SetStyle(BackStyle);
 
-			UTextBlock* BackLabel = NewObject<UTextBlock>(this);
+			UTextBlock* BackLabel = WidgetTree->ConstructWidget<UTextBlock>();
 			BackLabel->SetText(FText::FromString(TEXT("Back")));
-			BackLabel->SetColorAndOpacity(FSlateColor(WizCreationColours::LightGrey));
+			BackLabel->SetColorAndOpacity(FSlateColor(WizPortraitColours::LightGrey));
 			BackLabel->SetJustification(ETextJustify::Center);
 			FSlateFontInfo BackFont = BackLabel->GetFont();
-			BackFont.Size = 16;
+			BackFont.Size = 14;
 			BackLabel->SetFont(BackFont);
 
 			BackButton->AddChild(BackLabel);
 			BackSize->AddChild(BackButton);
-
 			BackButton->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnBackClicked);
 
 			UHorizontalBoxSlot* HSlot = BottomRow->AddChildToHorizontalBox(BackSize);
-			if (HSlot)
-			{
-				HSlot->SetHorizontalAlignment(HAlign_Left);
-				HSlot->SetPadding(FMargin(0.0f, 0.0f, 8.0f, 0.0f));
-			}
+			if (HSlot) { HSlot->SetPadding(FMargin(0, 0, 12, 0)); }
 		}
 
-		// -- Spacer to push Start Game to the right --
+		// -- Spacer --
 		{
-			USpacer* SpacerWidget = NewObject<USpacer>(this);
+			USpacer* SpacerWidget = WidgetTree->ConstructWidget<USpacer>();
 			SpacerWidget->SetSize(FVector2D(1.0f, 1.0f));
 			UHorizontalBoxSlot* SpSlot = BottomRow->AddChildToHorizontalBox(SpacerWidget);
-			if (SpSlot)
-			{
-				SpSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill)); // Fill
-			}
+			if (SpSlot) { SpSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill)); }
 		}
 
-		// -- Start Game button (gold accent) --
+		// -- Custom Wizard button --
 		{
-			USizeBox* StartSize = NewObject<USizeBox>(this);
-			StartSize->SetWidthOverride(200.0f);
-			StartSize->SetHeightOverride(45.0f);
+			USizeBox* CustomSize = WidgetTree->ConstructWidget<USizeBox>();
+			CustomSize->SetWidthOverride(200.0f);
+			CustomSize->SetHeightOverride(44.0f);
 
-			StartGameButton = NewObject<UButton>(this);
+			CustomWizardButton = WidgetTree->ConstructWidget<UButton>();
+			FButtonStyle CStyle = CustomWizardButton->GetStyle();
+			CStyle.Normal.DrawAs = ESlateBrushDrawType::Box;
+			CStyle.Normal.TintColor = FSlateColor(WizPortraitColours::DarkButton);
+			CStyle.Normal.OutlineSettings.Color = FSlateColor(WizPortraitColours::Gold);
+			CStyle.Normal.OutlineSettings.Width = 1.0f;
+			CStyle.Hovered.DrawAs = ESlateBrushDrawType::Box;
+			CStyle.Hovered.TintColor = FSlateColor(WizPortraitColours::ButtonHover);
+			CStyle.Hovered.OutlineSettings.Color = FSlateColor(WizPortraitColours::GoldBright);
+			CStyle.Hovered.OutlineSettings.Width = 2.0f;
+			CStyle.Pressed.DrawAs = ESlateBrushDrawType::Box;
+			CStyle.Pressed.TintColor = FSlateColor(WizPortraitColours::DarkButton);
+			CustomWizardButton->SetStyle(CStyle);
 
-			FButtonStyle StartStyle = StartGameButton->GetStyle();
+			UTextBlock* CustomLabel = WidgetTree->ConstructWidget<UTextBlock>();
+			CustomLabel->SetText(FText::FromString(TEXT("Custom Wizard")));
+			CustomLabel->SetColorAndOpacity(FSlateColor(WizPortraitColours::Gold));
+			CustomLabel->SetJustification(ETextJustify::Center);
+			FSlateFontInfo CustomFont = CustomLabel->GetFont();
+			CustomFont.Size = 14;
+			CustomFont.TypefaceFontName = FName(TEXT("Bold"));
+			CustomLabel->SetFont(CustomFont);
 
-			StartStyle.Normal.DrawAs = ESlateBrushDrawType::RoundedBox;
-			StartStyle.Normal.TintColor = FSlateColor(WizCreationColours::Gold);
-			StartStyle.Normal.OutlineSettings.Color = FSlateColor(WizCreationColours::Gold);
-			StartStyle.Normal.OutlineSettings.Width = 2.0f;
+			CustomWizardButton->AddChild(CustomLabel);
+			CustomSize->AddChild(CustomWizardButton);
+			CustomWizardButton->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnCustomWizardClicked);
 
-			StartStyle.Hovered.DrawAs = ESlateBrushDrawType::RoundedBox;
-			StartStyle.Hovered.TintColor = FSlateColor(
-				FLinearColor(WizCreationColours::Gold.R * 1.2f, WizCreationColours::Gold.G * 1.2f,
-				             WizCreationColours::Gold.B * 1.2f, 1.0f));
-			StartStyle.Hovered.OutlineSettings.Color = FSlateColor(WizCreationColours::White);
-			StartStyle.Hovered.OutlineSettings.Width = 2.0f;
-
-			StartStyle.Pressed.DrawAs = ESlateBrushDrawType::RoundedBox;
-			StartStyle.Pressed.TintColor = FSlateColor(
-				FLinearColor(WizCreationColours::Gold.R * 0.8f, WizCreationColours::Gold.G * 0.8f,
-				             WizCreationColours::Gold.B * 0.8f, 1.0f));
-			StartStyle.Pressed.OutlineSettings.Color = FSlateColor(WizCreationColours::Gold);
-			StartStyle.Pressed.OutlineSettings.Width = 2.0f;
-
-			StartGameButton->SetStyle(StartStyle);
-
-			UTextBlock* StartLabel = NewObject<UTextBlock>(this);
-			StartLabel->SetText(FText::FromString(TEXT("Start Game")));
-			StartLabel->SetColorAndOpacity(FSlateColor(WizCreationColours::Background));
-			StartLabel->SetJustification(ETextJustify::Center);
-			FSlateFontInfo StartFont = StartLabel->GetFont();
-			StartFont.Size = 16;
-			StartFont.TypefaceFontName = FName(TEXT("Bold"));
-			StartLabel->SetFont(StartFont);
-
-			StartGameButton->AddChild(StartLabel);
-			StartSize->AddChild(StartGameButton);
-
-			StartGameButton->OnClicked.AddDynamic(this, &UCoMWizardCreationWidget::OnStartGameClicked);
-
-			UHorizontalBoxSlot* HSlot = BottomRow->AddChildToHorizontalBox(StartSize);
-			if (HSlot)
-			{
-				HSlot->SetHorizontalAlignment(HAlign_Right);
-				HSlot->SetPadding(FMargin(8.0f, 0.0f, 0.0f, 0.0f));
-			}
+			UHorizontalBoxSlot* HSlot = BottomRow->AddChildToHorizontalBox(CustomSize);
+			if (HSlot) { HSlot->SetHorizontalAlignment(HAlign_Right); }
 		}
 
 		UVerticalBoxSlot* BottomSlot = ContentBox->AddChildToVerticalBox(BottomRow);
 		if (BottomSlot)
 		{
-			BottomSlot->SetHorizontalAlignment(HAlign_Fill);
+			BottomSlot->SetPadding(FMargin(80.0f, 0.0f, 80.0f, 16.0f));
 		}
 	}
 }

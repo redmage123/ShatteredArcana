@@ -89,6 +89,18 @@ public:
 	/** Get spells of a given rarity tier. */
 	static TArray<FName> GetSpellsByRarity(ECoMSpellRarity Rarity);
 
+	/** Get spells for a specific realm AND rarity tier. */
+	static TArray<FName> GetSpellsForRealmAndRarity(ECoMSpellRealm Realm, ECoMSpellRarity Rarity);
+
+	/**
+	 * Get all spells available to a wizard based on their book allocation.
+	 * 1 book = Common, 2-3 books = +Uncommon, 4-5 = +Rare, 6+ = +Very Rare.
+	 * Returns two arrays: learnable (researchable) and guaranteed starting spells.
+	 * In MoM, you get 1 guaranteed spell per 2 books in Common tier.
+	 */
+	static void GetSpellsForBookCount(ECoMSpellRealm Realm, int32 BookCount,
+		TArray<FName>& OutLearnableSpells, TArray<FName>& OutStartingSpells);
+
 	/** Get the research cost for a spell by its rarity tier. */
 	static int32 GetTierResearchCost(ECoMSpellRarity Rarity);
 

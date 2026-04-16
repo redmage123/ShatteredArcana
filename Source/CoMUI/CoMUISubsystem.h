@@ -18,12 +18,18 @@ class UCoMCreditsWidget;
 class UCoMSettingsWidget;
 class UCoMMainMenuWidget;
 class UCoMWizardCreationWidget;
+class UCoMWizardConfigWidget;
 class UCoMLoadScreenWidget;
 class UCoMVictoryScreenWidget;
 class UCoMTooltipWidget;
 class UCoMTurnNotificationWidget;
 class UCoMSpellTargetingWidget;
 class UCoMPreBattleWidget;
+class UCoMUnitCardWidget;
+class UCoMArmyStackWidget;
+class UCoMHeroScreenWidget;
+class UCoMSpellVFXWidget;
+class UCoMSpellVFXSubsystem;
 
 /**
  * UCoMUISubsystem
@@ -117,6 +123,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HideWizardCreation();
 
+	// -- Wizard Config (Screen 2) ---------------------------------------------
+
+	/** Create and show the wizard config screen for the given portrait index. -1 = custom. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowWizardConfig(int32 PortraitIndex);
+
+	/** Close the wizard config screen. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideWizardConfig();
+
 	// -- Load Screen -----------------------------------------------------------
 
 	/** Create and show the load game screen. */
@@ -203,6 +219,50 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HidePreBattlePopup();
 
+	// -- Unit Card -------------------------------------------------------------
+
+	/** Show the trading-card style unit detail popup. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowUnitCard(int32 UnitId);
+
+	/** Hide the unit card popup. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideUnitCard();
+
+	// -- Army Stack ------------------------------------------------------------
+
+	/** Show the army stack grid popup for the given army. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowArmyStack(int32 ArmyId);
+
+	/** Hide the army stack popup. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideArmyStack();
+
+	// -- Hero Screen -----------------------------------------------------------
+
+	/** Show the full hero character sheet for the given hero unit. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowHeroScreen(int32 HeroUnitId);
+
+	/** Hide the hero screen. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideHeroScreen();
+
+	// -- Spell VFX Overlay -----------------------------------------------------
+
+	/** Show the spell VFX overlay widget (auto-created on HUD show). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowSpellVFX();
+
+	/** Hide and destroy the spell VFX overlay widget. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideSpellVFX();
+
+	/** Get the spell VFX widget (may be nullptr). */
+	UFUNCTION(BlueprintPure, Category = "CoM|UI")
+	UCoMSpellVFXWidget* GetSpellVFXWidget() const { return SpellVFXInstance; }
+
 	// -- Spell Targeting -------------------------------------------------------
 
 	/** Get the spell targeting widget (may be nullptr). */
@@ -226,6 +286,13 @@ public:
 	/** Close everything including the HUD. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HideAll();
+
+	/** Called via delegate when game modes request all menus be hidden. */
+	void HandleHideMenus();
+
+	/** Called when the HUD End Turn button is clicked. Processes a full turn and refreshes the HUD. */
+	UFUNCTION()
+	void OnEndTurnFromHUD();
 
 	// -- Widget Class Configuration --------------------------------------------
 
@@ -257,6 +324,9 @@ public:
 	TSubclassOf<UCoMWizardCreationWidget> WizardCreationWidgetClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<UCoMWizardConfigWidget> WizardConfigWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<UCoMLoadScreenWidget> LoadScreenWidgetClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
@@ -273,6 +343,18 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<UCoMSpellTargetingWidget> SpellTargetingWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<UCoMUnitCardWidget> UnitCardWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<UCoMArmyStackWidget> ArmyStackWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<UCoMHeroScreenWidget> HeroScreenWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<UCoMSpellVFXWidget> SpellVFXWidgetClass;
 
 private:
 	/** Helper: create a widget of the given class and add it to the viewport. */
@@ -313,6 +395,9 @@ private:
 	UCoMWizardCreationWidget* WizardCreationInstance = nullptr;
 
 	UPROPERTY()
+	UCoMWizardConfigWidget* WizardConfigInstance = nullptr;
+
+	UPROPERTY()
 	UCoMLoadScreenWidget* LoadScreenInstance = nullptr;
 
 	UPROPERTY()
@@ -329,4 +414,20 @@ private:
 
 	UPROPERTY()
 	UCoMSpellTargetingWidget* SpellTargetingInstance = nullptr;
+
+	UPROPERTY()
+	UCoMUnitCardWidget* UnitCardInstance = nullptr;
+
+	UPROPERTY()
+	UCoMArmyStackWidget* ArmyStackInstance = nullptr;
+
+	UPROPERTY()
+	UCoMHeroScreenWidget* HeroScreenInstance = nullptr;
+
+	UPROPERTY()
+	UCoMSpellVFXWidget* SpellVFXInstance = nullptr;
+
+	/** Callback from VFX subsystem when a new effect is requested. */
+	UFUNCTION()
+	void OnSpellVFXRequested(int32 PlaybackID, FName EffectID, FVector WorldPosition, FVector TargetPosition);
 };

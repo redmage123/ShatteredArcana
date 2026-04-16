@@ -73,6 +73,25 @@ struct COMCORE_API FCoMTileData
 	/** Explorable site ID at this tile (-1 = none). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 SiteID = -1;
 
+	// ── Mana Node (MoM-style realm-typed power source) ──────────────────
+
+	/** True if this tile contains a mana node. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bHasManaNode = false;
+
+	/** The spell realm this mana node is attuned to (Life, Death, Chaos, Nature, Sorcery, etc). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMSpellRealm NodeRealm = ECoMSpellRealm::None;
+
+	/** Base mana output per turn when controlled. Modified by node mastery retort. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 NodeManaOutput = 5;
+
+	/** Wizard index who has melded a spirit with this node (-1 = unclaimed). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 NodeOwnerWizardIndex = -1;
+
+	/** True if a guardian creature still protects this node. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bNodeGuarded = true;
+
+	// ── Tile modifiers ───────────────────────────────────────────────────
+
 	/** Movement cost modifier (1.0 = normal). Enchantments and corruption can change this. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FFixed64 MoveCostModifier = FFixed64(1);
 

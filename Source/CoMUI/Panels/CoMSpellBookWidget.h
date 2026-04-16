@@ -17,6 +17,7 @@ class UHorizontalBox;
 class UVerticalBox;
 class USlider;
 class UCoMMagicSubsystem;
+class USizeBox;
 
 /**
  * UCoMSpellBookWidget
@@ -32,6 +33,22 @@ class COMUI_API UCoMSpellBookWidget : public UUserWidget
 
 public:
 	virtual void NativeConstruct() override;
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+
+private:
+	/** Build the entire spell book layout in C++. */
+	void BuildLayout();
+
+	/** Create a realm tab button with the given label and color. */
+	UButton* CreateRealmTab(const FString& Label, const FLinearColor& Color);
+
+	/** Create a styled action button. OutSizeBox receives the wrapping size box for layout. */
+	UButton* CreateActionButton(const FString& Label, float Width = 140.f, USizeBox** OutSizeBox = nullptr);
+
+	/** References created during BuildLayout. */
+	UPROPERTY() UVerticalBox* RootContentBox = nullptr;
+
+public:
 
 	// -- Wizard Binding --------------------------------------------------------
 

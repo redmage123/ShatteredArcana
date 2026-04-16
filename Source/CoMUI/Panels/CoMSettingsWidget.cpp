@@ -50,14 +50,19 @@ namespace SettingsColours
 // Lifecycle
 // =============================================================================
 
+TSharedRef<SWidget> UCoMSettingsWidget::RebuildWidget()
+{
+	BuildSettingsLayout();
+	return Super::RebuildWidget();
+}
+
 void UCoMSettingsWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	bIsFocusable = true;
+	SetIsFocusable(true);
 	SetVisibility(ESlateVisibility::Visible);
 
-	BuildSettingsLayout();
 	LoadCurrentSettings();
 	SwitchTab(0); // Start on Audio tab
 }
@@ -168,17 +173,20 @@ void UCoMSettingsWidget::BuildSettingsLayout()
 {
 	// -- Full-screen dark background ------------------------------------------
 
-	BackgroundBorder = NewObject<UBorder>(this);
+	BackgroundBorder = WidgetTree->ConstructWidget<UBorder>();
 	BackgroundBorder->SetBrushColor(SettingsColours::Background);
 	BackgroundBorder->SetPadding(FMargin(0.0f));
 
+	// Set the background as the root widget BEFORE adding children.
+	WidgetTree->RootWidget = BackgroundBorder;
+
 	// -- Center-aligned content via overlay -----------------------------------
 
-	UOverlay* RootOverlay = NewObject<UOverlay>(this);
+	UOverlay* RootOverlay = WidgetTree->ConstructWidget<UOverlay>();
 	BackgroundBorder->AddChild(RootOverlay);
 
 	// Content area: 600px wide, centered
-	USizeBox* ContentSizeBox = NewObject<USizeBox>(this);
+	USizeBox* ContentSizeBox = WidgetTree->ConstructWidget<USizeBox>();
 	ContentSizeBox->SetWidthOverride(600.0f);
 
 	UOverlaySlot* ContentSlot = RootOverlay->AddChildToOverlay(ContentSizeBox);
@@ -188,19 +196,13 @@ void UCoMSettingsWidget::BuildSettingsLayout()
 		ContentSlot->SetVerticalAlignment(VAlign_Center);
 	}
 
-	RootBox = NewObject<UVerticalBox>(this);
+	RootBox = WidgetTree->ConstructWidget<UVerticalBox>();
 	ContentSizeBox->AddChild(RootBox);
-
-	// Set the background as the root widget.
-	if (WidgetTree)
-	{
-		WidgetTree->RootWidget = BackgroundBorder;
-	}
 
 	// -- Title ----------------------------------------------------------------
 
 	{
-		UTextBlock* TitleText = NewObject<UTextBlock>(this);
+		UTextBlock* TitleText = WidgetTree->ConstructWidget<UTextBlock>();
 		TitleText->SetText(FText::FromString(TEXT("SETTINGS")));
 		TitleText->SetColorAndOpacity(FSlateColor(SettingsColours::Gold));
 		TitleText->SetJustification(ETextJustify::Center);
@@ -210,42 +212,42 @@ void UCoMSettingsWidget::BuildSettingsLayout()
 		TitleFont.TypefaceFontName = FName(TEXT("Bold"));
 		TitleText->SetFont(TitleFont);
 
-		UVerticalBoxSlot* Slot = RootBox->AddChildToVerticalBox(TitleText);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = RootBox->AddChildToVerticalBox(TitleText);
+		if (SlotRef)
 		{
-			Slot->SetHorizontalAlignment(HAlign_Center);
-			Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 16.0f));
+			SlotRef->SetHorizontalAlignment(HAlign_Center);
+			SlotRef->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 16.0f));
 		}
 	}
 
 	// -- Gold separator -------------------------------------------------------
 
 	{
-		UImage* Separator = NewObject<UImage>(this);
+		UImage* Separator = WidgetTree->ConstructWidget<UImage>();
 		Separator->SetColorAndOpacity(SettingsColours::Gold);
 		Separator->SetDesiredSizeOverride(FVector2D(500.0f, 2.0f));
 
-		UVerticalBoxSlot* Slot = RootBox->AddChildToVerticalBox(Separator);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = RootBox->AddChildToVerticalBox(Separator);
+		if (SlotRef)
 		{
-			Slot->SetHorizontalAlignment(HAlign_Center);
-			Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 16.0f));
+			SlotRef->SetHorizontalAlignment(HAlign_Center);
+			SlotRef->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 16.0f));
 		}
 	}
 
 	// -- Tab bar --------------------------------------------------------------
 
 	{
-		UHorizontalBox* TabBar = NewObject<UHorizontalBox>(this);
+		UHorizontalBox* TabBar = WidgetTree->ConstructWidget<UHorizontalBox>();
 
 		// Audio tab
 		{
-			USizeBox* SB = NewObject<USizeBox>(this);
+			USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 			SB->SetWidthOverride(180.0f);
 			SB->SetHeightOverride(44.0f);
 
-			AudioTabButton = NewObject<UButton>(this);
-			UTextBlock* Label = NewObject<UTextBlock>(this);
+			AudioTabButton = WidgetTree->ConstructWidget<UButton>();
+			UTextBlock* Label = WidgetTree->ConstructWidget<UTextBlock>();
 			Label->SetText(FText::FromString(TEXT("Audio")));
 			Label->SetColorAndOpacity(FSlateColor(SettingsColours::White));
 			Label->SetJustification(ETextJustify::Center);
@@ -267,12 +269,12 @@ void UCoMSettingsWidget::BuildSettingsLayout()
 
 		// Graphics tab
 		{
-			USizeBox* SB = NewObject<USizeBox>(this);
+			USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 			SB->SetWidthOverride(180.0f);
 			SB->SetHeightOverride(44.0f);
 
-			GraphicsTabButton = NewObject<UButton>(this);
-			UTextBlock* Label = NewObject<UTextBlock>(this);
+			GraphicsTabButton = WidgetTree->ConstructWidget<UButton>();
+			UTextBlock* Label = WidgetTree->ConstructWidget<UTextBlock>();
 			Label->SetText(FText::FromString(TEXT("Graphics")));
 			Label->SetColorAndOpacity(FSlateColor(SettingsColours::White));
 			Label->SetJustification(ETextJustify::Center);
@@ -294,12 +296,12 @@ void UCoMSettingsWidget::BuildSettingsLayout()
 
 		// Controls tab
 		{
-			USizeBox* SB = NewObject<USizeBox>(this);
+			USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 			SB->SetWidthOverride(180.0f);
 			SB->SetHeightOverride(44.0f);
 
-			ControlsTabButton = NewObject<UButton>(this);
-			UTextBlock* Label = NewObject<UTextBlock>(this);
+			ControlsTabButton = WidgetTree->ConstructWidget<UButton>();
+			UTextBlock* Label = WidgetTree->ConstructWidget<UTextBlock>();
 			Label->SetText(FText::FromString(TEXT("Controls")));
 			Label->SetColorAndOpacity(FSlateColor(SettingsColours::White));
 			Label->SetJustification(ETextJustify::Center);
@@ -330,38 +332,38 @@ void UCoMSettingsWidget::BuildSettingsLayout()
 	// -- Tab content panels ---------------------------------------------------
 
 	// Audio panel
-	AudioPanel = NewObject<UVerticalBox>(this);
+	AudioPanel = WidgetTree->ConstructWidget<UVerticalBox>();
 	BuildAudioTab();
 	{
-		UVerticalBoxSlot* Slot = RootBox->AddChildToVerticalBox(AudioPanel);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = RootBox->AddChildToVerticalBox(AudioPanel);
+		if (SlotRef)
 		{
-			Slot->SetHorizontalAlignment(HAlign_Fill);
-			Slot->SetPadding(FMargin(20.0f, 0.0f));
+			SlotRef->SetHorizontalAlignment(HAlign_Fill);
+			SlotRef->SetPadding(FMargin(20.0f, 0.0f));
 		}
 	}
 
 	// Graphics panel
-	GraphicsPanel = NewObject<UVerticalBox>(this);
+	GraphicsPanel = WidgetTree->ConstructWidget<UVerticalBox>();
 	BuildGraphicsTab();
 	{
-		UVerticalBoxSlot* Slot = RootBox->AddChildToVerticalBox(GraphicsPanel);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = RootBox->AddChildToVerticalBox(GraphicsPanel);
+		if (SlotRef)
 		{
-			Slot->SetHorizontalAlignment(HAlign_Fill);
-			Slot->SetPadding(FMargin(20.0f, 0.0f));
+			SlotRef->SetHorizontalAlignment(HAlign_Fill);
+			SlotRef->SetPadding(FMargin(20.0f, 0.0f));
 		}
 	}
 
 	// Controls panel
-	ControlsPanel = NewObject<UVerticalBox>(this);
+	ControlsPanel = WidgetTree->ConstructWidget<UVerticalBox>();
 	BuildControlsTab();
 	{
-		UVerticalBoxSlot* Slot = RootBox->AddChildToVerticalBox(ControlsPanel);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = RootBox->AddChildToVerticalBox(ControlsPanel);
+		if (SlotRef)
 		{
-			Slot->SetHorizontalAlignment(HAlign_Fill);
-			Slot->SetPadding(FMargin(20.0f, 0.0f));
+			SlotRef->SetHorizontalAlignment(HAlign_Fill);
+			SlotRef->SetPadding(FMargin(20.0f, 0.0f));
 		}
 	}
 
@@ -372,22 +374,22 @@ void UCoMSettingsWidget::BuildSettingsLayout()
 	// -- Gold separator -------------------------------------------------------
 
 	{
-		UImage* Separator = NewObject<UImage>(this);
+		UImage* Separator = WidgetTree->ConstructWidget<UImage>();
 		Separator->SetColorAndOpacity(SettingsColours::Gold);
 		Separator->SetDesiredSizeOverride(FVector2D(500.0f, 2.0f));
 
-		UVerticalBoxSlot* Slot = RootBox->AddChildToVerticalBox(Separator);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = RootBox->AddChildToVerticalBox(Separator);
+		if (SlotRef)
 		{
-			Slot->SetHorizontalAlignment(HAlign_Center);
-			Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 16.0f));
+			SlotRef->SetHorizontalAlignment(HAlign_Center);
+			SlotRef->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 16.0f));
 		}
 	}
 
 	// -- Bottom bar: Apply + Back ---------------------------------------------
 
 	{
-		UHorizontalBox* BottomBar = NewObject<UHorizontalBox>(this);
+		UHorizontalBox* BottomBar = WidgetTree->ConstructWidget<UHorizontalBox>();
 
 		ApplyButton = CreateStyledButton(TEXT("Apply"), 140.0f, 44.0f);
 		ApplyButton->OnClicked.AddDynamic(this, &UCoMSettingsWidget::OnApplyClicked);
@@ -398,15 +400,15 @@ void UCoMSettingsWidget::BuildSettingsLayout()
 		// Apply button -- gold-tinted
 		{
 			FButtonStyle ApplyStyle = ApplyButton->GetStyle();
-			ApplyStyle.Normal.DrawAs = ESlateBrushDrawType::RoundedBox;
+			ApplyStyle.Normal.DrawAs = ESlateBrushDrawType::Box;
 			ApplyStyle.Normal.TintColor = FSlateColor(SettingsColours::Gold);
 			ApplyStyle.Normal.OutlineSettings.Color = FSlateColor(SettingsColours::Gold);
 			ApplyStyle.Normal.OutlineSettings.Width = 1.0f;
-			ApplyStyle.Hovered.DrawAs = ESlateBrushDrawType::RoundedBox;
+			ApplyStyle.Hovered.DrawAs = ESlateBrushDrawType::Box;
 			ApplyStyle.Hovered.TintColor = FSlateColor(FLinearColor(0.95f, 0.75f, 0.2f, 1.0f));
 			ApplyStyle.Hovered.OutlineSettings.Color = FSlateColor(SettingsColours::Gold);
 			ApplyStyle.Hovered.OutlineSettings.Width = 1.0f;
-			ApplyStyle.Pressed.DrawAs = ESlateBrushDrawType::RoundedBox;
+			ApplyStyle.Pressed.DrawAs = ESlateBrushDrawType::Box;
 			ApplyStyle.Pressed.TintColor = FSlateColor(FLinearColor(0.7f, 0.5f, 0.1f, 1.0f));
 			ApplyStyle.Pressed.OutlineSettings.Color = FSlateColor(SettingsColours::Gold);
 			ApplyStyle.Pressed.OutlineSettings.Width = 1.0f;
@@ -414,7 +416,7 @@ void UCoMSettingsWidget::BuildSettingsLayout()
 		}
 
 		{
-			USizeBox* SB = NewObject<USizeBox>(this);
+			USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 			SB->SetWidthOverride(140.0f);
 			SB->SetHeightOverride(44.0f);
 			SB->AddChild(ApplyButton);
@@ -426,7 +428,7 @@ void UCoMSettingsWidget::BuildSettingsLayout()
 		}
 
 		{
-			USizeBox* SB = NewObject<USizeBox>(this);
+			USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 			SB->SetWidthOverride(140.0f);
 			SB->SetHeightOverride(44.0f);
 			SB->AddChild(BackButton);
@@ -484,7 +486,7 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 	AddSectionLabel(GraphicsPanel, TEXT("Resolution"));
 	AddSpacer(GraphicsPanel, 4.0f);
 
-	ResolutionCombo = NewObject<UComboBoxString>(this);
+	ResolutionCombo = WidgetTree->ConstructWidget<UComboBoxString>();
 	ResolutionCombo->AddOption(TEXT("1280x720"));
 	ResolutionCombo->AddOption(TEXT("1920x1080"));
 	ResolutionCombo->AddOption(TEXT("2560x1440"));
@@ -493,11 +495,11 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 	ResolutionCombo->OnSelectionChanged.AddDynamic(this, &UCoMSettingsWidget::OnResolutionSelected);
 
 	{
-		UVerticalBoxSlot* Slot = GraphicsPanel->AddChildToVerticalBox(ResolutionCombo);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = GraphicsPanel->AddChildToVerticalBox(ResolutionCombo);
+		if (SlotRef)
 		{
-			Slot->SetHorizontalAlignment(HAlign_Fill);
-			Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 12.0f));
+			SlotRef->SetHorizontalAlignment(HAlign_Fill);
+			SlotRef->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 12.0f));
 		}
 	}
 
@@ -507,7 +509,7 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 	AddSpacer(GraphicsPanel, 4.0f);
 
 	{
-		UHorizontalBox* Row = NewObject<UHorizontalBox>(this);
+		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
 
 		FullscreenButton = CreateOptionButton(TEXT("Fullscreen"), 130.0f);
 		FullscreenButton->OnClicked.AddDynamic(this, &UCoMSettingsWidget::OnWindowModeFullscreen);
@@ -520,7 +522,7 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 
 		auto AddToRow = [&](UButton* Btn)
 		{
-			USizeBox* SB = NewObject<USizeBox>(this);
+			USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 			SB->SetWidthOverride(130.0f);
 			SB->SetHeightOverride(36.0f);
 			SB->AddChild(Btn);
@@ -535,10 +537,10 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 		AddToRow(WindowedButton);
 		AddToRow(BorderlessButton);
 
-		UVerticalBoxSlot* Slot = GraphicsPanel->AddChildToVerticalBox(Row);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = GraphicsPanel->AddChildToVerticalBox(Row);
+		if (SlotRef)
 		{
-			Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 12.0f));
+			SlotRef->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 12.0f));
 		}
 	}
 
@@ -548,7 +550,7 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 	AddSpacer(GraphicsPanel, 4.0f);
 
 	{
-		UHorizontalBox* Row = NewObject<UHorizontalBox>(this);
+		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
 
 		QualityLowButton = CreateOptionButton(TEXT("Low"));
 		QualityLowButton->OnClicked.AddDynamic(this, &UCoMSettingsWidget::OnQualityLow);
@@ -564,7 +566,7 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 
 		auto AddToRow = [&](UButton* Btn)
 		{
-			USizeBox* SB = NewObject<USizeBox>(this);
+			USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 			SB->SetWidthOverride(100.0f);
 			SB->SetHeightOverride(36.0f);
 			SB->AddChild(Btn);
@@ -580,19 +582,19 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 		AddToRow(QualityHighButton);
 		AddToRow(QualityUltraButton);
 
-		UVerticalBoxSlot* Slot = GraphicsPanel->AddChildToVerticalBox(Row);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = GraphicsPanel->AddChildToVerticalBox(Row);
+		if (SlotRef)
 		{
-			Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 12.0f));
+			SlotRef->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 12.0f));
 		}
 	}
 
 	// -- VSync ----------------------------------------------------------------
 
 	{
-		UHorizontalBox* Row = NewObject<UHorizontalBox>(this);
+		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
 
-		UTextBlock* VSyncLabel = NewObject<UTextBlock>(this);
+		UTextBlock* VSyncLabel = WidgetTree->ConstructWidget<UTextBlock>();
 		VSyncLabel->SetText(FText::FromString(TEXT("VSync")));
 		VSyncLabel->SetColorAndOpacity(FSlateColor(SettingsColours::LightGrey));
 		FSlateFontInfo Font = VSyncLabel->GetFont();
@@ -606,7 +608,7 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 			LabelSlot->SetPadding(FMargin(0.0f, 0.0f, 16.0f, 0.0f));
 		}
 
-		VSyncCheckBox = NewObject<UCheckBox>(this);
+		VSyncCheckBox = WidgetTree->ConstructWidget<UCheckBox>();
 		VSyncCheckBox->SetIsChecked(true);
 		VSyncCheckBox->OnCheckStateChanged.AddDynamic(this, &UCoMSettingsWidget::OnVSyncToggled);
 
@@ -616,10 +618,10 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 			CheckSlot->SetVerticalAlignment(VAlign_Center);
 		}
 
-		UVerticalBoxSlot* Slot = GraphicsPanel->AddChildToVerticalBox(Row);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = GraphicsPanel->AddChildToVerticalBox(Row);
+		if (SlotRef)
 		{
-			Slot->SetPadding(FMargin(0.0f, 4.0f, 0.0f, 12.0f));
+			SlotRef->SetPadding(FMargin(0.0f, 4.0f, 0.0f, 12.0f));
 		}
 	}
 
@@ -629,7 +631,7 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 	AddSpacer(GraphicsPanel, 4.0f);
 
 	{
-		UHorizontalBox* Row = NewObject<UHorizontalBox>(this);
+		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
 
 		FPS30Button = CreateOptionButton(TEXT("30"));
 		FPS30Button->OnClicked.AddDynamic(this, &UCoMSettingsWidget::OnFPSLimit30);
@@ -645,7 +647,7 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 
 		auto AddToRow = [&](UButton* Btn, float Width = 100.0f)
 		{
-			USizeBox* SB = NewObject<USizeBox>(this);
+			USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 			SB->SetWidthOverride(Width);
 			SB->SetHeightOverride(36.0f);
 			SB->AddChild(Btn);
@@ -661,10 +663,10 @@ void UCoMSettingsWidget::BuildGraphicsTab()
 		AddToRow(FPS120Button);
 		AddToRow(FPSUnlimitedButton, 110.0f);
 
-		UVerticalBoxSlot* Slot = GraphicsPanel->AddChildToVerticalBox(Row);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = GraphicsPanel->AddChildToVerticalBox(Row);
+		if (SlotRef)
 		{
-			Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
+			SlotRef->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
 		}
 	}
 }
@@ -680,14 +682,14 @@ void UCoMSettingsWidget::BuildControlsTab()
 
 	// Header row
 	{
-		UHorizontalBox* HeaderRow = NewObject<UHorizontalBox>(this);
+		UHorizontalBox* HeaderRow = WidgetTree->ConstructWidget<UHorizontalBox>();
 
 		auto AddHeader = [&](const FString& Text, float Width)
 		{
-			USizeBox* SB = NewObject<USizeBox>(this);
+			USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 			SB->SetWidthOverride(Width);
 
-			UTextBlock* Label = NewObject<UTextBlock>(this);
+			UTextBlock* Label = WidgetTree->ConstructWidget<UTextBlock>();
 			Label->SetText(FText::FromString(Text));
 			Label->SetColorAndOpacity(FSlateColor(SettingsColours::Gold));
 			FSlateFontInfo Font = Label->GetFont();
@@ -708,34 +710,34 @@ void UCoMSettingsWidget::BuildControlsTab()
 		AddHeader(TEXT("Key"), 150.0f);
 		AddHeader(TEXT(""), 100.0f); // Rebind column
 
-		UVerticalBoxSlot* Slot = ControlsPanel->AddChildToVerticalBox(HeaderRow);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = ControlsPanel->AddChildToVerticalBox(HeaderRow);
+		if (SlotRef)
 		{
-			Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 4.0f));
+			SlotRef->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 4.0f));
 		}
 	}
 
 	// Separator
 	{
-		UImage* Sep = NewObject<UImage>(this);
+		UImage* Sep = WidgetTree->ConstructWidget<UImage>();
 		Sep->SetColorAndOpacity(SettingsColours::Grey);
 		Sep->SetDesiredSizeOverride(FVector2D(460.0f, 1.0f));
 
-		UVerticalBoxSlot* Slot = ControlsPanel->AddChildToVerticalBox(Sep);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = ControlsPanel->AddChildToVerticalBox(Sep);
+		if (SlotRef)
 		{
-			Slot->SetHorizontalAlignment(HAlign_Left);
-			Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 4.0f));
+			SlotRef->SetHorizontalAlignment(HAlign_Left);
+			SlotRef->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 4.0f));
 		}
 	}
 
 	// Keybindings list box (populated dynamically)
-	KeybindingsListBox = NewObject<UVerticalBox>(this);
+	KeybindingsListBox = WidgetTree->ConstructWidget<UVerticalBox>();
 	{
-		UVerticalBoxSlot* Slot = ControlsPanel->AddChildToVerticalBox(KeybindingsListBox);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = ControlsPanel->AddChildToVerticalBox(KeybindingsListBox);
+		if (SlotRef)
 		{
-			Slot->SetHorizontalAlignment(HAlign_Fill);
+			SlotRef->SetHorizontalAlignment(HAlign_Fill);
 		}
 	}
 
@@ -745,12 +747,12 @@ void UCoMSettingsWidget::BuildControlsTab()
 
 	// Reset Defaults button
 	{
-		UHorizontalBox* Row = NewObject<UHorizontalBox>(this);
+		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
 
 		ResetDefaultsButton = CreateStyledButton(TEXT("Reset Defaults"), 160.0f, 36.0f);
 		ResetDefaultsButton->OnClicked.AddDynamic(this, &UCoMSettingsWidget::OnResetDefaultsClicked);
 
-		USizeBox* SB = NewObject<USizeBox>(this);
+		USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 		SB->SetWidthOverride(160.0f);
 		SB->SetHeightOverride(36.0f);
 		SB->AddChild(ResetDefaultsButton);
@@ -761,10 +763,10 @@ void UCoMSettingsWidget::BuildControlsTab()
 			HSlot->SetPadding(FMargin(0.0f));
 		}
 
-		UVerticalBoxSlot* Slot = ControlsPanel->AddChildToVerticalBox(Row);
-		if (Slot)
+		UVerticalBoxSlot* SlotRef = ControlsPanel->AddChildToVerticalBox(Row);
+		if (SlotRef)
 		{
-			Slot->SetHorizontalAlignment(HAlign_Left);
+			SlotRef->SetHorizontalAlignment(HAlign_Left);
 		}
 	}
 }
@@ -812,17 +814,17 @@ void UCoMSettingsWidget::UpdateTabButtonStyles()
 			? FLinearColor(0.95f, 0.75f, 0.2f, 1.0f)
 			: SettingsColours::ButtonHover;
 
-		Style.Normal.DrawAs = ESlateBrushDrawType::RoundedBox;
+		Style.Normal.DrawAs = ESlateBrushDrawType::Box;
 		Style.Normal.TintColor = FSlateColor(BgColor);
 		Style.Normal.OutlineSettings.Color = FSlateColor(SettingsColours::Gold);
 		Style.Normal.OutlineSettings.Width = 1.0f;
 
-		Style.Hovered.DrawAs = ESlateBrushDrawType::RoundedBox;
+		Style.Hovered.DrawAs = ESlateBrushDrawType::Box;
 		Style.Hovered.TintColor = FSlateColor(HoverColor);
 		Style.Hovered.OutlineSettings.Color = FSlateColor(SettingsColours::Gold);
 		Style.Hovered.OutlineSettings.Width = 1.0f;
 
-		Style.Pressed.DrawAs = ESlateBrushDrawType::RoundedBox;
+		Style.Pressed.DrawAs = ESlateBrushDrawType::Box;
 		Style.Pressed.TintColor = FSlateColor(BgColor);
 		Style.Pressed.OutlineSettings.Color = FSlateColor(SettingsColours::Gold);
 		Style.Pressed.OutlineSettings.Width = 1.0f;
@@ -1087,14 +1089,14 @@ void UCoMSettingsWidget::PopulateKeybindingsList()
 	{
 		FKeyBindingEntry& Entry = KeyBindings[i];
 
-		UHorizontalBox* Row = NewObject<UHorizontalBox>(this);
+		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
 
 		// Action name
 		{
-			USizeBox* SB = NewObject<USizeBox>(this);
+			USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 			SB->SetWidthOverride(200.0f);
 
-			UTextBlock* Label = NewObject<UTextBlock>(this);
+			UTextBlock* Label = WidgetTree->ConstructWidget<UTextBlock>();
 			Label->SetText(FText::FromString(Entry.DisplayName));
 			Label->SetColorAndOpacity(FSlateColor(SettingsColours::LightGrey));
 			FSlateFontInfo Font = Label->GetFont();
@@ -1112,10 +1114,10 @@ void UCoMSettingsWidget::PopulateKeybindingsList()
 
 		// Current key
 		{
-			USizeBox* SB = NewObject<USizeBox>(this);
+			USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 			SB->SetWidthOverride(150.0f);
 
-			Entry.KeyLabel = NewObject<UTextBlock>(this);
+			Entry.KeyLabel = WidgetTree->ConstructWidget<UTextBlock>();
 			FString KeyDisplay = Entry.CurrentKey.IsValid()
 				? Entry.CurrentKey.GetDisplayName().ToString()
 				: TEXT("Unbound");
@@ -1142,7 +1144,7 @@ void UCoMSettingsWidget::PopulateKeybindingsList()
 		{
 			Entry.RebindButton = CreateOptionButton(TEXT("Rebind"), 80.0f);
 
-			USizeBox* SB = NewObject<USizeBox>(this);
+			USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 			SB->SetWidthOverride(80.0f);
 			SB->SetHeightOverride(30.0f);
 			SB->AddChild(Entry.RebindButton);
@@ -1278,28 +1280,28 @@ void UCoMSettingsWidget::OnResetDefaultsClicked()
 
 UButton* UCoMSettingsWidget::CreateStyledButton(const FString& Label, float Width, float Height)
 {
-	UButton* Button = NewObject<UButton>(this);
+	UButton* Button = WidgetTree->ConstructWidget<UButton>();
 
 	FButtonStyle Style = Button->GetStyle();
 
-	Style.Normal.DrawAs = ESlateBrushDrawType::RoundedBox;
+	Style.Normal.DrawAs = ESlateBrushDrawType::Box;
 	Style.Normal.TintColor = FSlateColor(SettingsColours::ButtonBg);
 	Style.Normal.OutlineSettings.Color = FSlateColor(SettingsColours::Gold);
 	Style.Normal.OutlineSettings.Width = 1.0f;
 
-	Style.Hovered.DrawAs = ESlateBrushDrawType::RoundedBox;
+	Style.Hovered.DrawAs = ESlateBrushDrawType::Box;
 	Style.Hovered.TintColor = FSlateColor(SettingsColours::ButtonHover);
 	Style.Hovered.OutlineSettings.Color = FSlateColor(SettingsColours::Gold);
 	Style.Hovered.OutlineSettings.Width = 1.0f;
 
-	Style.Pressed.DrawAs = ESlateBrushDrawType::RoundedBox;
+	Style.Pressed.DrawAs = ESlateBrushDrawType::Box;
 	Style.Pressed.TintColor = FSlateColor(SettingsColours::ButtonBg);
 	Style.Pressed.OutlineSettings.Color = FSlateColor(SettingsColours::Gold);
 	Style.Pressed.OutlineSettings.Width = 1.0f;
 
 	Button->SetStyle(Style);
 
-	UTextBlock* ButtonLabel = NewObject<UTextBlock>(this);
+	UTextBlock* ButtonLabel = WidgetTree->ConstructWidget<UTextBlock>();
 	ButtonLabel->SetText(FText::FromString(Label));
 	ButtonLabel->SetColorAndOpacity(FSlateColor(SettingsColours::White));
 	ButtonLabel->SetJustification(ETextJustify::Center);
@@ -1320,14 +1322,14 @@ UButton* UCoMSettingsWidget::CreateOptionButton(const FString& Label, float Widt
 
 USlider* UCoMSettingsWidget::CreateVolumeSliderRow(UVerticalBox* Parent, const FString& Label, UTextBlock*& OutValueText)
 {
-	UHorizontalBox* Row = NewObject<UHorizontalBox>(this);
+	UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
 
 	// Label (160px wide)
 	{
-		USizeBox* SB = NewObject<USizeBox>(this);
+		USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 		SB->SetWidthOverride(160.0f);
 
-		UTextBlock* LabelText = NewObject<UTextBlock>(this);
+		UTextBlock* LabelText = WidgetTree->ConstructWidget<UTextBlock>();
 		LabelText->SetText(FText::FromString(Label));
 		LabelText->SetColorAndOpacity(FSlateColor(SettingsColours::LightGrey));
 		FSlateFontInfo Font = LabelText->GetFont();
@@ -1344,7 +1346,7 @@ USlider* UCoMSettingsWidget::CreateVolumeSliderRow(UVerticalBox* Parent, const F
 	}
 
 	// Slider
-	USlider* Slider = NewObject<USlider>(this);
+	USlider* Slider = WidgetTree->ConstructWidget<USlider>();
 	Slider->SetMinValue(0.0f);
 	Slider->SetMaxValue(1.0f);
 	Slider->SetValue(0.8f);
@@ -1355,7 +1357,7 @@ USlider* UCoMSettingsWidget::CreateVolumeSliderRow(UVerticalBox* Parent, const F
 		UHorizontalBoxSlot* HSlot = Row->AddChildToHorizontalBox(Slider);
 		if (HSlot)
 		{
-			HSlot->SetSize(FSlateChildSize(1.0f)); // Fill
+			HSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill)); // Fill
 			HSlot->SetVerticalAlignment(VAlign_Center);
 			HSlot->SetPadding(FMargin(0.0f, 0.0f, 8.0f, 0.0f));
 		}
@@ -1363,10 +1365,10 @@ USlider* UCoMSettingsWidget::CreateVolumeSliderRow(UVerticalBox* Parent, const F
 
 	// Value text (60px)
 	{
-		USizeBox* SB = NewObject<USizeBox>(this);
+		USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
 		SB->SetWidthOverride(60.0f);
 
-		OutValueText = NewObject<UTextBlock>(this);
+		OutValueText = WidgetTree->ConstructWidget<UTextBlock>();
 		OutValueText->SetText(FText::FromString(TEXT("80%")));
 		OutValueText->SetColorAndOpacity(FSlateColor(SettingsColours::Gold));
 		OutValueText->SetJustification(ETextJustify::Right);
@@ -1395,7 +1397,7 @@ void UCoMSettingsWidget::AddSectionLabel(UVerticalBox* Parent, const FString& La
 {
 	if (!Parent) return;
 
-	UTextBlock* SectionText = NewObject<UTextBlock>(this);
+	UTextBlock* SectionText = WidgetTree->ConstructWidget<UTextBlock>();
 	SectionText->SetText(FText::FromString(Label));
 	SectionText->SetColorAndOpacity(FSlateColor(SettingsColours::Gold));
 
@@ -1404,10 +1406,10 @@ void UCoMSettingsWidget::AddSectionLabel(UVerticalBox* Parent, const FString& La
 	Font.TypefaceFontName = FName(TEXT("Bold"));
 	SectionText->SetFont(Font);
 
-	UVerticalBoxSlot* Slot = Parent->AddChildToVerticalBox(SectionText);
-	if (Slot)
+	UVerticalBoxSlot* SlotRef = Parent->AddChildToVerticalBox(SectionText);
+	if (SlotRef)
 	{
-		Slot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 2.0f));
+		SlotRef->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 2.0f));
 	}
 }
 
@@ -1415,7 +1417,7 @@ void UCoMSettingsWidget::AddSpacer(UVerticalBox* Parent, float Height)
 {
 	if (!Parent) return;
 
-	USpacer* SpacerWidget = NewObject<USpacer>(this);
+	USpacer* SpacerWidget = WidgetTree->ConstructWidget<USpacer>();
 	SpacerWidget->SetSize(FVector2D(1.0f, Height));
 	Parent->AddChildToVerticalBox(SpacerWidget);
 }

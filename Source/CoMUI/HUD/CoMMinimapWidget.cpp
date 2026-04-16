@@ -6,6 +6,15 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
+#include "Components/Border.h"
+#include "Components/SizeBox.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
+#include "Blueprint/WidgetTree.h"
 #include "Engine/Texture2D.h"
 #include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
@@ -25,6 +34,179 @@
 
 const FLinearColor UCoMMinimapWidget::BorderColor    = FLinearColor(0.855f, 0.647f, 0.125f, 1.f); // #daa520
 const FLinearColor UCoMMinimapWidget::CameraRectColor = FLinearColor::White;
+
+namespace MinimapColors
+{
+	static const FLinearColor BgDark       = FLinearColor(0.015f, 0.010f, 0.040f, 1.0f);
+	static const FLinearColor Gold         = FLinearColor(0.855f, 0.647f, 0.125f, 1.0f);
+	static const FLinearColor GoldDim      = FLinearColor(0.500f, 0.380f, 0.080f, 0.5f);
+	static const FLinearColor Silver       = FLinearColor(0.820f, 0.820f, 0.860f, 1.0f);
+	static const FLinearColor DarkGreen    = FLinearColor(0.04f, 0.15f, 0.04f, 1.0f);
+	static const FLinearColor BtnNormal    = FLinearColor(0.055f, 0.040f, 0.120f, 1.0f);
+	static const FLinearColor BtnHover     = FLinearColor(0.090f, 0.060f, 0.180f, 1.0f);
+	static const FLinearColor BtnPressed   = FLinearColor(0.035f, 0.025f, 0.080f, 1.0f);
+	static const FLinearColor BtnBorder    = FLinearColor(0.500f, 0.380f, 0.080f, 0.7f);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RebuildWidget
+// ─────────────────────────────────────────────────────────────────────────────
+
+TSharedRef<SWidget> UCoMMinimapWidget::RebuildWidget()
+{
+	if (WidgetTree)
+	{
+		BuildLayout();
+	}
+	return Super::RebuildWidget();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BuildLayout
+// ─────────────────────────────────────────────────────────────────────────────
+
+void UCoMMinimapWidget::BuildLayout()
+{
+	// ── Root: fixed 200x150 size box ─────────────────────────────────────────
+	USizeBox* RootSize = WidgetTree->ConstructWidget<USizeBox>();
+	RootSize->SetWidthOverride(200.0f);
+	RootSize->SetHeightOverride(150.0f);
+	WidgetTree->RootWidget = RootSize;
+
+	// ── Gold border around everything ────────────────────────────────────────
+	RootBorder = WidgetTree->ConstructWidget<UBorder>();
+	RootBorder->SetBrushColor(MinimapColors::Gold);
+	RootBorder->SetPadding(FMargin(2.0f));
+	RootSize->AddChild(RootBorder);
+
+	// ── Inner dark background ────────────────────────────────────────────────
+	UBorder* InnerBg = WidgetTree->ConstructWidget<UBorder>();
+	InnerBg->SetBrushColor(MinimapColors::BgDark);
+	InnerBg->SetPadding(FMargin(0.0f));
+	RootBorder->AddChild(InnerBg);
+
+	// ── Vertical layout: map area + plane controls ───────────────────────────
+	UVerticalBox* VBox = WidgetTree->ConstructWidget<UVerticalBox>();
+	InnerBg->AddChild(VBox);
+
+	// ── Map area: overlay for the minimap image + dot placeholders ───────────
+	{
+		UOverlay* MapOverlay = WidgetTree->ConstructWidget<UOverlay>();
+		UVerticalBoxSlot* SlotRef = VBox->AddChildToVerticalBox(MapOverlay);
+		if (SlotRef) { SlotRef->SetSize(FSlateChildSize(ESlateSizeRule::Fill)); }
+
+		// Dark green placeholder background for minimap texture
+		UBorder* MapBg = WidgetTree->ConstructWidget<UBorder>();
+		MapBg->SetBrushColor(MinimapColors::DarkGreen);
+		MapBg->SetPadding(FMargin(0.0f));
+		{
+			UOverlaySlot* OSlotRef = MapOverlay->AddChildToOverlay(MapBg);
+			if (OSlotRef) { OSlotRef->SetHorizontalAlignment(HAlign_Fill); OSlotRef->SetVerticalAlignment(VAlign_Fill); }
+		}
+
+		// Minimap image widget (texture will be assigned in InitializeMinimap)
+		MinimapImage = WidgetTree->ConstructWidget<UImage>();
+		{
+			UOverlaySlot* OSlotRef = MapOverlay->AddChildToOverlay(MinimapImage);
+			if (OSlotRef) { OSlotRef->SetHorizontalAlignment(HAlign_Fill); OSlotRef->SetVerticalAlignment(VAlign_Fill); }
+		}
+	}
+
+	// ── Plane controls bar at bottom ─────────────────────────────────────────
+	{
+		UBorder* ControlsBg = WidgetTree->ConstructWidget<UBorder>();
+		ControlsBg->SetBrushColor(FLinearColor(0.02f, 0.01f, 0.05f, 0.85f));
+		ControlsBg->SetPadding(FMargin(2.0f, 1.0f));
+
+		UHorizontalBox* ControlsRow = WidgetTree->ConstructWidget<UHorizontalBox>();
+		ControlsBg->AddChild(ControlsRow);
+
+		// Prev plane button
+		{
+			PrevPlaneButton = WidgetTree->ConstructWidget<UButton>();
+			FButtonStyle Style = PrevPlaneButton->GetStyle();
+			Style.Normal.DrawAs    = ESlateBrushDrawType::Box;
+			Style.Normal.TintColor = FSlateColor(MinimapColors::BtnNormal);
+			Style.Hovered.DrawAs   = ESlateBrushDrawType::Box;
+			Style.Hovered.TintColor = FSlateColor(MinimapColors::BtnHover);
+			Style.Pressed.DrawAs   = ESlateBrushDrawType::Box;
+			Style.Pressed.TintColor = FSlateColor(MinimapColors::BtnPressed);
+			PrevPlaneButton->SetStyle(Style);
+
+			UTextBlock* ArrowLabel = WidgetTree->ConstructWidget<UTextBlock>();
+			ArrowLabel->SetText(FText::FromString(TEXT("<")));
+			ArrowLabel->SetColorAndOpacity(FSlateColor(MinimapColors::Gold));
+			ArrowLabel->SetJustification(ETextJustify::Center);
+			{
+				FSlateFontInfo Font = ArrowLabel->GetFont();
+				Font.Size = 12;
+				Font.TypefaceFontName = FName(TEXT("Bold"));
+				ArrowLabel->SetFont(Font);
+			}
+			PrevPlaneButton->AddChild(ArrowLabel);
+
+			USizeBox* BtnSize = WidgetTree->ConstructWidget<USizeBox>();
+			BtnSize->SetWidthOverride(24.0f);
+			BtnSize->SetHeightOverride(18.0f);
+			BtnSize->AddChild(PrevPlaneButton);
+			ControlsRow->AddChildToHorizontalBox(BtnSize);
+		}
+
+		// Plane name text (centered, fills remaining space)
+		PlaneNameText = WidgetTree->ConstructWidget<UTextBlock>();
+		PlaneNameText->SetText(FText::FromString(TEXT("Aurelith")));
+		PlaneNameText->SetColorAndOpacity(FSlateColor(MinimapColors::Silver));
+		PlaneNameText->SetJustification(ETextJustify::Center);
+		{
+			FSlateFontInfo Font = PlaneNameText->GetFont();
+			Font.Size = 11;
+			PlaneNameText->SetFont(Font);
+		}
+		{
+			UHorizontalBoxSlot* HSlotRef = ControlsRow->AddChildToHorizontalBox(PlaneNameText);
+			if (HSlotRef)
+			{
+				HSlotRef->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+				HSlotRef->SetHorizontalAlignment(HAlign_Center);
+				HSlotRef->SetVerticalAlignment(VAlign_Center);
+			}
+		}
+
+		// Next plane button
+		{
+			NextPlaneButton = WidgetTree->ConstructWidget<UButton>();
+			FButtonStyle Style = NextPlaneButton->GetStyle();
+			Style.Normal.DrawAs    = ESlateBrushDrawType::Box;
+			Style.Normal.TintColor = FSlateColor(MinimapColors::BtnNormal);
+			Style.Hovered.DrawAs   = ESlateBrushDrawType::Box;
+			Style.Hovered.TintColor = FSlateColor(MinimapColors::BtnHover);
+			Style.Pressed.DrawAs   = ESlateBrushDrawType::Box;
+			Style.Pressed.TintColor = FSlateColor(MinimapColors::BtnPressed);
+			NextPlaneButton->SetStyle(Style);
+
+			UTextBlock* ArrowLabel = WidgetTree->ConstructWidget<UTextBlock>();
+			ArrowLabel->SetText(FText::FromString(TEXT(">")));
+			ArrowLabel->SetColorAndOpacity(FSlateColor(MinimapColors::Gold));
+			ArrowLabel->SetJustification(ETextJustify::Center);
+			{
+				FSlateFontInfo Font = ArrowLabel->GetFont();
+				Font.Size = 12;
+				Font.TypefaceFontName = FName(TEXT("Bold"));
+				ArrowLabel->SetFont(Font);
+			}
+			NextPlaneButton->AddChild(ArrowLabel);
+
+			USizeBox* BtnSize = WidgetTree->ConstructWidget<USizeBox>();
+			BtnSize->SetWidthOverride(24.0f);
+			BtnSize->SetHeightOverride(18.0f);
+			BtnSize->AddChild(NextPlaneButton);
+			ControlsRow->AddChildToHorizontalBox(BtnSize);
+		}
+
+		UVerticalBoxSlot* SlotRef = VBox->AddChildToVerticalBox(ControlsBg);
+		if (SlotRef) { SlotRef->SetSize(FSlateChildSize(ESlateSizeRule::Automatic)); }
+	}
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UUserWidget Overrides
@@ -109,8 +291,8 @@ int32 UCoMMinimapWidget::NativePaint(
 		return Result;
 	}
 
-	const bool bIsEnabled = bParentEnabled && GetIsEnabled();
-	const ESlateDrawEffect DrawEffects = bIsEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
+	const bool bWidgetEnabled = bParentEnabled && GetIsEnabled();
+	const ESlateDrawEffect DrawEffects = bWidgetEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
 
 	// Draw 2px gold border around the entire widget.
 	{

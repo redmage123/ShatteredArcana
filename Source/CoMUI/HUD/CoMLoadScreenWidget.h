@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetTree.h"
 #include "CoMLoadScreenWidget.generated.h"
 
 class UBorder;
@@ -56,6 +57,8 @@ class COMUI_API UCoMLoadScreenWidget : public UUserWidget
     GENERATED_BODY()
 
     friend class UCoMSlotButtonHelper;
+
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 protected:
     virtual void NativeConstruct() override;

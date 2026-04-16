@@ -10,13 +10,14 @@ Creates Content/Maps/L_Overworld with:
   - Player Start at (0, 0, 100)
   - Static mesh floor plane (placeholder grid, 1km x 1km)
 
-UE 5.4 compatible — uses LevelEditorSubsystem (EditorLevelLibrary deprecated in 5.1+).
+UE 5.7 compatible — uses LevelEditorSubsystem and EditorActorSubsystem (EditorLevelLibrary deprecated in 5.1+).
 """
 import unreal
 
 # Get the subsystem-based API (UE 5.1+)
 level_subsystem = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 editor_subsystem = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
+actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 
 # 1. Create a new empty level
 map_path = "/Game/Maps/L_Overworld"
@@ -52,7 +53,7 @@ else:
     unreal.log_error("No WorldSettings actor found in level!")
 
 # 4. Directional Light (Sun)
-dl = unreal.EditorActorSubsystem().spawn_actor_from_class(
+dl = actor_subsystem.spawn_actor_from_class(
     unreal.DirectionalLight,
     unreal.Vector(0, 0, 10000),
     unreal.Rotator(-45, 0, 0)
@@ -61,7 +62,7 @@ if dl:
     dl.set_actor_label("Sun_Directional")
 
 # 5. Sky Atmosphere
-sky = unreal.EditorActorSubsystem().spawn_actor_from_class(
+sky = actor_subsystem.spawn_actor_from_class(
     unreal.SkyAtmosphere,
     unreal.Vector(0, 0, 0),
     unreal.Rotator(0, 0, 0)
@@ -70,7 +71,7 @@ if sky:
     sky.set_actor_label("SkyAtmosphere_Placeholder")
 
 # 6. Player Start
-ps = unreal.EditorActorSubsystem().spawn_actor_from_class(
+ps = actor_subsystem.spawn_actor_from_class(
     unreal.PlayerStart,
     unreal.Vector(0, 0, 100),
     unreal.Rotator(0, 0, 0)
@@ -80,7 +81,7 @@ if ps:
 
 # 7. Floor plane (1km x 1km static mesh — use built-in plane)
 plane_mesh = unreal.load_asset("/Engine/BasicShapes/Plane")
-floor = unreal.EditorActorSubsystem().spawn_actor_from_class(
+floor = actor_subsystem.spawn_actor_from_class(
     unreal.StaticMeshActor,
     unreal.Vector(0, 0, 0),
     unreal.Rotator(0, 0, 0)

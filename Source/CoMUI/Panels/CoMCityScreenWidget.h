@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetTree.h"
 #include "CoMCore/Economy/CoMCitySubsystem.h"
 #include "CoMCityScreenWidget.generated.h"
 
@@ -30,6 +31,8 @@ class COMUI_API UCoMCityScreenWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+
 public:
 	virtual void NativeConstruct() override;
 
@@ -46,6 +49,10 @@ public:
 	/** Refresh the garrison unit display. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|CityScreen")
 	void RefreshGarrison();
+
+	/** Refresh the active enchantment display (Heavenly Light, Wall of Fire, etc.). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|CityScreen")
+	void RefreshEnchantments();
 
 	/** Refresh the production queue display from city data. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|CityScreen")
@@ -226,7 +233,20 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> GrowthText;
 
+	// -- Enchantments Display --------------------------------------------------
+
+	/** Header text for enchantments section. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> EnchantmentsHeaderText;
+
+	/** Scrollable list of active city enchantments. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UScrollBox> EnchantmentsScrollBox;
+
 private:
+	/** Build the static layout structure for the city screen. */
+	void BuildLayout();
+
 	/** The city currently being viewed. */
 	int32 CurrentCityId = -1;
 
