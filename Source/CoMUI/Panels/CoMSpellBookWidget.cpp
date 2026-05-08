@@ -552,15 +552,28 @@ void UCoMSpellBookWidget::OnCastClicked()
 		return;
 	}
 
+	UCoMUISubsystem* UISS = GetGameInstance()->GetSubsystem<UCoMUISubsystem>();
+	if (!UISS) return;
+
+	// Item-creation spells skip the targeting widget and go directly to the
+	// forge. The forge handles its own mana spending on confirm.
+	if (SelectedSpellId == FName(TEXT("enchant_item")))
+	{
+		UISS->ShowItemForge(CurrentWizardId, /*bArtifact*/ false);
+		return;
+	}
+	if (SelectedSpellId == FName(TEXT("create_artifact")))
+	{
+		UISS->ShowItemForge(CurrentWizardId, /*bArtifact*/ true);
+		return;
+	}
+
 	// Route through the spell targeting widget for target selection.
 	// The targeting widget handles NoTarget spells (instant cast) as well as
 	// spells that require tile/unit/city/army target selection.
-	if (UCoMUISubsystem* UISS = GetGameInstance()->GetSubsystem<UCoMUISubsystem>())
-	{
-		UISS->BeginSpellTargeting(SelectedSpellId, CurrentWizardId);
-		// Close the spell book to let the player select a target on the map.
-		UISS->HideSpellBook();
-	}
+	UISS->BeginSpellTargeting(SelectedSpellId, CurrentWizardId);
+	// Close the spell book to let the player select a target on the map.
+	UISS->HideSpellBook();
 }
 
 void UCoMSpellBookWidget::OnResearchClicked()

@@ -115,6 +115,12 @@ void UCoMHeroSubsystem::SetHeroOwner(int32 HeroUnitID, int32 WizardIndex)
 	HeroOwners.Add(HeroUnitID, WizardIndex);
 }
 
+int32 UCoMHeroSubsystem::GetHeroOwner(int32 HeroUnitID) const
+{
+	if (const int32* Found = HeroOwners.Find(HeroUnitID)) { return *Found; }
+	return -1;
+}
+
 bool UCoMHeroSubsystem::CanRecruitTier(int32 WizardIndex, ECoMHeroTier Tier, int32 WizardFame) const
 {
 	const FCoMHeroTierConfig Config = GetTierConfig(Tier);

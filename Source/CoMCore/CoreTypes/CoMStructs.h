@@ -103,6 +103,39 @@ struct COMCORE_API FCoMTileData
 };
 
 /**
+ * Runtime explorable site (lair / ruin / tower / etc.) placed on the overworld.
+ * Lives in UCoMWorldMapSubsystem::Sites, keyed by SiteID. The owning tile keeps
+ * the SiteID so AI / movement can detect "tile has a site" without dereferencing.
+ */
+USTRUCT(BlueprintType)
+struct COMCORE_API FCoMSite
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32        SiteID         = -1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMPlane    Plane          = ECoMPlane::Aurelith;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMapLayer Layer          = ECoMMapLayer::Surface;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FIntPoint    Position       = FIntPoint(0, 0);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMSiteType Type           = ECoMSiteType::AncientRuins;
+
+	/** Encounter difficulty: rough power score; combat picks guard units up to this. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 GuardPower    = 50;
+
+	/** Reward pools rolled at generation time and paid out on clear. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 GoldReward    = 100;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 ManaReward    = 50;
+
+	/** Optional: spell ID rewarded on clear (NAME_None = none). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FName SpellReward;
+
+	/** True once a wizard has cleared the site (no further encounters). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool bCleared       = false;
+
+	/** Wizard index that cleared the site (-1 if uncleared). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 ClearedByWizard = -1;
+};
+
+/**
  * A full 160×100 map layer (surface or Underdark for a given plane).
  */
 USTRUCT(BlueprintType)

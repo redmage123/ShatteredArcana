@@ -18,8 +18,74 @@ void UCoMWorldMapSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UCoMWorldMapSubsystem::Deinitialize()
 {
 	Layers.Empty();
+	Sites.Empty();
+	NextSiteID = 1;
 	bLayersReady = false;
 	Super::Deinitialize();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sites
+// ─────────────────────────────────────────────────────────────────────────────
+
+int32 UCoMWorldMapSubsystem::RegisterSite(const FCoMSite& Site)
+{
+	FCoMSite Copy = Site;
+	if (Copy.SiteID <= 0)
+	{
+		Copy.SiteID = NextSiteID++;
+	}
+	else
+	{
+		NextSiteID = FMath::Max(NextSiteID, Copy.SiteID + 1);
+	}
+	Sites.Add(Copy.SiteID, Copy);
+	return Copy.SiteID;
+}
+
+const FCoMSite* UCoMWorldMapSubsystem::GetSite(int32 SiteID) const
+{
+	return Sites.Find(SiteID);
+}
+
+FCoMSite* UCoMWorldMapSubsystem::GetSiteMutable(int32 SiteID)
+{
+	return Sites.Find(SiteID);
+}
+
+TArray<FCoMSite> UCoMWorldMapSubsystem::GetAllSites() const
+{
+	TArray<FCoMSite> Out;
+	Out.Reserve(Sites.Num());
+	for (const auto& Pair : Sites) { Out.Add(Pair.Value); }
+	return Out;
+}
+
+TArray<FCoMSite> UCoMWorldMapSubsystem::GetSitesOnPlane(ECoMPlane Plane) const
+{
+	TArray<FCoMSite> Out;
+	for (const auto& Pair : Sites)
+	{
+		if (Pair.Value.Plane == Plane) { Out.Add(Pair.Value); }
+	}
+	return Out;
+}
+
+void UCoMWorldMapSubsystem::ExportAllSites(TArray<FCoMSite>& OutSites) const
+{
+	OutSites.Reset();
+	for (const auto& Pair : Sites) { OutSites.Add(Pair.Value); }
+}
+
+void UCoMWorldMapSubsystem::ImportAllSites(const TArray<FCoMSite>& InSites)
+{
+	Sites.Empty();
+	NextSiteID = 1;
+	for (const FCoMSite& S : InSites)
+	{
+		Sites.Add(S.SiteID, S);
+		NextSiteID = FMath::Max(NextSiteID, S.SiteID + 1);
+	}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

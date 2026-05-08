@@ -4,6 +4,7 @@
 #include "CoMCore/Units/CoMUnitSubsystem.h"
 #include "CoMCore/Data/CoMUnitDatabase.h"
 #include "CoMCore/Framework/CoMGameInstance.h"
+#include "CoMCore/Items/CoMItemSubsystem.h"
 #include "CoMCore/Turn/CoMTurnSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -251,6 +252,51 @@ TArray<FCoMCombatUnitState> UCoMCombatSubsystem::BuildCombatUnits(int32 ArmyID) 
 			CombatUnit.MaxHP             = UnitInst->MaxHP;
 			CombatUnit.FiguresRemaining  = 1;
 			CombatUnit.bIsRanged         = false;
+		}
+
+		// Fold equipped magical items onto the hero's combat stats.
+		if (CombatUnit.bIsHero)
+		{
+			if (UCoMItemSubsystem* Items = GetGameInstance()->GetSubsystem<UCoMItemSubsystem>())
+			{
+				const TArray<FCoMItemInstance> Equipped = Items->GetHeroEquipment(UnitID);
+				int32 AtkBonus = 0;
+				int32 DefBonus = 0;
+				int32 HPBonus  = 0;
+				for (const FCoMItemInstance& Item : Equipped)
+				{
+					for (const FCoMItemPower& P : Item.Powers)
+					{
+						if (P.Type == ECoMItemPowerType::StatBonus)
+						{
+							if      (P.Key == TEXT("Attack"))  AtkBonus += P.Magnitude;
+							else if (P.Key == TEXT("Defense")) DefBonus += P.Magnitude;
+							else if (P.Key == TEXT("HP"))      HPBonus  += P.Magnitude;
+						}
+						else if (P.Type == ECoMItemPowerType::GrantSkill)
+						{
+							CombatUnit.ItemSkills.AddUnique(P.Key);
+						}
+					}
+				}
+				if (AtkBonus != 0)
+				{
+					CombatUnit.MeleeAttack  = CombatUnit.MeleeAttack  + FFixed64(AtkBonus);
+					if (CombatUnit.bIsRanged)
+					{
+						CombatUnit.RangedAttack = CombatUnit.RangedAttack + FFixed64(AtkBonus);
+					}
+				}
+				if (DefBonus != 0)
+				{
+					CombatUnit.Defense = CombatUnit.Defense + FFixed64(DefBonus);
+				}
+				if (HPBonus != 0)
+				{
+					CombatUnit.MaxHP    += HPBonus;
+					CombatUnit.HitPoints = FMath::Min(CombatUnit.HitPoints + HPBonus, CombatUnit.MaxHP);
+				}
+			}
 		}
 
 		Result.Add(CombatUnit);
@@ -504,12 +550,26 @@ void UCoMCombatSubsystem::ExecuteAttackRound(
 		return;
 	}
 
-	for (const FCoMCombatUnitState& Attacker : Attackers)
+	for (FCoMCombatUnitState& Attacker : Attackers)
 	{
 		if (Attacker.HitPoints <= 0)
 		{
 			continue;
 		}
+
+		// Item-skill quick lookup table (constant per attacker per round).
+		const bool bFlameBlade     = Attacker.ItemSkills.Contains(FName(TEXT("flame_blade")));
+		const bool bFrostBlade     = Attacker.ItemSkills.Contains(FName(TEXT("frost_blade")));
+		const bool bLightningBlade = Attacker.ItemSkills.Contains(FName(TEXT("lightning_blade")));
+		const bool bHolyAvenger    = Attacker.ItemSkills.Contains(FName(TEXT("holy_avenger")));
+		const bool bVampiric       = Attacker.ItemSkills.Contains(FName(TEXT("vampiric")));
+		const bool bStoningTouch   = Attacker.ItemSkills.Contains(FName(TEXT("stoning_touch")));
+		const bool bDestruction    = Attacker.ItemSkills.Contains(FName(TEXT("destruction")));
+
+		// MoM convention: blade-type skills don't stack; pick the strongest source.
+		// Each blade adds +1 damage per unblocked hit; we cap to one bonus.
+		const bool bAnyBlade = bFlameBlade || bFrostBlade || bLightningBlade;
+		const int32 PerHitBonus = (bAnyBlade ? 1 : 0) + (bHolyAvenger ? 1 : 0);
 
 		// Select attack stat: ranged if the unit is ranged, else melee.
 		FFixed64 AttackStat = Attacker.bIsRanged ? Attacker.RangedAttack : Attacker.MeleeAttack;
@@ -556,10 +616,17 @@ void UCoMCombatSubsystem::ExecuteAttackRound(
 			EffectiveDefense = EffectiveDefense * (CoMCombatConstants::One + DefenseTerrainMod);
 		}
 		FFixed64 BlockChancePct = EffectiveDefense * CoMCombatConstants::DefenseBlockMultiplier;
+
+		// Lightning Blade halves armor for block purposes.
+		if (bLightningBlade)
+		{
+			BlockChancePct = BlockChancePct * FFixed64(0.5f);
+		}
 		int32 BlockChanceInt = FMath::Clamp(static_cast<int32>(BlockChancePct.ToInt32()), 0, 90);
 
-		// Roll each attack die.
-		int32 TotalHits = 0;
+		// Roll each attack die. Track damage and instant-kill triggers.
+		int32 TotalDamage = 0;
+		bool bInstantKill = false;
 		for (int32 Die = 0; Die < AttackDice; ++Die)
 		{
 			const int32 AttackRoll = RngStream.RandRange(0, 99);
@@ -569,19 +636,39 @@ void UCoMCombatSubsystem::ExecuteAttackRound(
 				const int32 DefenseRoll = RngStream.RandRange(0, 99);
 				if (DefenseRoll >= BlockChanceInt)
 				{
-					// Unblocked hit — 1 HP damage.
-					TotalHits++;
+					// Unblocked hit — 1 HP base + per-hit skill bonuses.
+					TotalDamage += 1 + PerHitBonus;
+
+					// Stoning Touch / Destruction: per-hit chance to wipe the target.
+					if (bDestruction && RngStream.RandRange(0, 99) < 5)       { bInstantKill = true; }
+					else if (bStoningTouch && RngStream.RandRange(0, 99) < 10){ bInstantKill = true; }
 				}
 			}
 		}
 
+		if (bInstantKill)
+		{
+			TotalDamage = Target.HitPoints; // reduce target to 0
+		}
+
 		// Apply damage.
-		Target.HitPoints -= TotalHits;
+		Target.HitPoints -= TotalDamage;
 
 		// Reduce figures proportionally (simplified: each figure = 1 HP).
 		if (Target.HitPoints < Target.FiguresRemaining)
 		{
 			Target.FiguresRemaining = FMath::Max(0, Target.HitPoints);
+		}
+
+		// Vampiric: heal the attacker for half the damage dealt (rounded down),
+		// capped at MaxHP. Lifesteal only triggers on real damage, not overkill.
+		if (bVampiric && TotalDamage > 0)
+		{
+			const int32 Heal = TotalDamage / 2;
+			if (Heal > 0)
+			{
+				Attacker.HitPoints = FMath::Min(Attacker.HitPoints + Heal, Attacker.MaxHP);
+			}
 		}
 	}
 }

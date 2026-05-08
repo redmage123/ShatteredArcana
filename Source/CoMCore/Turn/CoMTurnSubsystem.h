@@ -67,6 +67,14 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnIdleWarning, int32, IdleArmyCoun
  */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPostDiplomacyAITick, int32, CurrentTurn);
 
+/**
+ * Fired at the end of ProcessAllSubsystemTurns. AI modules bind to this to
+ * run full strategic + tactical execution (city build orders, army movement,
+ * spell casting) once each turn. This is the single per-turn entry point
+ * that drives AI wizards in the End-Turn-button flow.
+ */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAITurnTick, int32, CurrentTurn);
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -220,6 +228,13 @@ public:
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "TurnSubsystem")
 	FOnPostDiplomacyAITick OnPostDiplomacyAITick;
+
+	/**
+	 * Fired at the end of ProcessAllSubsystemTurns, after all gameplay ticks.
+	 * AI module binds to this for full strategic + tactical wizard execution.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "TurnSubsystem")
+	FOnAITurnTick OnAITurnTick;
 
 	// ── Save/Load Export/Import ───────────────────────────────────────────
 

@@ -549,6 +549,28 @@ void UCoMUnitSubsystem::SetUnitRaceTag(int32 UnitId, FGameplayTag Tag)
 	}
 }
 
+bool UCoMUnitSubsystem::ApplyDamage(int32 UnitID, int32 Amount)
+{
+	FCoMUnitInstance* Unit = AllUnits.Find(UnitID);
+	if (!Unit || Amount <= 0) return false;
+	Unit->CurrentHP -= Amount;
+	if (Unit->CurrentHP <= 0)
+	{
+		DespawnUnit(UnitID);
+		return true;
+	}
+	return false;
+}
+
+int32 UCoMUnitSubsystem::ApplyHeal(int32 UnitID, int32 Amount)
+{
+	FCoMUnitInstance* Unit = AllUnits.Find(UnitID);
+	if (!Unit || Amount <= 0) return 0;
+	const int32 Before = Unit->CurrentHP;
+	Unit->CurrentHP = FMath::Min(Unit->CurrentHP + Amount, Unit->MaxHP);
+	return Unit->CurrentHP - Before;
+}
+
 TArray<const FCoMArmyGroup*> UCoMUnitSubsystem::GetArmiesAtPosition(ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position) const
 {
 	TArray<const FCoMArmyGroup*> Result;

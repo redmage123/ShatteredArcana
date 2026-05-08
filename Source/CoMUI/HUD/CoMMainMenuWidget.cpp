@@ -24,6 +24,13 @@
 #include "CoMUISubsystem.h"
 #include "Audio/CoMAudioSubsystem.h"
 #include "Shared/CoMWidgetStyles.h"
+#include "Framework/Application/SlateApplication.h"
+#include "GenericPlatform/ICursor.h"
+#if PLATFORM_WINDOWS
+#include "Windows/AllowWindowsPlatformTypes.h"
+#include <Windows.h>
+#include "Windows/HideWindowsPlatformTypes.h"
+#endif
 
 // =============================================================================
 // Colour palette
@@ -93,6 +100,22 @@ void UCoMMainMenuWidget::NativeConstruct()
 		{
 			PC->bShowMouseCursor = true;
 			PC->SetInputMode(FInputModeUIOnly().SetWidgetToFocus(TakeWidget()));
+
+			// Set magic wand hardware cursor from .cur file using Windows API
+			FString CursorPath = FPaths::ProjectContentDir() / TEXT("Cursors/wand.cur");
+			if (FPaths::FileExists(CursorPath))
+			{
+				HCURSOR WandCursor = ::LoadCursorFromFileW(*CursorPath);
+				if (WandCursor)
+				{
+					TSharedPtr<ICursor> PlatformCursor = FSlateApplication::Get().GetPlatformCursor();
+					if (PlatformCursor.IsValid())
+					{
+						PlatformCursor->SetTypeShape(EMouseCursor::Default, WandCursor);
+						UE_LOG(LogTemp, Log, TEXT("[MainMenu] Wand cursor loaded: %s"), *CursorPath);
+					}
+				}
+			}
 		}
 	}
 
@@ -245,9 +268,9 @@ void UCoMMainMenuWidget::BuildMenuContent()
 	PanelInner->SetPadding(FMargin(50.0f, 35.0f));
 	PanelBorder->AddChild(PanelInner);
 
-	// Size constraint
+	// Size constraint — wide enough for the title
 	USizeBox* PanelSize = WidgetTree->ConstructWidget<USizeBox>();
-	PanelSize->SetWidthOverride(480.0f);
+	PanelSize->SetWidthOverride(620.0f);
 	PanelSize->AddChild(PanelBorder);
 
 	UOverlaySlot* PanelSlot = ScreenOverlay->AddChildToOverlay(PanelSize);
@@ -264,26 +287,57 @@ void UCoMMainMenuWidget::BuildMenuContent()
 	// ── Decorative top symbols ───────────────────────────────────────────────
 	AddCenteredText(TEXT("- - -"), MC::GoldDim, 16, FMargin(0, 0, 0, 10));
 
-	// ── Title ────────────────────────────────────────────────────────────────
+	// ── Title (Old English Gothic font) ──────────────────────────────────────
 	{
 		UTextBlock* Title = WidgetTree->ConstructWidget<UTextBlock>();
-		Title->SetText(FText::FromString(TEXT("SHATTERED  ARCANA")));
+		Title->SetText(FText::FromString(TEXT("Shattered Arcana")));
 		Title->SetColorAndOpacity(FSlateColor(MC::GoldBright));
 		Title->SetJustification(ETextJustify::Center);
 
-		FSlateFontInfo Font = Title->GetFont();
-		Font.Size = 44;
-		Font.TypefaceFontName = FName(TEXT("Bold"));
-		Title->SetFont(Font);
-		Title->SetShadowOffset(FVector2D(2.0f, 2.0f));
-		Title->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.6f));
+		// Use Old English font for the gothic title
+		FString FontPath = FPaths::ProjectContentDir() / TEXT("Fonts/OldEnglish.ttf");
+		if (!FPaths::FileExists(FontPath))
+		{
+			FontPath = TEXT("C:/Windows/Fonts/OLDENGL.TTF");
+		}
+
+		FSlateFontInfo GothicFont = Title->GetFont();
+		GothicFont.FontObject = LoadObject<UObject>(nullptr, TEXT("/Engine/EngineFonts/Roboto.Roboto"));
+		GothicFont.Size = 48;
+
+		// Try to use the Old English font via composite font
+		const TSharedPtr<const FCompositeFont> OldEnglishFont = MakeShareable(new FStandaloneCompositeFont(
+			NAME_None, FontPath, EFontHinting::Default, EFontLoadingPolicy::LazyLoad));
+		if (OldEnglishFont.IsValid())
+		{
+			GothicFont.FontObject = nullptr;
+			GothicFont.CompositeFont = OldEnglishFont;
+		}
+		GothicFont.OutlineSettings.OutlineSize = 2;
+		GothicFont.OutlineSettings.OutlineColor = FLinearColor(0.3f, 0.15f, 0.0f, 0.8f);
+		Title->SetFont(GothicFont);
+		Title->SetShadowOffset(FVector2D(3.0f, 3.0f));
+		Title->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.8f));
 
 		UVerticalBoxSlot* S = ContentBox->AddChildToVerticalBox(Title);
-		if (S) { S->SetHorizontalAlignment(HAlign_Center); S->SetPadding(FMargin(0, 0, 0, 6)); }
+		if (S) { S->SetHorizontalAlignment(HAlign_Center); S->SetPadding(FMargin(0, 0, 0, 8)); }
 	}
 
-	// ── Subtitle ─────────────────────────────────────────────────────────────
-	AddCenteredText(TEXT("Eight Planes. A Thousand Spells. One Throne."), MC::LightPurple, 13, FMargin(0, 0, 0, 6));
+	// ── Subtitle (italic serif) ──────────────────────────────────────────────
+	{
+		UTextBlock* Subtitle = WidgetTree->ConstructWidget<UTextBlock>();
+		Subtitle->SetText(FText::FromString(TEXT("Eight Planes. A Thousand Spells. One Throne.")));
+		Subtitle->SetColorAndOpacity(FSlateColor(MC::LightPurple));
+		Subtitle->SetJustification(ETextJustify::Center);
+		FSlateFontInfo SubFont = Subtitle->GetFont();
+		SubFont.Size = 15;
+		SubFont.TypefaceFontName = FName(TEXT("Italic"));
+		Subtitle->SetFont(SubFont);
+		Subtitle->SetShadowOffset(FVector2D(1.0f, 1.0f));
+		Subtitle->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.5f));
+		UVerticalBoxSlot* S = ContentBox->AddChildToVerticalBox(Subtitle);
+		if (S) { S->SetHorizontalAlignment(HAlign_Center); S->SetPadding(FMargin(0, 0, 0, 6)); }
+	}
 
 	// ── Divider ──────────────────────────────────────────────────────────────
 	{
@@ -291,7 +345,7 @@ void UCoMMainMenuWidget::BuildMenuContent()
 		Div->SetBrushColor(MC::GoldDim);
 		USizeBox* DivSize = WidgetTree->ConstructWidget<USizeBox>();
 		DivSize->SetHeightOverride(1.0f);
-		DivSize->SetWidthOverride(280.0f);
+		DivSize->SetWidthOverride(400.0f);
 		DivSize->AddChild(Div);
 		UVerticalBoxSlot* S = ContentBox->AddChildToVerticalBox(DivSize);
 		if (S) { S->SetHorizontalAlignment(HAlign_Center); S->SetPadding(FMargin(0, 12, 0, 18)); }
@@ -301,7 +355,7 @@ void UCoMMainMenuWidget::BuildMenuContent()
 	{
 		// New Game — primary action button (bright gold, prominent)
 		USizeBox* NGContainer = nullptr;
-		NewGameButton = CoMStyle::CreatePrimaryButton(WidgetTree, TEXT("New Game"), 340.f, 54.f, 20, &NGContainer);
+		NewGameButton = CoMStyle::CreatePrimaryButton(WidgetTree, TEXT("New Game"), 440.f, 60.f, 22, &NGContainer);
 		if (NGContainer)
 		{
 			UVerticalBoxSlot* S = ContentBox->AddChildToVerticalBox(NGContainer);
@@ -319,7 +373,7 @@ void UCoMMainMenuWidget::BuildMenuContent()
 		Div->SetBrushColor(MC::GoldDim);
 		USizeBox* DivSize = WidgetTree->ConstructWidget<USizeBox>();
 		DivSize->SetHeightOverride(1.0f);
-		DivSize->SetWidthOverride(280.0f);
+		DivSize->SetWidthOverride(400.0f);
 		DivSize->AddChild(Div);
 		UVerticalBoxSlot* S = ContentBox->AddChildToVerticalBox(DivSize);
 		if (S) { S->SetHorizontalAlignment(HAlign_Center); S->SetPadding(FMargin(0, 14, 0, 10)); }
@@ -355,7 +409,7 @@ void UCoMMainMenuWidget::AddCenteredText(const FString& Text, const FLinearColor
 UButton* UCoMMainMenuWidget::CreateMenuButton(const FString& Label)
 {
 	USizeBox* Container = nullptr;
-	UButton* Button = CoMStyle::CreateStyledButton(WidgetTree, Label, 320.f, 50.f, 18, &Container);
+	UButton* Button = CoMStyle::CreateStyledButton(WidgetTree, Label, 420.f, 56.f, 20, &Container);
 
 	if (Container)
 	{

@@ -249,6 +249,36 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HideHeroScreen();
 
+	// -- Item Forge / Vault ----------------------------------------------------
+
+	/** Open the forge widget. bArtifactMode -> Create Artifact tier; otherwise Enchant Item. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowItemForge(int32 OwnerWizardIndex, bool bArtifactMode);
+
+	/** Close the forge widget. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideItemForge();
+
+	/**
+	 * Open the magical-item vault. If TargetHeroUnitID is non-zero, a click on
+	 * a vault entry equips the item to that hero. Otherwise the screen is
+	 * preview-only.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowItemVault(int32 OwnerWizardIndex, int32 TargetHeroUnitID = 0);
+
+	/** Close the vault widget. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideItemVault();
+
+	/** Show the first-turn tutorial modal. No-op if already shown this game. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowTutorialIfNeeded();
+
+	/** Close the tutorial. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideTutorial();
+
 	// -- Spell VFX Overlay -----------------------------------------------------
 
 	/** Show the spell VFX overlay widget (auto-created on HUD show). */
@@ -356,6 +386,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<UCoMSpellVFXWidget> SpellVFXWidgetClass;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<class UCoMItemForgeWidget> ItemForgeWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<class UCoMItemVaultWidget> ItemVaultWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<class UCoMTutorialWidget> TutorialWidgetClass;
+
 private:
 	/** Helper: create a widget of the given class and add it to the viewport. */
 	template<typename T>
@@ -426,6 +465,19 @@ private:
 
 	UPROPERTY()
 	UCoMSpellVFXWidget* SpellVFXInstance = nullptr;
+
+	UPROPERTY()
+	class UCoMItemForgeWidget* ItemForgeInstance = nullptr;
+
+	UPROPERTY()
+	class UCoMItemVaultWidget* ItemVaultInstance = nullptr;
+
+	UPROPERTY()
+	class UCoMTutorialWidget* TutorialInstance = nullptr;
+
+	/** Set true once the player has dismissed the tutorial. Persisted via save. */
+	UPROPERTY()
+	bool bTutorialShown = false;
 
 	/** Callback from VFX subsystem when a new effect is requested. */
 	UFUNCTION()

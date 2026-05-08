@@ -164,6 +164,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
 	void SetHeroOwner(int32 HeroUnitID, int32 WizardIndex);
 
+	/** Returns the wizard index that owns the given hero, or -1 if unowned. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
+	int32 GetHeroOwner(int32 HeroUnitID) const;
+
 	/** Check if a wizard qualifies to recruit a hero of the given tier. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
 	bool CanRecruitTier(int32 WizardIndex, ECoMHeroTier Tier, int32 WizardFame) const;

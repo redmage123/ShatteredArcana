@@ -463,6 +463,13 @@ void UCoMTurnSubsystem::ProcessAllSubsystemTurns()
 			       *UEnum::GetValueAsString(VictorySub->GetWinningCondition()));
 		}
 	}
+
+	// ── AI strategic + tactical execution ────────────────────────────
+	// Fires at the very end so AI sees the post-tick world. CoMAISubsystem
+	// binds to this to run city/army/research/diplomacy decisions for every
+	// AI wizard. AI orders that move armies will resolve combat next turn.
+	OnAITurnTick.Broadcast(CurrentTurn);
+	UE_LOG(LogTemp, Log, TEXT("  [AI] OnAITurnTick broadcast (turn %d)."), CurrentTurn);
 }
 
 void UCoMTurnSubsystem::BeginWizardTurn(int32 WizardIndex)

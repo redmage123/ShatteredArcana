@@ -24,6 +24,9 @@
 #include "Panels/CoMUnitCardWidget.h"
 #include "Panels/CoMArmyStackWidget.h"
 #include "Panels/CoMHeroScreenWidget.h"
+#include "Panels/CoMItemForgeWidget.h"
+#include "Panels/CoMItemVaultWidget.h"
+#include "Panels/CoMTutorialWidget.h"
 #include "HUD/CoMSpellVFXWidget.h"
 #include "Framework/CoMGameInstance.h"
 #include "CoMCore/Combat/CoMCombatSubsystem.h"
@@ -56,6 +59,9 @@ void UCoMUISubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	if (!ArmyStackWidgetClass)     { ArmyStackWidgetClass     = UCoMArmyStackWidget::StaticClass(); }
 	if (!HeroScreenWidgetClass)    { HeroScreenWidgetClass    = UCoMHeroScreenWidget::StaticClass(); }
 	if (!SpellVFXWidgetClass)      { SpellVFXWidgetClass      = UCoMSpellVFXWidget::StaticClass(); }
+	if (!ItemForgeWidgetClass)     { ItemForgeWidgetClass     = UCoMItemForgeWidget::StaticClass(); }
+	if (!ItemVaultWidgetClass)     { ItemVaultWidgetClass     = UCoMItemVaultWidget::StaticClass(); }
+	if (!TutorialWidgetClass)      { TutorialWidgetClass      = UCoMTutorialWidget::StaticClass(); }
 
 	// Bind to GameInstance delegates so game modes can trigger UI
 	// without a compile-time dependency on CoMUI.
@@ -213,6 +219,9 @@ void UCoMUISubsystem::ShowHUD()
 			VFXSub->OnEffectRequested.AddDynamic(this, &UCoMUISubsystem::OnSpellVFXRequested);
 		}
 	}
+
+	// First-turn onboarding modal (no-op after first dismissal this session).
+	ShowTutorialIfNeeded();
 }
 
 void UCoMUISubsystem::HideHUD()
@@ -720,6 +729,51 @@ void UCoMUISubsystem::OnSpellVFXRequested(int32 PlaybackID, FName EffectID,
 // Bulk operations
 // =============================================================================
 
+void UCoMUISubsystem::ShowItemForge(int32 OwnerWizardIndex, bool bArtifactMode)
+{
+	HideAllPanels();
+	UCoMItemForgeWidget* W = CreateAndShowWidget<UCoMItemForgeWidget>(
+		ItemForgeWidgetClass, ItemForgeInstance, 10);
+	if (W)
+	{
+		W->Configure(OwnerWizardIndex, bArtifactMode);
+	}
+}
+
+void UCoMUISubsystem::HideItemForge()
+{
+	RemoveWidget(ItemForgeInstance);
+}
+
+void UCoMUISubsystem::ShowItemVault(int32 OwnerWizardIndex, int32 TargetHeroUnitID)
+{
+	HideAllPanels();
+	UCoMItemVaultWidget* W = CreateAndShowWidget<UCoMItemVaultWidget>(
+		ItemVaultWidgetClass, ItemVaultInstance, 10);
+	if (W)
+	{
+		W->Configure(OwnerWizardIndex);
+		W->SetTargetHero(TargetHeroUnitID);
+	}
+}
+
+void UCoMUISubsystem::HideItemVault()
+{
+	RemoveWidget(ItemVaultInstance);
+}
+
+void UCoMUISubsystem::ShowTutorialIfNeeded()
+{
+	if (bTutorialShown) return;
+	bTutorialShown = true;
+	CreateAndShowWidget<UCoMTutorialWidget>(TutorialWidgetClass, TutorialInstance, 50);
+}
+
+void UCoMUISubsystem::HideTutorial()
+{
+	RemoveWidget(TutorialInstance);
+}
+
 void UCoMUISubsystem::HideAllPanels()
 {
 	HideCityScreen();
@@ -735,6 +789,9 @@ void UCoMUISubsystem::HideAllPanels()
 	HideUnitCard();
 	HideArmyStack();
 	HideHeroScreen();
+	HideItemForge();
+	HideItemVault();
+	HideTutorial();
 }
 
 void UCoMUISubsystem::HideAll()

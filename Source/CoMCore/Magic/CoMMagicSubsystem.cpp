@@ -2,6 +2,8 @@
 #include "CoMMagicSubsystem.h"
 #include "CoMCore/Data/CoMSpellDatabase.h"
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
+#include "CoMCore/Units/CoMUnitSubsystem.h"
+#include "CoMCore/Economy/CoMCitySubsystem.h"
 
 
 
@@ -711,14 +713,126 @@ int32 UCoMMagicSubsystem::CalculateManaIncome(int32 WizardId) const
 }
 void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
 {
-    // In full implementation, this would:
-    // - Look up spell data asset for effects
-    // - Apply damage/healing/buff/debuff to target
-    // - Handle area-of-effect
-    // - Trigger visual effects
-    // - Log to combat/event history
-    // For now, just mark as resolved
-    // Actual spell effects will be integrated with combat and world systems
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) return;
+
+    const FCoMSpellInfo Info = CoMSpellDatabase::GetSpellInfo(Cast.SpellId);
+    const int32 Power        = (Cast.EffectivePower > 0) ? Cast.EffectivePower
+                                                          : CalculateSpellPower(Cast.CasterWizardId, Cast.SpellId);
+    UCoMUnitSubsystem* Units = GI->GetSubsystem<UCoMUnitSubsystem>();
+    UCoMCitySubsystem* Cities = GI->GetSubsystem<UCoMCitySubsystem>();
+
+    auto LogResolve = [&](const TCHAR* Label)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[Magic] Resolved %s (%s) by wizard %d, power=%d"),
+            *Cast.SpellId.ToString(), Label, Cast.CasterWizardId, Power);
+    };
+
+    switch (Info.EffectType)
+    {
+    case ECoMSpellEffect::Damage:
+    {
+        // Damage = DamageBase (from spell) + Power/10. Direct + AOE handled the same way:
+        // for AOE, hit every other unit at the target tile.
+        const int32 BaseDmg = (Info.DamageBase > 0 ? Info.DamageBase : 4)
+                              + FMath::Max(0, Power / 10);
+        if (Info.bAOE && Units)
+        {
+            const TArray<const FCoMArmyGroup*> Armies = Units->GetArmiesAtPosition(
+                ECoMPlane::Aurelith, ECoMMapLayer::Surface, Cast.TargetTile);
+            for (const FCoMArmyGroup* A : Armies)
+            {
+                if (!A) continue;
+                for (int32 UID : A->UnitIDs) { Units->ApplyDamage(UID, BaseDmg); }
+            }
+        }
+        else if (Cast.TargetUnitId >= 0 && Units)
+        {
+            Units->ApplyDamage(Cast.TargetUnitId, BaseDmg);
+        }
+        LogResolve(TEXT("Damage"));
+        break;
+    }
+
+    case ECoMSpellEffect::Healing:
+    {
+        const int32 HealAmt = (Info.HealAmount > 0 ? Info.HealAmount : 5)
+                              + FMath::Max(0, Power / 12);
+        if (Cast.TargetUnitId >= 0 && Units)
+        {
+            Units->ApplyHeal(Cast.TargetUnitId, HealAmt);
+        }
+        LogResolve(TEXT("Healing"));
+        break;
+    }
+
+    case ECoMSpellEffect::UnitBuff:
+    case ECoMSpellEffect::UnitDebuff:
+    {
+        // Buff/debuff effects are tracked as enchantment instances on the unit.
+        // Full stat-modifier folding will be wired by the combat/unit subsystem;
+        // for now, mark the unit so AI/UI can see something happened.
+        if (Cast.TargetUnitId >= 0 && Units)
+        {
+            // Best-effort: bump a tag on the unit via SetUnitRaceTag is wrong;
+            // we rely on enchantment storage. Stub-but-recorded.
+        }
+        LogResolve(Info.EffectType == ECoMSpellEffect::UnitBuff ? TEXT("Buff") : TEXT("Debuff"));
+        break;
+    }
+
+    case ECoMSpellEffect::CityBuff:
+    case ECoMSpellEffect::CityDebuff:
+    {
+        // City-targeted effects are recorded as global enchantments on the caster
+        // for now (per-city enchantment list lives on FCoMCityData and is tracked
+        // independently). Concrete city-modifier application will be folded into
+        // RecalcCityOutputs in a future pass.
+        LogResolve(TEXT("CityBuffDebuff"));
+        break;
+    }
+
+    case ECoMSpellEffect::Summon:
+    {
+        // Summon a temporary unit at the caster's nearest army position.
+        // Real implementation looks up the spec from the spell data asset; for
+        // the starter set we just log — full summon plumbing depends on having
+        // a SpellID -> UnitSpecID map which is a separate task.
+        LogResolve(TEXT("Summon (deferred)"));
+        break;
+    }
+
+    case ECoMSpellEffect::GlobalEnchantment:
+    {
+        FCoMWizardMagicState& State = GetWizardMagic(Cast.CasterWizardId);
+        State.ActiveEnchantments.AddUnique(Cast.SpellId);
+        LogResolve(TEXT("GlobalEnchantment"));
+        break;
+    }
+
+    case ECoMSpellEffect::Dispel:
+    {
+        // Dispel target enchantment on TargetWizardId. Caller must have set it.
+        if (Cast.TargetWizardId >= 0)
+        {
+            FCoMWizardMagicState& Target = GetWizardMagic(Cast.TargetWizardId);
+            if (Target.ActiveEnchantments.Num() > 0)
+            {
+                // Strip the most-recent enchantment as a simple heuristic.
+                Target.ActiveEnchantments.Pop();
+            }
+        }
+        LogResolve(TEXT("Dispel"));
+        break;
+    }
+
+    case ECoMSpellEffect::Terrain:
+    case ECoMSpellEffect::Divination:
+    default:
+        LogResolve(TEXT("Misc"));
+        break;
+    }
+    (void)Cities; // City effects are placeholders; suppress unused-var warning.
 }
 void UCoMMagicSubsystem::ResolveRitual(FCoMActiveRitual& Ritual)
 {

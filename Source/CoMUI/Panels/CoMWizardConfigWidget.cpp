@@ -735,11 +735,37 @@ UButton* UCoMWizardConfigWidget::CreateSmallButton(const FString& Label, bool bE
 
 void UCoMWizardConfigWidget::BuildLayout()
 {
-	// -- Full-screen dark background ------------------------------------------
+	// -- Full-screen wizard combat background ---------------------------------
+	// Each wizard has a unique SDXL-generated combat scene; fall back to a
+	// flat dark colour if the texture is missing.
 
 	BackgroundBorder = WidgetTree->ConstructWidget<UBorder>();
-	BackgroundBorder->SetBrushColor(WizConfigColours::Background);
 	BackgroundBorder->SetPadding(FMargin(0.0f));
+	{
+		UTexture2D* BgTex = nullptr;
+		if (SelectedPortraitIndex >= 0 && SelectedPortraitIndex < NumPortraits)
+		{
+			const FString BgPath = FString::Printf(
+				TEXT("/Game/Textures/Wizards/Backgrounds/wizard_bg_%02d.wizard_bg_%02d"),
+				SelectedPortraitIndex + 1, SelectedPortraitIndex + 1);
+			BgTex = LoadObject<UTexture2D>(nullptr, *BgPath);
+		}
+		if (BgTex)
+		{
+			FSlateBrush BgBrush;
+			BgBrush.SetResourceObject(BgTex);
+			BgBrush.DrawAs = ESlateBrushDrawType::Image;
+			BgBrush.ImageSize = FVector2D(1920.0f, 1080.0f);
+			BgBrush.TintColor = FSlateColor(FLinearColor::White);
+			BackgroundBorder->SetBrush(BgBrush);
+			bHasWizardBackground = true;
+		}
+		else
+		{
+			BackgroundBorder->SetBrushColor(WizConfigColours::Background);
+			bHasWizardBackground = false;
+		}
+	}
 
 	// -- Center overlay -------------------------------------------------------
 
@@ -747,9 +773,18 @@ void UCoMWizardConfigWidget::BuildLayout()
 	BackgroundBorder->AddChild(RootOverlay);
 
 	// -- Fullscreen content panel (fills viewport with padding) ---------------
+	// When a wizard combat background is shown, dim the panel to a translucent
+	// scrim so the painting reads as full-screen behind the spell-book UI.
 
 	UBorder* PanelBorder = WidgetTree->ConstructWidget<UBorder>();
-	PanelBorder->SetBrushColor(WizConfigColours::PanelBg);
+	if (bHasWizardBackground)
+	{
+		PanelBorder->SetBrushColor(FLinearColor(0.02f, 0.03f, 0.06f, 0.55f));
+	}
+	else
+	{
+		PanelBorder->SetBrushColor(WizConfigColours::PanelBg);
+	}
 	PanelBorder->SetPadding(FMargin(40.0f, 20.0f));
 
 	UOverlaySlot* PanelSlot = RootOverlay->AddChildToOverlay(PanelBorder);
@@ -763,10 +798,26 @@ void UCoMWizardConfigWidget::BuildLayout()
 	UScrollBox* PanelScroll = WidgetTree->ConstructWidget<UScrollBox>();
 	PanelScroll->SetScrollBarVisibility(ESlateVisibility::Collapsed);
 	PanelScroll->SetOrientation(Orient_Vertical);
+	PanelScroll->SetConsumeMouseWheel(EConsumeMouseWheel::Always);
 	PanelBorder->AddChild(PanelScroll);
 
+	// Horizontal centering: use a HorizontalBox with spacers on both sides
+	UHorizontalBox* CenterRow = WidgetTree->ConstructWidget<UHorizontalBox>();
+	PanelScroll->AddChild(CenterRow);
+
+	// Left spacer (pushes content right)
+	USpacer* LeftSpacer = WidgetTree->ConstructWidget<USpacer>();
+	UHorizontalBoxSlot* LSSlotRef = CenterRow->AddChildToHorizontalBox(LeftSpacer);
+	if (LSSlotRef) { LSSlotRef->SetSize(FSlateChildSize(ESlateSizeRule::Fill)); }
+
 	ContentBox = WidgetTree->ConstructWidget<UVerticalBox>();
-	PanelScroll->AddChild(ContentBox);
+	UHorizontalBoxSlot* ContentSlotRef = CenterRow->AddChildToHorizontalBox(ContentBox);
+	if (ContentSlotRef) { ContentSlotRef->SetSize(FSlateChildSize(ESlateSizeRule::Automatic)); }
+
+	// Right spacer (pushes content left — together with left spacer, centers it)
+	USpacer* RightSpacer = WidgetTree->ConstructWidget<USpacer>();
+	UHorizontalBoxSlot* RSSlotRef = CenterRow->AddChildToHorizontalBox(RightSpacer);
+	if (RSSlotRef) { RSSlotRef->SetSize(FSlateChildSize(ESlateSizeRule::Fill)); }
 
 	// -- Set root widget ------------------------------------------------------
 
@@ -880,7 +931,48 @@ void UCoMWizardConfigWidget::BuildLayout()
 		}
 
 		UVerticalBoxSlot* TopBarSlot = ContentBox->AddChildToVerticalBox(TopBar);
-		if (TopBarSlot) { TopBarSlot->SetPadding(FMargin(0, 0, 0, 12)); }
+		if (TopBarSlot) { TopBarSlot->SetPadding(FMargin(0, 0, 0, 8)); }
+	}
+
+	// ── Wizard Backstory ─────────────────────────────────────────────────────
+	{
+		static const FString GWizardLore[] = {
+			TEXT("Once the court mage of a forgotten kingdom, Merlin now seeks to unite the eight planes under a banner of wisdom and order. His mastery of Arcane magic is unmatched."),
+			TEXT("Morgana was betrayed by those she trusted and cast into the shadow realm. She returned wielding Death magic with a fury that makes even demons tremble."),
+			TEXT("Born during a planar storm, Zephyros commands the winds between worlds. His Sorcery weaves illusions so real they become truth."),
+			TEXT("Hecate dwells where the veil between life and death is thinnest. Her rituals draw power from both realms, making her the most feared Death mage alive."),
+			TEXT("Malachar sold his soul for power and received it tenfold. Now a lord of Binding magic, he forges contracts that bind even gods."),
+			TEXT("Lunara walks the Feywild paths, her Glamour magic blurring the line between dream and reality. Those who see her true form go mad."),
+			TEXT("Grimnar carved his fortress from the bones of a mountain. His Dwarven runesmiths channel Nature magic through stone and iron."),
+			TEXT("Nekros speaks to the dead as easily as the living. His undead legions grow with every battle, and his Death magic corrupts all it touches."),
+			TEXT("Gaia is the living voice of Verdantis itself. Where she walks, forests grow. Where she weeps, rivers flow. Her Nature magic reshapes the world."),
+			TEXT("Pyraxis was forged in the fires of Infernyx. His Chaos magic burns hotter than dragonfire, and his rage is matched only by his cunning."),
+			TEXT("Glaciel commands the frozen wastes where even time stands still. Her Sorcery freezes not just flesh but the very fabric of reality."),
+			TEXT("Aldric spent centuries studying every spell ever written. His knowledge of Arcane magic encompasses all realms, though he masters none completely."),
+			TEXT("Lilith emerged from the Abyssal depths with forbidden knowledge. Her Binding contracts offer power beyond imagination — at a price few can pay."),
+			TEXT("Solarius channels the divine light of Aurelith itself. His Life magic heals the worthy and smites the wicked with equal righteous fury."),
+		};
+
+		if (SelectedPortraitIndex >= 0 && SelectedPortraitIndex < NumPortraits)
+		{
+			UBorder* LoreBorder = WidgetTree->ConstructWidget<UBorder>();
+			LoreBorder->SetBrushColor(FLinearColor(0.03f, 0.02f, 0.06f, 0.7f));
+			LoreBorder->SetPadding(FMargin(16.0f, 10.0f));
+
+			UTextBlock* LoreText = WidgetTree->ConstructWidget<UTextBlock>();
+			LoreText->SetText(FText::FromString(GWizardLore[SelectedPortraitIndex]));
+			LoreText->SetColorAndOpacity(FSlateColor(FLinearColor(0.7f, 0.65f, 0.55f, 1.0f)));
+			LoreText->SetJustification(ETextJustify::Center);
+			LoreText->SetAutoWrapText(true);
+			FSlateFontInfo LoreFont = LoreText->GetFont();
+			LoreFont.Size = 14;
+			LoreFont.TypefaceFontName = FName(TEXT("Italic"));
+			LoreText->SetFont(LoreFont);
+			LoreBorder->AddChild(LoreText);
+
+			UVerticalBoxSlot* LoreSlotRef = ContentBox->AddChildToVerticalBox(LoreBorder);
+			if (LoreSlotRef) { LoreSlotRef->SetHorizontalAlignment(HAlign_Center); LoreSlotRef->SetPadding(FMargin(40, 0, 40, 8)); }
+		}
 	}
 
 	// -- Gold separator -------------------------------------------------------

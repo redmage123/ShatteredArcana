@@ -33,3 +33,12 @@ Art/Models3D/_gallery/
 Art/Reference/
 tools/momask
 exports/
+
+# Generated source PNGs — uassets are the canonical form
+Content/Textures/Wizards/Backgrounds/raw/
+
+# Mixamo extraction intermediates
+Art/DenizenAnimations/MixamoAnims/*.fbm/
+
+# Claude scheduler internal state
+.claude/scheduled_tasks.lock

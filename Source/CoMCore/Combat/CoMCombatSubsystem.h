@@ -84,6 +84,9 @@ struct FCoMCombatUnitState
 	bool     bIsRanged    = false;
 	bool     bIsHero      = false;
 	ECoMHeroTier HeroTier = ECoMHeroTier::Adventurer;
+
+	/** Skill IDs granted by equipped items (flame_blade, vampiric, etc.). */
+	TArray<FName> ItemSkills;
 };
 
 /**

@@ -90,6 +90,17 @@ public:
 	/** Set the race tag on a unit by ID. */
 	void SetUnitRaceTag(int32 UnitId, FGameplayTag Tag);
 
+	/**
+	 * Apply damage to a unit. If HP drops to 0 the unit is removed from its army
+	 * and despawned. Returns true if the unit was killed.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Units")
+	bool ApplyDamage(int32 UnitID, int32 Amount);
+
+	/** Heal a unit, capped at MaxHP. Returns the actual amount healed. */
+	UFUNCTION(BlueprintCallable, Category = "Units")
+	int32 ApplyHeal(int32 UnitID, int32 Amount);
+
 	TArray<const FCoMArmyGroup*> GetArmiesAtPosition(ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position) const;
 	TArray<const FCoMArmyGroup*> GetArmiesForWizard(int32 WizardIndex) const;
 

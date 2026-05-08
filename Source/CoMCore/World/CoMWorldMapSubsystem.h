@@ -183,6 +183,29 @@ public:
 	/** Import all map layers from a flat TArray (replaces current state). */
 	void ImportAllLayers(const TArray<FCoMMapLayerData>& InLayers);
 
+	// ── Sites (lairs, ruins, towers, mana nodes etc.) ─────────────────────
+
+	/** Register a new explorable site. Returns the assigned SiteID. */
+	UFUNCTION(BlueprintCallable, Category = "WorldMap|Sites")
+	int32 RegisterSite(const FCoMSite& Site);
+
+	/** Look up a site by ID. Returns nullptr if not found. */
+	const FCoMSite* GetSite(int32 SiteID) const;
+
+	/** Mutable site lookup — call when a wizard clears it, etc. */
+	FCoMSite* GetSiteMutable(int32 SiteID);
+
+	/** All registered sites, by-value. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "WorldMap|Sites")
+	TArray<FCoMSite> GetAllSites() const;
+
+	/** All sites on a specific plane. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "WorldMap|Sites")
+	TArray<FCoMSite> GetSitesOnPlane(ECoMPlane Plane) const;
+
+	void ExportAllSites(TArray<FCoMSite>& OutSites) const;
+	void ImportAllSites(const TArray<FCoMSite>& InSites);
+
 	// ── Neighbor Queries ──────────────────────────────────────────────────
 
 	/**
@@ -221,6 +244,13 @@ private:
 	 * Stored here (not as a TMap) for O(1) cache-friendly access.
 	 */
 	TArray<FCoMMapLayerData> Layers;
+
+	/** Site registry, keyed by SiteID. */
+	UPROPERTY()
+	TMap<int32, FCoMSite> Sites;
+
+	/** Allocates next SiteID. */
+	int32 NextSiteID = 1;
 
 	/** True once InitializeLayers() has successfully populated Layers. */
 	bool bLayersReady = false;

@@ -143,6 +143,7 @@ private:
 	int32 SelectedDifficulty = 1;
 	int32 SelectedPortraitIndex = 0;
 	ECoMPlane SelectedPlane = ECoMPlane::Aurelith;
+	bool bHasWizardBackground = false;
 
 	// -- Widget references --------------------------------------------------------
 

@@ -34,7 +34,12 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(MSYS_NO_PATHCONV=1 \"/c/Program Files/Epic Games/UE_5.7/Engine/Binaries/Win64/UnrealEditor-Cmd.exe\" \"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -run=pythonscript -script=\"C:/Users/Braun/repos/ShatteredArcana/Scripts/import_cursor.py\" -unattended)",
-      "Bash(ls *)"
+      "Bash(ls *)",
+      "Bash(scp *)",
+      "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Binaries/Win64/UnrealEditor-Cmd.exe\" \"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -ExecutePythonScript=\"C:/Users/Braun/repos/ShatteredArcana/Scripts/import_wizard_backgrounds.py\" -unattended -nopause -nosplash -nullrhi)",
+      "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Build/BatchFiles/Build.bat\" ShatteredArcanaEditor Win64 Development \"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -waitmutex)",
+      "Bash(python3 -c \"from PIL import Image; im=Image.open\\('/c/Users/Braun/repos/ShatteredArcana/Content/Textures/UI/T_MenuBackground.png'\\); print\\(im.size, im.mode\\)\")",
+      "Bash(xargs basename *)"
     ]
   }
 }

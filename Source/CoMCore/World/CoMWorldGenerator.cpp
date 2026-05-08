@@ -999,11 +999,55 @@ void UCoMWorldGenerator::PlaceFeatures(UCoMWorldMapSubsystem* MapSubsystem, ECoM
 {
 	FCoMMapLayerData& Surface = MapSubsystem->GetLayerMutable(Plane, ECoMMapLayer::Surface);
 
-	const int32 TargetFeatures = 15 + RandomStream.RandRange(0, 10); // 15-25
+	// ── Mana nodes (15–25 per plane, random realm). ──────────────────────
+	{
+		const int32 TargetNodes = 15 + RandomStream.RandRange(0, 10);
+		int32 Placed = 0;
+		int32 Attempts = 0;
+		const int32 MaxAttempts = TargetNodes * 20;
+		const TArray<ECoMSpellRealm> NodeRealms = {
+			ECoMSpellRealm::Life,    ECoMSpellRealm::Death,
+			ECoMSpellRealm::Chaos,   ECoMSpellRealm::Nature,
+			ECoMSpellRealm::Sorcery, ECoMSpellRealm::Arcane,
+			ECoMSpellRealm::Binding, ECoMSpellRealm::Spirit,
+			ECoMSpellRealm::Glamour
+		};
+
+		while (Placed < TargetNodes && Attempts < MaxAttempts)
+		{
+			++Attempts;
+			int32 X = RandomStream.RandRange(0, MapWidth - 1);
+			int32 Y = RandomStream.RandRange(0, MapHeight - 1);
+			FCoMTileData* Tile = Surface.GetTile(X, Y);
+			if (!Tile) continue;
+			if (Tile->Terrain == ECoMTerrain::Ocean || Tile->Terrain == ECoMTerrain::River) continue;
+			if (Tile->bHasManaNode) continue;
+			if (Tile->SiteID >= 0)  continue;
+			if (!CanPlaceFeature(MapSubsystem, Plane, FIntPoint(X, Y), 6)) continue;
+
+			Tile->bHasManaNode  = true;
+			Tile->NodeRealm     = NodeRealms[RandomStream.RandRange(0, NodeRealms.Num() - 1)];
+			Tile->NodeManaOutput = 5 + RandomStream.RandRange(0, 10);
+			Tile->bNodeGuarded  = true;
+			Tile->NodeOwnerWizardIndex = -1;
+			++Placed;
+		}
+	}
+
+	// ── Encounter sites (lairs, ruins, towers, etc.). ────────────────────
+	const int32 TargetFeatures = 15 + RandomStream.RandRange(0, 10);
 	int32 Placed = 0;
 	int32 Attempts = 0;
 	const int32 MaxAttempts = TargetFeatures * 20;
-	int32 NextSiteID = static_cast<int32>(Plane) * 100; // Unique IDs per plane
+
+	const TArray<ECoMSiteType> SiteTypes = {
+		ECoMSiteType::AncientRuins, ECoMSiteType::ForgottenTemple,
+		ECoMSiteType::BurialMound,  ECoMSiteType::DragonLair,
+		ECoMSiteType::DemonGate,    ECoMSiteType::FeyGlade,
+		ECoMSiteType::CrystalCavern, ECoMSiteType::VolcanicForge,
+		ECoMSiteType::LibraryOfTheLost, ECoMSiteType::ColiseumOfChampions,
+		ECoMSiteType::MerchantVault, ECoMSiteType::OraclesSpire
+	};
 
 	while (Placed < TargetFeatures && Attempts < MaxAttempts)
 	{
@@ -1015,17 +1059,78 @@ void UCoMWorldGenerator::PlaceFeatures(UCoMWorldMapSubsystem* MapSubsystem, ECoM
 		FCoMTileData* Tile = Surface.GetTile(X, Y);
 		if (!Tile) continue;
 
-		// No features on ocean, river, or existing feature tiles
 		if (Tile->Terrain == ECoMTerrain::Ocean || Tile->Terrain == ECoMTerrain::River)
 			continue;
-		if (Tile->SiteID >= 0) continue;
+		if (Tile->SiteID >= 0 || Tile->bHasManaNode) continue;
 
-		// Minimum distance check
 		if (!CanPlaceFeature(MapSubsystem, Plane, FIntPoint(X, Y), 5))
 			continue;
 
-		Tile->SiteID = NextSiteID++;
+		// Roll site + scale rewards/guards by difficulty class.
+		const ECoMSiteType T = SiteTypes[RandomStream.RandRange(0, SiteTypes.Num() - 1)];
+		const bool bHardSite =
+			T == ECoMSiteType::DragonLair || T == ECoMSiteType::DemonGate ||
+			T == ECoMSiteType::VolcanicForge || T == ECoMSiteType::OraclesSpire;
+		const bool bMidSite =
+			T == ECoMSiteType::ForgottenTemple || T == ECoMSiteType::BurialMound ||
+			T == ECoMSiteType::CrystalCavern || T == ECoMSiteType::LibraryOfTheLost ||
+			T == ECoMSiteType::ColiseumOfChampions;
+
+		FCoMSite Site;
+		Site.Plane    = Plane;
+		Site.Layer    = ECoMMapLayer::Surface;
+		Site.Position = FIntPoint(X, Y);
+		Site.Type     = T;
+		if (bHardSite)
+		{
+			Site.GuardPower = 200 + RandomStream.RandRange(0, 150);
+			Site.GoldReward = 400 + RandomStream.RandRange(0, 400);
+			Site.ManaReward = 200 + RandomStream.RandRange(0, 200);
+		}
+		else if (bMidSite)
+		{
+			Site.GuardPower = 80  + RandomStream.RandRange(0, 80);
+			Site.GoldReward = 150 + RandomStream.RandRange(0, 200);
+			Site.ManaReward = 75  + RandomStream.RandRange(0, 100);
+		}
+		else
+		{
+			Site.GuardPower = 30 + RandomStream.RandRange(0, 50);
+			Site.GoldReward = 50 + RandomStream.RandRange(0, 100);
+			Site.ManaReward = 25 + RandomStream.RandRange(0, 50);
+		}
+
+		const int32 NewID = MapSubsystem->RegisterSite(Site);
+		Tile->SiteID = NewID;
 		++Placed;
+	}
+
+	// ── One Tower of Wizardry per plane (gateway between planes). ──────
+	{
+		int32 Attempts2 = 0;
+		while (Attempts2 < 200)
+		{
+			++Attempts2;
+			int32 X = RandomStream.RandRange(0, MapWidth - 1);
+			int32 Y = RandomStream.RandRange(0, MapHeight - 1);
+			FCoMTileData* Tile = Surface.GetTile(X, Y);
+			if (!Tile) continue;
+			if (Tile->Terrain == ECoMTerrain::Ocean || Tile->Terrain == ECoMTerrain::River) continue;
+			if (Tile->SiteID >= 0 || Tile->bHasManaNode) continue;
+
+			FCoMSite Tower;
+			Tower.Plane    = Plane;
+			Tower.Layer    = ECoMMapLayer::Surface;
+			Tower.Position = FIntPoint(X, Y);
+			Tower.Type     = ECoMSiteType::TowerOfWizardry;
+			Tower.GuardPower = 350 + RandomStream.RandRange(0, 200);
+			Tower.GoldReward = 800;
+			Tower.ManaReward = 400;
+
+			const int32 NewID = MapSubsystem->RegisterSite(Tower);
+			Tile->SiteID = NewID;
+			break;
+		}
 	}
 }
 // ────────────────────────────────────────────────────────────────────────────

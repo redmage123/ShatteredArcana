@@ -49,6 +49,11 @@ void UCoMAISubsystem::Initialize(FSubsystemCollectionBase& Collection)
 			// so AI diplomatic changes (war declarations, alliances) affect combat.
 			TurnSub->OnPostDiplomacyAITick.AddDynamic(this, &UCoMAISubsystem::OnPostDiplomacyAITick);
 			bPostDiplomacyBound = true;
+
+			// Bind to the per-turn AI tick — fires at the end of ProcessAllSubsystemTurns
+			// and drives full strategic + tactical wizard execution.
+			TurnSub->OnAITurnTick.AddDynamic(this, &UCoMAISubsystem::OnAITurnTick);
+			bAITickBound = true;
 		}
 	}
 
@@ -71,10 +76,15 @@ void UCoMAISubsystem::Deinitialize()
 			{
 				TurnSub->OnPostDiplomacyAITick.RemoveDynamic(this, &UCoMAISubsystem::OnPostDiplomacyAITick);
 			}
+			if (bAITickBound)
+			{
+				TurnSub->OnAITurnTick.RemoveDynamic(this, &UCoMAISubsystem::OnAITurnTick);
+			}
 		}
 	}
 	bDelegateBound = false;
 	bPostDiplomacyBound = false;
+	bAITickBound = false;
 
 	Planner            = nullptr;
 	Executor           = nullptr;
@@ -95,6 +105,28 @@ void UCoMAISubsystem::OnGamePhaseChanged(ECoMGamePhase OldPhase, ECoMGamePhase N
 	{
 		ProcessAITurns();
 	}
+}
+
+void UCoMAISubsystem::OnAITurnTick(int32 CurrentTurn)
+{
+	// Single per-turn entry point in the End-Turn flow. Run full strategic+tactical
+	// AI for every AI wizard. Diplomacy already ran via OnPostDiplomacyAITick earlier
+	// in the same ProcessAllSubsystemTurns sweep, so we don't double-tick it here —
+	// instead we go straight to strategy + execution.
+	if (!Planner || !Executor) return;
+
+	int32 AIWizardsProcessed = 0;
+	for (int32 WizardId = 0; WizardId < CoM::MAX_WIZARDS; ++WizardId)
+	{
+		if (!IsAIWizard(WizardId)) continue;
+
+		FCoMAIStrategy Strategy = Planner->EvaluateStrategy(WizardId, CurrentDifficulty);
+		LastStrategies.Add(WizardId, Strategy);
+		Executor->ExecuteTurn(WizardId, Strategy, CurrentDifficulty);
+		++AIWizardsProcessed;
+	}
+	UE_LOG(LogTemp, Log, TEXT("UCoMAISubsystem: OnAITurnTick processed %d AI wizards (turn %d)."),
+		AIWizardsProcessed, CurrentTurn);
 }
 
 void UCoMAISubsystem::OnPostDiplomacyAITick(int32 CurrentTurn)
@@ -143,6 +175,11 @@ void UCoMAISubsystem::ProcessAITurns()
 				{
 					TurnSub->OnPostDiplomacyAITick.AddDynamic(this, &UCoMAISubsystem::OnPostDiplomacyAITick);
 					bPostDiplomacyBound = true;
+				}
+				if (!bAITickBound)
+				{
+					TurnSub->OnAITurnTick.AddDynamic(this, &UCoMAISubsystem::OnAITurnTick);
+					bAITickBound = true;
 				}
 				UE_LOG(LogTemp, Log, TEXT("UCoMAISubsystem: Late-bound to TurnSubsystem delegates."));
 			}

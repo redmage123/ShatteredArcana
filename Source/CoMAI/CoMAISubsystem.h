@@ -88,6 +88,10 @@ private:
 	UFUNCTION()
 	void OnPostDiplomacyAITick(int32 CurrentTurn);
 
+	/** Delegate callback: fires once per turn at end of ProcessAllSubsystemTurns. */
+	UFUNCTION()
+	void OnAITurnTick(int32 CurrentTurn);
+
 	UPROPERTY()
 	TObjectPtr<UCoMAIStrategicPlanner> Planner;
 
@@ -112,4 +116,7 @@ private:
 
 	/** Whether we have bound to the post-diplomacy AI tick delegate. */
 	bool bPostDiplomacyBound = false;
+
+	/** Whether we have bound to the per-turn AI tick delegate. */
+	bool bAITickBound = false;
 };
