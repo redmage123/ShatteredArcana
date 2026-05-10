@@ -4,6 +4,9 @@
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
 #include "CoMCore/Units/CoMUnitSubsystem.h"
 #include "CoMCore/Economy/CoMCitySubsystem.h"
+#include "CoMCore/Magic/CoMSpellVFXSubsystem.h"
+#include "CoMCore/Audio/CoMAudioSubsystem.h"
+#include "CoMCore/CoreTypes/CoMConstants.h"
 
 
 
@@ -728,6 +731,120 @@ void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
             *Cast.SpellId.ToString(), Label, Cast.CasterWizardId, Power);
     };
 
+    // ── VFX + SFX trigger ────────────────────────────────────────────────
+    // Fired up front so the audiovisual cue plays even if the effect logic
+    // ends up no-op (missing target, etc.). The VFX widget on the HUD picks
+    // this up via OnEffectRequested; PlaySpellSFX is a 3D world sound.
+    {
+        const float TileWorld = CoM::TILE_WORLD_SIZE_CM;
+        FVector World(0.0f);
+        if (Cast.TargetTile.X >= 0)
+        {
+            World = FVector(
+                Cast.TargetTile.X * TileWorld + TileWorld * 0.5f,
+                Cast.TargetTile.Y * TileWorld + TileWorld * 0.5f,
+                40.0f);
+        }
+        else if (Cast.TargetUnitId >= 0 && Units)
+        {
+            // Try to locate the target unit's army for positioning.
+            for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+            {
+                bool bFound = false;
+                for (const FCoMArmyGroup* A : Units->GetArmiesForWizard(W))
+                {
+                    if (A && A->UnitIDs.Contains(Cast.TargetUnitId))
+                    {
+                        World = FVector(
+                            A->Position.X * TileWorld + TileWorld * 0.5f,
+                            A->Position.Y * TileWorld + TileWorld * 0.5f,
+                            40.0f);
+                        bFound = true;
+                        break;
+                    }
+                }
+                if (bFound) break;
+            }
+        }
+
+        // VFX: realm-keyed effect ID, pattern matches RegisterAllDefaultEffects
+        // (e.g., "chaos.fireball"). Pick effect-name by spell effect type.
+        if (UCoMSpellVFXSubsystem* VFX = GI->GetSubsystem<UCoMSpellVFXSubsystem>())
+        {
+            const TCHAR* RealmTag = TEXT("arcane");
+            switch (Info.Realm)
+            {
+            case ECoMSpellRealm::Life:    RealmTag = TEXT("life");    break;
+            case ECoMSpellRealm::Death:   RealmTag = TEXT("death");   break;
+            case ECoMSpellRealm::Chaos:   RealmTag = TEXT("chaos");   break;
+            case ECoMSpellRealm::Nature:  RealmTag = TEXT("nature");  break;
+            case ECoMSpellRealm::Sorcery: RealmTag = TEXT("sorcery"); break;
+            case ECoMSpellRealm::Arcane:  RealmTag = TEXT("arcane");  break;
+            case ECoMSpellRealm::Binding: RealmTag = TEXT("binding"); break;
+            case ECoMSpellRealm::Spirit:  RealmTag = TEXT("spirit");  break;
+            case ECoMSpellRealm::Glamour: RealmTag = TEXT("glamour"); break;
+            default: break;
+            }
+
+            // Per-realm effect names from RegisterAllDefaultEffects, slot 0..3.
+            // Pick by spell effect: Damage = slot 0, Buff = 1, Summon = 2, Debuff = 3.
+            const TCHAR* PerRealmName[9][4] = {
+                /*Life*/    { TEXT("smite"),     TEXT("shield"),    TEXT("resurrect"),    TEXT("heal") },
+                /*Death*/   { TEXT("shadow_bolt"),TEXT("drain"),    TEXT("raise_dead"),   TEXT("curse") },
+                /*Chaos*/   { TEXT("fireball"),  TEXT("lightning"), TEXT("meteor"),       TEXT("doom_bolt") },
+                /*Nature*/  { TEXT("earthquake"),TEXT("growth"),    TEXT("summon_beast"), TEXT("entangle") },
+                /*Sorcery*/ { TEXT("teleport"),  TEXT("counter_spell"),TEXT("dispel"),    TEXT("confusion") },
+                /*Arcane*/  { TEXT("magic_missile"),TEXT("ward"),   TEXT("enchant"),      TEXT("detect") },
+                /*Binding*/ { TEXT("chains"),    TEXT("contract"),  TEXT("soul_trap"),    TEXT("dominate") },
+                /*Spirit*/  { TEXT("astral_bolt"),TEXT("dream"),    TEXT("possession"),   TEXT("ghost_touch") },
+                /*Glamour*/ { TEXT("astral_bolt"),TEXT("dream"),    TEXT("possession"),   TEXT("ghost_touch") },
+            };
+            int32 RealmIdx = static_cast<int32>(Info.Realm);
+            if (RealmIdx < 0 || RealmIdx > 8) RealmIdx = 5; // arcane fallback
+
+            int32 Slot = 0;
+            switch (Info.EffectType)
+            {
+            case ECoMSpellEffect::Damage:    Slot = 0; break;
+            case ECoMSpellEffect::Healing:   Slot = 0; break;
+            case ECoMSpellEffect::UnitBuff:  Slot = 1; break;
+            case ECoMSpellEffect::Summon:    Slot = 2; break;
+            case ECoMSpellEffect::UnitDebuff:Slot = 3; break;
+            case ECoMSpellEffect::Dispel:    Slot = 1; break;
+            default:                         Slot = 0; break;
+            }
+
+            const FName VFXID(*FString::Printf(TEXT("%s.%s"), RealmTag, PerRealmName[RealmIdx][Slot]));
+            VFX->PlayEffect(VFXID, World, World);
+        }
+
+        // SFX: cast cue at caster, impact cue at target. Cast happens on
+        // overworld where the caster's first army is; if we don't know,
+        // use the target tile.
+        if (UCoMAudioSubsystem* Audio = GI->GetSubsystem<UCoMAudioSubsystem>())
+        {
+            FVector CasterWorld = World;
+            if (Units)
+            {
+                const TArray<const FCoMArmyGroup*> CasterArmies =
+                    Units->GetArmiesForWizard(Cast.CasterWizardId);
+                if (CasterArmies.Num() > 0 && CasterArmies[0])
+                {
+                    CasterWorld = FVector(
+                        CasterArmies[0]->Position.X * TileWorld + TileWorld * 0.5f,
+                        CasterArmies[0]->Position.Y * TileWorld + TileWorld * 0.5f,
+                        40.0f);
+                }
+            }
+            Audio->PlaySpellSFX(Info.Realm, /*bImpact*/ false, CasterWorld);
+            if (Info.EffectType == ECoMSpellEffect::Damage ||
+                Info.EffectType == ECoMSpellEffect::UnitDebuff)
+            {
+                Audio->PlaySpellSFX(Info.Realm, /*bImpact*/ true, World);
+            }
+        }
+    }
+
     switch (Info.EffectType)
     {
     case ECoMSpellEffect::Damage:
@@ -769,13 +886,42 @@ void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
     case ECoMSpellEffect::UnitBuff:
     case ECoMSpellEffect::UnitDebuff:
     {
-        // Buff/debuff effects are tracked as enchantment instances on the unit.
-        // Full stat-modifier folding will be wired by the combat/unit subsystem;
-        // for now, mark the unit so AI/UI can see something happened.
+        // Append an enchantment instance to the target unit. The combat
+        // subsystem will fold its modifiers when computing combat stats.
         if (Cast.TargetUnitId >= 0 && Units)
         {
-            // Best-effort: bump a tag on the unit via SetUnitRaceTag is wrong;
-            // we rely on enchantment storage. Stub-but-recorded.
+            // Need mutable access — use the same pattern UnitSubsystem uses internally.
+            const FCoMUnitInstance* Probe = Units->GetUnit(Cast.TargetUnitId);
+            if (Probe)
+            {
+                FCoMEnchantmentInstance Ench;
+                Ench.EnchantmentID    = static_cast<int32>(GFrameCounter);
+                Ench.SpellID          = Cast.SpellId;
+                Ench.CasterWizardIndex = Cast.CasterWizardId;
+                // Buff persists until dispelled (-1) for ongoing spells, otherwise 5 turns.
+                Ench.TurnsRemaining   = Info.bOngoing ? -1 : 5;
+                Ench.UpkeepManaCost   = FFixed64(Info.UpkeepMana);
+
+                // Map a spell-effect-driven stat modifier from the spell's tier.
+                // Real game would source from the data asset; for now: buffs add
+                // +Power/10 to Attack/Defense, debuffs subtract.
+                const int32 Mag = FMath::Max(1, Power / 10);
+                FCoMStatModifier StatMod;
+                StatMod.StatName  = (Info.EffectType == ECoMSpellEffect::UnitBuff)
+                    ? FName(TEXT("Attack")) : FName(TEXT("Defense"));
+                StatMod.FlatBonus = (Info.EffectType == ECoMSpellEffect::UnitBuff)
+                    ? FFixed64(Mag) : FFixed64(-Mag);
+                Ench.Modifiers.Add(StatMod);
+
+                // Stash by mutating the unit through ApplyHeal(0) — that returns a
+                // mutable pointer effectively. Cleaner: add a public AddEnchantment.
+                // For now, do it via direct cast since ApplyDamage/ApplyHeal already
+                // assume mutability through Find.
+                // Note: this works because GetUnit returns a const ptr to a TMap value
+                // we know is owned by UnitSubsystem.
+                FCoMUnitInstance* Mut = const_cast<FCoMUnitInstance*>(Probe);
+                Mut->Enchantments.Add(Ench);
+            }
         }
         LogResolve(Info.EffectType == ECoMSpellEffect::UnitBuff ? TEXT("Buff") : TEXT("Debuff"));
         break;
@@ -794,11 +940,48 @@ void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
 
     case ECoMSpellEffect::Summon:
     {
-        // Summon a temporary unit at the caster's nearest army position.
-        // Real implementation looks up the spec from the spell data asset; for
-        // the starter set we just log — full summon plumbing depends on having
-        // a SpellID -> UnitSpecID map which is a separate task.
-        LogResolve(TEXT("Summon (deferred)"));
+        // Spawn a unit for the caster at the spell's TargetTile if set,
+        // otherwise at the caster's first army position. The summoned spec
+        // is keyed by spell rarity for now; full data-asset binding lives in
+        // CoMSpells once the spawn-spec map is registered.
+        if (!Units) { LogResolve(TEXT("Summon (no units sub)")); break; }
+
+        FIntPoint SpawnTile = Cast.TargetTile;
+        ECoMPlane Plane = ECoMPlane::Aurelith;
+        ECoMMapLayer Layer = ECoMMapLayer::Surface;
+        if (SpawnTile.X < 0)
+        {
+            const TArray<const FCoMArmyGroup*> Armies = Units->GetArmiesForWizard(Cast.CasterWizardId);
+            if (Armies.Num() > 0 && Armies[0])
+            {
+                SpawnTile = Armies[0]->Position;
+                Plane = Armies[0]->Plane;
+                Layer = Armies[0]->Layer;
+            }
+        }
+        if (SpawnTile.X < 0) { LogResolve(TEXT("Summon (no spawn tile)")); break; }
+
+        // Pick a placeholder spec from rarity. Higher rarity = higher SpecID
+        // until we wire actual summoned creatures (skeletons, gargoyles, etc).
+        int32 SummonSpec = 1;
+        switch (Info.Rarity)
+        {
+        case ECoMSpellRarity::Common:    SummonSpec = 1; break;
+        case ECoMSpellRarity::Uncommon:  SummonSpec = 2; break;
+        case ECoMSpellRarity::Rare:      SummonSpec = 3; break;
+        case ECoMSpellRarity::VeryRare:  SummonSpec = 4; break;
+        default:                         SummonSpec = 1; break;
+        }
+
+        const int32 NewID = Units->SpawnUnit(SummonSpec, Plane, Layer, SpawnTile, Cast.CasterWizardId);
+        if (NewID > 0)
+        {
+            LogResolve(*FString::Printf(TEXT("Summon -> unit %d"), NewID));
+        }
+        else
+        {
+            LogResolve(TEXT("Summon (spawn failed)"));
+        }
         break;
     }
 

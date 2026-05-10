@@ -160,6 +160,57 @@ void UCoMAudioSubsystem::PlayUISound(FName SoundID)
 	);
 }
 
+void UCoMAudioSubsystem::PlaySpellSFX(ECoMSpellRealm Realm, bool bImpact, FVector Location)
+{
+	// Build a canonical asset key. Cache loaded sounds in SFXSounds so we
+	// only LoadObject once per realm/kind pair.
+	const TCHAR* RealmName = TEXT("arcane");
+	switch (Realm)
+	{
+	case ECoMSpellRealm::Life:    RealmName = TEXT("life");    break;
+	case ECoMSpellRealm::Death:   RealmName = TEXT("death");   break;
+	case ECoMSpellRealm::Chaos:   RealmName = TEXT("chaos");   break;
+	case ECoMSpellRealm::Nature:  RealmName = TEXT("nature");  break;
+	case ECoMSpellRealm::Sorcery: RealmName = TEXT("sorcery"); break;
+	case ECoMSpellRealm::Arcane:  RealmName = TEXT("arcane");  break;
+	case ECoMSpellRealm::Binding: RealmName = TEXT("binding"); break;
+	case ECoMSpellRealm::Spirit:  RealmName = TEXT("spirit");  break;
+	case ECoMSpellRealm::Glamour: RealmName = TEXT("glamour"); break;
+	default: break;
+	}
+	const FString Kind = bImpact ? TEXT("impact") : TEXT("cast");
+	const FName CacheKey(*FString::Printf(TEXT("spell_%s_%s"), RealmName, *Kind));
+
+	USoundBase* Sound = nullptr;
+	if (USoundBase** Cached = SFXSounds.Find(CacheKey))
+	{
+		Sound = *Cached;
+	}
+	else
+	{
+		const FString AssetPath = FString::Printf(
+			TEXT("/Game/Audio/SpellSFX/%s_%s.%s_%s"),
+			RealmName, *Kind, RealmName, *Kind);
+		Sound = LoadObject<USoundBase>(nullptr, *AssetPath);
+		// Cache positive AND negative results to avoid spamming load attempts.
+		SFXSounds.Add(CacheKey, Sound);
+		if (!Sound)
+		{
+			UE_LOG(LogCoMAudio, Warning,
+				TEXT("PlaySpellSFX: missing asset %s"), *AssetPath);
+		}
+	}
+
+	if (!Sound) return;
+
+	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (!World) return;
+
+	const float EffectiveVolume = MasterVolume * SFXVolume;
+	UGameplayStatics::PlaySoundAtLocation(World, Sound, Location,
+		FRotator::ZeroRotator, EffectiveVolume, 1.0f);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Ambient
 // ─────────────────────────────────────────────────────────────────────────────

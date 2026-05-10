@@ -92,6 +92,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|Audio")
 	void PlayUISound(FName SoundID);
 
+	/**
+	 * Play a spell SFX cued from realm + impact flag. Loads the asset on
+	 * demand from /Game/Audio/SpellSFX/<realm>_<cast|impact>.* and caches it.
+	 * No-op when the asset is missing (logs a single warning per key).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Audio")
+	void PlaySpellSFX(ECoMSpellRealm Realm, bool bImpact, FVector Location);
+
 	// ── Ambient ──────────────────────────────────────────────────────────
 
 	/**

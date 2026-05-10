@@ -131,6 +131,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Rendering|Overworld")
 	void UpdateArmyPositions();
 
+	/** Spawn site / mana-node icon actors for the current plane. */
+	UFUNCTION(BlueprintCallable, Category = "Rendering|Overworld")
+	void SpawnSiteIcons();
+
+	/** Refresh sites (after a site is cleared / a node guard defeated). */
+	UFUNCTION(BlueprintCallable, Category = "Rendering|Overworld")
+	void RefreshSiteIcons();
+
 	/** Remove all overlay actors (city icons, army sprites). */
 	UFUNCTION(BlueprintCallable, Category = "Rendering|Overworld")
 	void ClearOverlays();
@@ -228,6 +236,10 @@ private:
 	/** Army overlay actors on the current plane. */
 	UPROPERTY()
 	TArray<TObjectPtr<AActor>> ArmyIconActors;
+
+	/** Site / mana-node overlay actors on the current plane. */
+	UPROPERTY()
+	TArray<TObjectPtr<AActor>> SiteIconActors;
 
 	/** Cached world pointer for actor spawning. Set via SetWorldContext().
 	 *  Not a UPROPERTY — the world's lifetime exceeds the subsystem's. */

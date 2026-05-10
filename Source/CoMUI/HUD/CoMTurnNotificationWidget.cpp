@@ -15,6 +15,8 @@
 #include "CoMCore/Turn/CoMTurnSubsystem.h"
 #include "CoMCore/Events/CoMWorldEventSubsystem.h"
 #include "CoMCore/TacticalCombat/CoMTacticalCombatSubsystem.h"
+#include "CoMCore/World/CoMSiteEncounterSubsystem.h"
+#include "CoMCore/Items/CoMItemSubsystem.h"
 #include "CoMUI/CoMUISubsystem.h"
 
 // =============================================================================
@@ -461,6 +463,19 @@ void UCoMTurnNotificationWidget::BindToSubsystems()
 	{
 		CombatSub->OnBattleEnded.AddDynamic(this, &UCoMTurnNotificationWidget::HandleBattleEnded);
 	}
+
+	// Site encounter subsystem: cleared sites and freed nodes.
+	if (UCoMSiteEncounterSubsystem* Sites = GI->GetSubsystem<UCoMSiteEncounterSubsystem>())
+	{
+		Sites->OnSiteCleared.AddDynamic(this, &UCoMTurnNotificationWidget::HandleSiteCleared);
+		Sites->OnNodeGuardDefeated.AddDynamic(this, &UCoMTurnNotificationWidget::HandleNodeGuardDefeated);
+	}
+
+	// Item subsystem: any forge fires this (player or AI).
+	if (UCoMItemSubsystem* Items = GI->GetSubsystem<UCoMItemSubsystem>())
+	{
+		Items->OnItemForged.AddDynamic(this, &UCoMTurnNotificationWidget::HandleItemForged);
+	}
 }
 
 void UCoMTurnNotificationWidget::UnbindFromSubsystems()
@@ -482,6 +497,17 @@ void UCoMTurnNotificationWidget::UnbindFromSubsystems()
 	if (UCoMTacticalCombatSubsystem* CombatSub = GI->GetSubsystem<UCoMTacticalCombatSubsystem>())
 	{
 		CombatSub->OnBattleEnded.RemoveDynamic(this, &UCoMTurnNotificationWidget::HandleBattleEnded);
+	}
+
+	if (UCoMSiteEncounterSubsystem* Sites = GI->GetSubsystem<UCoMSiteEncounterSubsystem>())
+	{
+		Sites->OnSiteCleared.RemoveDynamic(this, &UCoMTurnNotificationWidget::HandleSiteCleared);
+		Sites->OnNodeGuardDefeated.RemoveDynamic(this, &UCoMTurnNotificationWidget::HandleNodeGuardDefeated);
+	}
+
+	if (UCoMItemSubsystem* Items = GI->GetSubsystem<UCoMItemSubsystem>())
+	{
+		Items->OnItemForged.RemoveDynamic(this, &UCoMTurnNotificationWidget::HandleItemForged);
 	}
 }
 
@@ -512,6 +538,61 @@ void UCoMTurnNotificationWidget::HandleBattleEnded(ECoMCombatResult Result)
 void UCoMTurnNotificationWidget::HandleIdleWarning(int32 IdleArmyCount, int32 IdleCityCount)
 {
 	ShowIdleWarning(IdleArmyCount, IdleCityCount);
+}
+
+void UCoMTurnNotificationWidget::HandleSiteCleared(int32 SiteID, int32 WizardIndex,
+                                                     int32 GoldReward, int32 ManaReward)
+{
+	// Player gets the success ("you cleared X"); AI clears get an "intel" notice.
+	const bool bIsPlayer = (WizardIndex == 0); // local player is wizard 0 by convention
+	const FString Title = bIsPlayer
+		? TEXT("Site Cleared")
+		: FString::Printf(TEXT("Wizard %d cleared a site"), WizardIndex);
+	const FString Body = bIsPlayer
+		? FString::Printf(TEXT("Your army cleared a site. +%d gold, +%d mana."),
+			GoldReward, ManaReward)
+		: FString::Printf(TEXT("Reward: %d gold, %d mana."), GoldReward, ManaReward);
+
+	QueueNotification(Title, Body,
+		bIsPlayer ? ECoMNotificationPriority::Important : ECoMNotificationPriority::Normal);
+
+	const FLinearColor C = bIsPlayer ? GreenColor() : WhiteColor();
+	AddNotificationMessage(FString::Printf(TEXT("%s — %s"), *Title, *Body), C,
+		bIsPlayer ? ECoMNotificationPriority::Important : ECoMNotificationPriority::Normal);
+}
+
+void UCoMTurnNotificationWidget::HandleNodeGuardDefeated(FIntPoint NodePosition, int32 WizardIndex)
+{
+	const bool bIsPlayer = (WizardIndex == 0);
+	const FString Body = FString::Printf(
+		TEXT("%s defeated the guardian of a mana node at (%d,%d)."),
+		bIsPlayer ? TEXT("You") : *FString::Printf(TEXT("Wizard %d"), WizardIndex),
+		NodePosition.X, NodePosition.Y);
+	QueueNotification(TEXT("Mana Node Freed"), Body,
+		bIsPlayer ? ECoMNotificationPriority::Important : ECoMNotificationPriority::Normal);
+	AddNotificationMessage(Body, bIsPlayer ? GreenColor() : WhiteColor(),
+		bIsPlayer ? ECoMNotificationPriority::Important : ECoMNotificationPriority::Normal);
+}
+
+void UCoMTurnNotificationWidget::HandleItemForged(int32 InstanceID)
+{
+	UGameInstance* GI = UGameplayStatics::GetGameInstance(this);
+	if (!GI) return;
+	UCoMItemSubsystem* Items = GI->GetSubsystem<UCoMItemSubsystem>();
+	if (!Items) return;
+
+	FCoMItemInstance Inst;
+	if (!Items->GetItem(InstanceID, Inst)) return;
+
+	// Player triggered their own forge — they already see the result. Only
+	// surface a notification when an AI wizard forges something.
+	if (Inst.OwnerWizardIndex == 0) return;
+
+	const FString Body = FString::Printf(
+		TEXT("Wizard %d forged %s (%d mana)."),
+		Inst.OwnerWizardIndex, *Inst.DisplayName.ToString(), Inst.TotalManaCost);
+	QueueNotification(TEXT("Rival Forged Item"), Body, ECoMNotificationPriority::Normal);
+	AddNotificationMessage(Body, WhiteColor(), ECoMNotificationPriority::Normal);
 }
 
 // =============================================================================

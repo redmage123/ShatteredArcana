@@ -189,6 +189,15 @@ private:
 	UFUNCTION()
 	void HandleIdleWarning(int32 IdleArmyCount, int32 IdleCityCount);
 
+	UFUNCTION()
+	void HandleSiteCleared(int32 SiteID, int32 WizardIndex, int32 GoldReward, int32 ManaReward);
+
+	UFUNCTION()
+	void HandleNodeGuardDefeated(FIntPoint NodePosition, int32 WizardIndex);
+
+	UFUNCTION()
+	void HandleItemForged(int32 InstanceID);
+
 	// -- Banner Animation State ------------------------------------------------
 
 	enum class EBannerState : uint8 { Hidden, FadingIn, Showing, FadingOut };

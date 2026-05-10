@@ -5,6 +5,7 @@
 #include "Overworld/CoMTileChunkActor.h"
 #include "Overworld/CoMCityIconActor.h"
 #include "Overworld/CoMArmyIconActor.h"
+#include "Overworld/CoMSiteIconActor.h"
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
 #include "CoMCore/World/CoMFogOfWarSubsystem.h"
 #include "CoMCore/Economy/CoMCitySubsystem.h"
@@ -117,6 +118,7 @@ void UCoMOverworldRenderer::RenderPlane(ECoMPlane Plane, ECoMMapLayer Layer, int
 	// Spawn overlays
 	SpawnCityIcons();
 	SpawnArmySprites();
+	SpawnSiteIcons();
 
 	bInitialRenderDone = true;
 
@@ -354,6 +356,100 @@ void UCoMOverworldRenderer::ClearOverlays()
 		}
 	}
 	ArmyIconActors.Empty();
+
+	for (TObjectPtr<AActor>& Actor : SiteIconActors)
+	{
+		if (Actor && !Actor->IsActorBeingDestroyed())
+		{
+			Actor->Destroy();
+		}
+	}
+	SiteIconActors.Empty();
+}
+
+// ─── Site / mana-node icons ─────────────────────────────────────────────────
+
+void UCoMOverworldRenderer::SpawnSiteIcons()
+{
+	if (!WorldMapSub) return;
+	UWorld* World = WorldContext.Get();
+	if (!World) return;
+
+	// Sites registered with the world map (lairs, ruins, towers).
+	for (const FCoMSite& Site : WorldMapSub->GetSitesOnPlane(CurrentPlane))
+	{
+		if (Site.Layer != CurrentLayer) continue;
+
+		// Fog: only show sites the player has explored.
+		if (FogSub && !FogSub->IsTileExplored(CurrentWizardId, CurrentPlane,
+		                                      Site.Position, CurrentLayer))
+		{
+			continue;
+		}
+
+		FVector SpawnPos = TileToWorld(Site.Position);
+		SpawnPos.Z += 8.0f;
+
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		const FTransform Xform(FRotator::ZeroRotator, SpawnPos);
+		ACoMSiteIconActor* Icon = World->SpawnActor<ACoMSiteIconActor>(
+			ACoMSiteIconActor::StaticClass(), Xform, Params);
+		if (Icon)
+		{
+			Icon->InitFromSite(Site);
+			SiteIconActors.Add(Icon);
+		}
+	}
+
+	// Mana nodes are stored as tile flags rather than FCoMSite entries.
+	// Sweep the plane's surface tiles once. Cheap-ish: 16k tiles, run on plane
+	// switch / refresh only.
+	const FCoMMapLayerData& Layer = WorldMapSub->GetLayer(CurrentPlane, CurrentLayer);
+	for (int32 Y = 0; Y < CoM::MAP_HEIGHT; ++Y)
+	{
+		for (int32 X = 0; X < CoM::MAP_WIDTH; ++X)
+		{
+			const int32 Idx = Y * CoM::MAP_WIDTH + X;
+			if (!Layer.Tiles.IsValidIndex(Idx)) continue;
+			const FCoMTileData& Tile = Layer.Tiles[Idx];
+			if (!Tile.bHasManaNode) continue;
+
+			if (FogSub && !FogSub->IsTileExplored(CurrentWizardId, CurrentPlane,
+			                                       FIntPoint(X, Y), CurrentLayer))
+			{
+				continue;
+			}
+
+			FVector SpawnPos = TileToWorld(FIntPoint(X, Y));
+			SpawnPos.Z += 8.0f;
+
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			const FTransform Xform(FRotator::ZeroRotator, SpawnPos);
+			ACoMSiteIconActor* Icon = World->SpawnActor<ACoMSiteIconActor>(
+				ACoMSiteIconActor::StaticClass(), Xform, Params);
+			if (Icon)
+			{
+				Icon->InitFromManaNode(FIntPoint(X, Y), Tile.NodeRealm,
+					Tile.NodeOwnerWizardIndex, Tile.bNodeGuarded);
+				SiteIconActors.Add(Icon);
+			}
+		}
+	}
+
+	UE_LOG(LogCoMOverworld, Log, TEXT("Spawned %d site/node icons on plane %d"),
+	       SiteIconActors.Num(), static_cast<int32>(CurrentPlane));
+}
+
+void UCoMOverworldRenderer::RefreshSiteIcons()
+{
+	for (TObjectPtr<AActor>& Actor : SiteIconActors)
+	{
+		if (Actor && !Actor->IsActorBeingDestroyed()) { Actor->Destroy(); }
+	}
+	SiteIconActors.Empty();
+	SpawnSiteIcons();
 }
 
 // ─── Coordinate conversion ──────────────────────────────────────────────────
