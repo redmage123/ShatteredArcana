@@ -63,6 +63,13 @@ private:
 	FIntPoint FindDefenseTarget(int32 WizardId, const FCoMAIStrategy& Strategy,
 	                            UCoMCitySubsystem* CitySub) const;
 
+	/** Find nearest uncleared site or guarded mana node within MAX_ACTION_RANGE. (-1,-1) if none. */
+	FIntPoint FindSiteOrNodeTarget(const FCoMArmyGroup* Army, UCoMWorldMapSubsystem* MapSub) const;
+
+	/** Try to meld a spirit on every unguarded matching-realm node we currently own armies on. */
+	void TryMeldOwnedNodes(int32 WizardId, UCoMUnitSubsystem* UnitSub,
+	                       UCoMWorldMapSubsystem* MapSub, UCoMMagicSubsystem* MagicSub);
+
 	// ---- Diplomacy management ---------------------------------------------
 
 	/** Propose treaties, declare wars, accept peace based on strategy. */
@@ -77,6 +84,9 @@ private:
 
 	/** Cast beneficial global spells or enchantments. */
 	void ManageMagic(int32 WizardId, const FCoMAIStrategy& Strategy);
+
+	/** Forge an item or artifact and equip it on this wizard's strongest hero. */
+	void ConsiderItemForging(int32 WizardId, const FCoMAIStrategy& Strategy);
 
 	// ---- Settlement management --------------------------------------------
 

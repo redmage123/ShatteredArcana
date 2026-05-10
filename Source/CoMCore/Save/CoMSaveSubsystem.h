@@ -9,6 +9,7 @@
 #include "GameFramework/SaveGame.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
+#include "CoMCore/CoreTypes/CoMItemTypes.h"
 #include "CoMCore/Turn/CoMDeterministicRandom.h"
 #include "CoMCore/Economy/CoMCitySubsystem.h"
 #include "CoMCore/Diplomacy/CoMDiplomacySubsystem.h"
@@ -82,6 +83,12 @@ struct COMCORE_API FCoMSaveData
 
     // ── World Map — flattened tile layers ────────────────────────────────────
     UPROPERTY() TArray<FCoMMapLayerData> AllMapLayers;
+
+    // ── World Sites (lairs, ruins, towers, mana-node guards) ─────────────────
+    UPROPERTY() TArray<FCoMSite> AllSites;
+
+    // ── Forged Magical Items + per-hero equipment (registry on UCoMItemSubsystem) ─
+    UPROPERTY() TArray<FCoMItemInstance> AllItems;
 
     // ── Cities ───────────────────────────────────────────────────────────────
     UPROPERTY() TArray<FCoMCityData> AllCities;
@@ -246,7 +253,7 @@ public:
 
     // ── Constants ────────────────────────────────────────────────────────────
 
-    static constexpr int32 CURRENT_SAVE_VERSION = 1;
+    static constexpr int32 CURRENT_SAVE_VERSION = 2;
     static constexpr int32 MAX_AUTOSAVE_SLOTS = 3;
 
 private:
@@ -255,6 +262,8 @@ private:
     void CollectHeader(FCoMSaveData& OutData);
     void CollectWorldTime(FCoMSaveData& OutData);
     void CollectWorldMap(FCoMSaveData& OutData);
+    void CollectSites(FCoMSaveData& OutData);
+    void CollectItems(FCoMSaveData& OutData);
     void CollectCities(FCoMSaveData& OutData);
     void CollectUnits(FCoMSaveData& OutData);
     void CollectDiplomacy(FCoMSaveData& OutData);
@@ -272,6 +281,8 @@ private:
 
     void RestoreWorldTime(const FCoMSaveData& InData);
     void RestoreWorldMap(const FCoMSaveData& InData);
+    void RestoreSites(const FCoMSaveData& InData);
+    void RestoreItems(const FCoMSaveData& InData);
     void RestoreCities(const FCoMSaveData& InData);
     void RestoreUnits(const FCoMSaveData& InData);
     void RestoreDiplomacy(const FCoMSaveData& InData);

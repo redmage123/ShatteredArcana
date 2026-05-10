@@ -11,6 +11,8 @@
 #include "CoMCore/Diplomacy/CoMDiplomacySubsystem.h"
 #include "CoMCore/Magic/CoMMagicSubsystem.h"
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
+#include "CoMCore/Items/CoMItemSubsystem.h"
+#include "CoMCore/Units/CoMHeroSubsystem.h"
 #include "Difficulty/CoMAIDifficultyModifier.h"
 #include "Engine/GameInstance.h"
 #include "Subsystems/GameInstanceSubsystem.h"
@@ -58,6 +60,16 @@ void UCoMAITacticalExecutor::ExecuteTurn(int32 WizardId, const FCoMAIStrategy& S
 	ManageDiplomacy(WizardId, Strategy);
 	ManageResearch(WizardId, Strategy);
 	ManageMagic(WizardId, Strategy);
+	ConsiderItemForging(WizardId, Strategy);
+
+	// Spirit-meld any unguarded mana node we already control a tile on.
+	if (UGameInstance* GI = ResolveGameInstance())
+	{
+		TryMeldOwnedNodes(WizardId,
+			GI->GetSubsystem<UCoMUnitSubsystem>(),
+			GI->GetSubsystem<UCoMWorldMapSubsystem>(),
+			GI->GetSubsystem<UCoMMagicSubsystem>());
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -255,6 +267,24 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 						UnitSub->MoveArmy(Army->ArmyGroupID, AtkTarget);
 						UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d army %d attacking toward (%d,%d)"),
 						       WizardId, Army->ArmyGroupID, AtkTarget.X, AtkTarget.Y);
+						continue;
+					}
+				}
+			}
+
+			// --- Site / mana-node hunt: nearest uncleared site or guarded node ---
+			// Always considered before exploration; gives idle armies real targets.
+			if (MapSub)
+			{
+				const FIntPoint SiteTarget = FindSiteOrNodeTarget(Army, MapSub);
+				if (SiteTarget.X >= 0)
+				{
+					const int32 DistToSite = WrappedDistance(Army->Position, SiteTarget);
+					if (DistToSite > 0)
+					{
+						UnitSub->MoveArmy(Army->ArmyGroupID, SiteTarget);
+						UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d army %d hunting site/node at (%d,%d)"),
+						       WizardId, Army->ArmyGroupID, SiteTarget.X, SiteTarget.Y);
 						continue;
 					}
 				}
@@ -792,4 +822,166 @@ int32 UCoMAITacticalExecutor::WrappedDistance(FIntPoint A, FIntPoint B)
 	}
 	const int32 DY = FMath::Abs(A.Y - B.Y);
 	return DX + DY;
+}
+
+// ---------------------------------------------------------------------------
+// Site / mana-node targeting
+// ---------------------------------------------------------------------------
+
+FIntPoint UCoMAITacticalExecutor::FindSiteOrNodeTarget(
+	const FCoMArmyGroup* Army, UCoMWorldMapSubsystem* MapSub) const
+{
+	if (!Army || !MapSub) return FIntPoint(-1, -1);
+
+	FIntPoint Best(-1, -1);
+	int32 BestDist = MAX_ACTION_RANGE + 1;
+
+	// Uncleared sites on this plane.
+	for (const FCoMSite& Site : MapSub->GetSitesOnPlane(Army->Plane))
+	{
+		if (Site.bCleared) continue;
+		if (Site.Layer != Army->Layer) continue;
+
+		const int32 D = WrappedDistance(Army->Position, Site.Position);
+		if (D < BestDist)
+		{
+			BestDist = D;
+			Best = Site.Position;
+		}
+	}
+
+	// Guarded mana nodes on this plane (no per-plane registry; sweep tiles).
+	// The full sweep is 16k tiles and would be wasteful per army; instead we
+	// rely on the existing site list because guarded nodes register no FCoMSite.
+	// We do a coarse sweep limited to the search radius for cheap results.
+	const int32 R = MAX_ACTION_RANGE;
+	for (int32 DY = -R; DY <= R; ++DY)
+	{
+		for (int32 DX = -R; DX <= R; ++DX)
+		{
+			if (FMath::Abs(DX) + FMath::Abs(DY) > R) continue;
+			const int32 X = Army->Position.X + DX;
+			const int32 Y = Army->Position.Y + DY;
+			if (Y < 0 || Y >= CoM::MAP_HEIGHT) continue;
+
+			const FCoMTileData* Tile = MapSub->GetTile(Army->Plane, Army->Layer, X, Y);
+			if (!Tile || !Tile->bHasManaNode) continue;
+			if (Tile->NodeOwnerWizardIndex >= 0) continue; // Already claimed by someone.
+
+			const FIntPoint Pos(((X % CoM::MAP_WIDTH) + CoM::MAP_WIDTH) % CoM::MAP_WIDTH, Y);
+			const int32 D = WrappedDistance(Army->Position, Pos);
+			if (D < BestDist)
+			{
+				BestDist = D;
+				Best = Pos;
+			}
+		}
+	}
+
+	return Best;
+}
+
+void UCoMAITacticalExecutor::TryMeldOwnedNodes(int32 WizardId,
+	UCoMUnitSubsystem* UnitSub, UCoMWorldMapSubsystem* MapSub, UCoMMagicSubsystem* MagicSub)
+{
+	if (!UnitSub || !MapSub || !MagicSub) return;
+
+	const FCoMWizardMagicState& State = MagicSub->GetWizardMagic(WizardId);
+	const ECoMSpellRealm Primary = State.PrimaryRealm;
+
+	const TArray<const FCoMArmyGroup*> Armies = UnitSub->GetArmiesForWizard(WizardId);
+	for (const FCoMArmyGroup* Army : Armies)
+	{
+		if (!Army || Army->UnitIDs.Num() == 0) continue;
+
+		const FCoMTileData* Tile = MapSub->GetTile(Army->Plane, Army->Layer,
+			Army->Position.X, Army->Position.Y);
+		if (!Tile || !Tile->bHasManaNode) continue;
+		if (Tile->bNodeGuarded) continue;
+		if (Tile->NodeOwnerWizardIndex >= 0) continue;
+
+		// Prefer matching realm; fall back to Arcane (always permitted).
+		const ECoMSpellRealm SpiritRealm =
+			(Tile->NodeRealm == Primary) ? Primary : ECoMSpellRealm::Arcane;
+
+		if (MagicSub->MeldSpiritWithNode(WizardId, Army->Position, SpiritRealm))
+		{
+			UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d melded %s spirit at (%d,%d)"),
+				WizardId,
+				*StaticEnum<ECoMSpellRealm>()->GetDisplayNameTextByValue((int64)SpiritRealm).ToString(),
+				Army->Position.X, Army->Position.Y);
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Item forging
+// ---------------------------------------------------------------------------
+
+void UCoMAITacticalExecutor::ConsiderItemForging(int32 WizardId, const FCoMAIStrategy& Strategy)
+{
+	UGameInstance* GI = ResolveGameInstance();
+	if (!GI) return;
+
+	UCoMItemSubsystem*  Items = GI->GetSubsystem<UCoMItemSubsystem>();
+	UCoMMagicSubsystem* Magic = GI->GetSubsystem<UCoMMagicSubsystem>();
+	UCoMHeroSubsystem*  Heroes= GI->GetSubsystem<UCoMHeroSubsystem>();
+	UCoMUnitSubsystem*  Units = GI->GetSubsystem<UCoMUnitSubsystem>();
+	if (!Items || !Magic || !Heroes || !Units) return;
+
+	const FCoMWizardMagicState& State = Magic->GetWizardMagic(WizardId);
+	// Only forge when comfortably above maintenance and with at least 200 mana on hand.
+	if (State.CurrentMana < 200) return;
+
+	// Find this wizard's strongest hero unit.
+	int32 BestHeroID = -1;
+	int32 BestHeroLevel = 0;
+	{
+		// Iterate every army; pick the highest-level hero we own.
+		const TArray<const FCoMArmyGroup*> Armies = Units->GetArmiesForWizard(WizardId);
+		for (const FCoMArmyGroup* Army : Armies)
+		{
+			if (!Army) continue;
+			for (int32 UID : Army->UnitIDs)
+			{
+				const FCoMUnitInstance* U = Units->GetUnit(UID);
+				if (!U || !U->bIsHero) continue;
+				if (U->Level > BestHeroLevel)
+				{
+					BestHeroLevel = U->Level;
+					BestHeroID = UID;
+				}
+			}
+		}
+	}
+	if (BestHeroID < 0) return; // No hero to equip — don't waste mana.
+
+	// Already has a forged weapon? Then don't re-forge each turn.
+	FCoMItemInstance Existing;
+	if (Items->GetHeroEquippedAt(BestHeroID, ECoMItemSlot::Weapon, Existing)) return;
+
+	// Pick a small, safe power set: +2 Attack + (one blade skill from the catalog).
+	TArray<FCoMItemPower> Picked;
+	for (const FCoMItemPower& P : Items->GetPowerCatalog())
+	{
+		if (P.PowerID == FName(TEXT("attack_plus_2"))) { Picked.Add(P); break; }
+	}
+	for (const FCoMItemPower& P : Items->GetPowerCatalog())
+	{
+		if (P.PowerID == FName(TEXT("flame_blade"))) { Picked.Add(P); break; }
+	}
+	if (Picked.Num() < 2) return; // Catalog missing — bail rather than forging garbage.
+
+	const int32 Cost = Items->ComputeForgeCost(Picked, /*bArtifact*/ false);
+	if (State.CurrentMana < Cost + 50) return; // Keep a 50-mana buffer.
+
+	const int32 NewID = Items->ForgeItem(WizardId, ECoMItemSlot::Weapon, NAME_None,
+		FText::FromString(TEXT("AI Forged Blade")), Picked, false);
+	if (NewID == 0) return;
+
+	Magic->SpendManaForSpell(WizardId, ECoMSpellRealm::Arcane, Cost);
+	Items->EquipItem(BestHeroID, NewID);
+
+	UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d forged item %d for hero %d (cost %d mana)"),
+		WizardId, NewID, BestHeroID, Cost);
 }

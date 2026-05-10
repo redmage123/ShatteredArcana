@@ -14,6 +14,7 @@
 #include "Units/CoMDragonSubsystem.h"
 #include "Diplomacy/CoMDiplomacySubsystem.h"
 #include "Magic/CoMMagicSubsystem.h"
+#include "Items/CoMItemSubsystem.h"
 #include "Espionage/CoMEspionageSubsystem.h"
 #include "Combat/CoMNavalSubsystem.h"
 #include "Quests/CoMQuestSubsystem.h"
@@ -67,6 +68,8 @@ bool UCoMSaveSubsystem::SaveGame(const FString& SlotName)
     Data.SaveName = SlotName;
     CollectWorldTime(Data);
     CollectWorldMap(Data);
+    CollectSites(Data);
+    CollectItems(Data);
     CollectCities(Data);
     CollectUnits(Data);
     CollectDiplomacy(Data);
@@ -145,6 +148,8 @@ bool UCoMSaveSubsystem::LoadGame(const FString& SlotName)
     // Restore all subsystem state
     RestoreWorldTime(Data);
     RestoreWorldMap(Data);
+    RestoreSites(Data);
+    RestoreItems(Data);
     RestoreCities(Data);
     RestoreUnits(Data);
     RestoreDiplomacy(Data);
@@ -319,6 +324,24 @@ void UCoMSaveSubsystem::CollectWorldMap(FCoMSaveData& OutData)
     OutData.AllMapLayers = WorldMap->ExportAllLayers();
 }
 
+void UCoMSaveSubsystem::CollectSites(FCoMSaveData& OutData)
+{
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) { return; }
+    UCoMWorldMapSubsystem* WorldMap = GI->GetSubsystem<UCoMWorldMapSubsystem>();
+    if (!WorldMap) { return; }
+    WorldMap->ExportAllSites(OutData.AllSites);
+}
+
+void UCoMSaveSubsystem::CollectItems(FCoMSaveData& OutData)
+{
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) { return; }
+    UCoMItemSubsystem* Items = GI->GetSubsystem<UCoMItemSubsystem>();
+    if (!Items) { return; }
+    Items->ExportAll(OutData.AllItems);
+}
+
 void UCoMSaveSubsystem::CollectCities(FCoMSaveData& OutData)
 {
     UGameInstance* GI = GetGameInstance();
@@ -485,6 +508,24 @@ void UCoMSaveSubsystem::RestoreWorldMap(const FCoMSaveData& InData)
     if (!WorldMap) { return; }
 
     WorldMap->ImportAllLayers(InData.AllMapLayers);
+}
+
+void UCoMSaveSubsystem::RestoreSites(const FCoMSaveData& InData)
+{
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) { return; }
+    UCoMWorldMapSubsystem* WorldMap = GI->GetSubsystem<UCoMWorldMapSubsystem>();
+    if (!WorldMap) { return; }
+    WorldMap->ImportAllSites(InData.AllSites);
+}
+
+void UCoMSaveSubsystem::RestoreItems(const FCoMSaveData& InData)
+{
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) { return; }
+    UCoMItemSubsystem* Items = GI->GetSubsystem<UCoMItemSubsystem>();
+    if (!Items) { return; }
+    Items->ImportAll(InData.AllItems);
 }
 
 void UCoMSaveSubsystem::RestoreCities(const FCoMSaveData& InData)
