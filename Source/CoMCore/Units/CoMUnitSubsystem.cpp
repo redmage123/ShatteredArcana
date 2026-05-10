@@ -3,6 +3,7 @@
 #include "CoMUnitSubsystem.h"
 #include "CoMCore/World/CoMPathfinder.h"
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
+#include "CoMCore/World/CoMSiteEncounterSubsystem.h"
 #include "CoMCore/World/CoMWeatherSubsystem.h"
 #include "CoMCore/Data/CoMUnitSpecDataAsset.h"
 #include "CoMCore/Data/CoMUnitDatabase.h"
@@ -515,6 +516,16 @@ void UCoMUnitSubsystem::ProcessMovementTurn()
 			// TODO: trigger combat encounter via combat subsystem.
 			UE_LOG(LogTemp, Log, TEXT("ProcessMovementTurn - encounter detected, %d armies from %d wizards"),
 				ArmyIDs.Num(), Wizards.Num());
+		}
+	}
+
+	// Site / guarded-mana-node encounters: any army standing on a site or
+	// guarded node fights its guards and (on win) loots / unlocks.
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMSiteEncounterSubsystem* Sites = GI->GetSubsystem<UCoMSiteEncounterSubsystem>())
+		{
+			Sites->ProcessArmyArrivals();
 		}
 	}
 }
