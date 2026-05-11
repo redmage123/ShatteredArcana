@@ -843,6 +843,26 @@ void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
                 Audio->PlaySpellSFX(Info.Realm, /*bImpact*/ true, World);
             }
         }
+
+        // Cinematic cast overlay for "big" spells: summons, global
+        // enchantments, item creation. UI subscribes via the delegate.
+        const bool bIsItemCreation =
+            Cast.SpellId == FName(TEXT("enchant_item")) ||
+            Cast.SpellId == FName(TEXT("create_artifact"));
+        const bool bIsCinematic =
+            Info.bSummon ||
+            Info.EffectType == ECoMSpellEffect::Summon ||
+            Info.EffectType == ECoMSpellEffect::GlobalEnchantment ||
+            bIsItemCreation;
+        if (bIsCinematic)
+        {
+            const FString DisplayName = Info.DisplayName.IsEmpty()
+                ? Cast.SpellId.ToString()
+                : Info.DisplayName.ToString();
+            OnSpellCastCinematicRequested.Broadcast(Cast.CasterWizardId,
+                Info.Realm, DisplayName,
+                Cast.SpellId == FName(TEXT("create_artifact")));
+        }
     }
 
     switch (Info.EffectType)

@@ -28,9 +28,11 @@
 #include "Panels/CoMItemVaultWidget.h"
 #include "Panels/CoMTutorialWidget.h"
 #include "HUD/CoMSpellVFXWidget.h"
+#include "HUD/CoMSpellCastCinematicWidget.h"
 #include "Framework/CoMGameInstance.h"
 #include "CoMCore/Combat/CoMCombatSubsystem.h"
 #include "CoMCore/Magic/CoMSpellVFXSubsystem.h"
+#include "CoMCore/Magic/CoMMagicSubsystem.h"
 #include "CoMCore/Turn/CoMTurnSubsystem.h"
 #include "Engine/Texture2D.h"
 
@@ -62,6 +64,7 @@ void UCoMUISubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	if (!ItemForgeWidgetClass)     { ItemForgeWidgetClass     = UCoMItemForgeWidget::StaticClass(); }
 	if (!ItemVaultWidgetClass)     { ItemVaultWidgetClass     = UCoMItemVaultWidget::StaticClass(); }
 	if (!TutorialWidgetClass)      { TutorialWidgetClass      = UCoMTutorialWidget::StaticClass(); }
+	if (!SpellCastCinematicWidgetClass) { SpellCastCinematicWidgetClass = UCoMSpellCastCinematicWidget::StaticClass(); }
 
 	// Bind to GameInstance delegates so game modes can trigger UI
 	// without a compile-time dependency on CoMUI.
@@ -217,6 +220,13 @@ void UCoMUISubsystem::ShowHUD()
 		if (UCoMSpellVFXSubsystem* VFXSub = VFXGI->GetSubsystem<UCoMSpellVFXSubsystem>())
 		{
 			VFXSub->OnEffectRequested.AddDynamic(this, &UCoMUISubsystem::OnSpellVFXRequested);
+		}
+
+		// Magic: cinematic-cast overlay for summons, globals, artifact creation.
+		if (UCoMMagicSubsystem* MagicSub = VFXGI->GetSubsystem<UCoMMagicSubsystem>())
+		{
+			MagicSub->OnSpellCastCinematicRequested.AddDynamic(
+				this, &UCoMUISubsystem::OnSpellCastCinematicRequested);
 		}
 	}
 
@@ -725,6 +735,18 @@ void UCoMUISubsystem::OnSpellVFXRequested(int32 PlaybackID, FName EffectID,
 	                                ScreenPos, Def.Scale);
 }
 
+void UCoMUISubsystem::OnSpellCastCinematicRequested(int32 CasterWizardIndex,
+                                                      ECoMSpellRealm Realm,
+                                                      FString SpellDisplayName,
+                                                      bool bIsArtifact)
+{
+	// Map caster wizard index to a portrait index. For now this is identity
+	// (wizard 0 = portrait 0). When per-wizard portrait selection is in
+	// FCoMNewGameSettings, look it up here.
+	const int32 PortraitIdx = FMath::Clamp(CasterWizardIndex, 0, 13);
+	ShowSpellCastCinematic(PortraitIdx, Realm, SpellDisplayName, bIsArtifact);
+}
+
 // =============================================================================
 // Bulk operations
 // =============================================================================
@@ -772,6 +794,17 @@ void UCoMUISubsystem::ShowTutorialIfNeeded()
 void UCoMUISubsystem::HideTutorial()
 {
 	RemoveWidget(TutorialInstance);
+}
+
+void UCoMUISubsystem::ShowSpellCastCinematic(int32 WizardPortraitIndex, ECoMSpellRealm Realm,
+                                              const FString& SpellDisplayName, bool bIsArtifact)
+{
+	UCoMSpellCastCinematicWidget* W = CreateAndShowWidget<UCoMSpellCastCinematicWidget>(
+		SpellCastCinematicWidgetClass, CastCinematicInstance, 250);
+	if (W)
+	{
+		W->Configure(WizardPortraitIndex, Realm, SpellDisplayName, bIsArtifact);
+	}
 }
 
 void UCoMUISubsystem::HideAllPanels()

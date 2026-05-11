@@ -279,6 +279,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HideTutorial();
 
+	/**
+	 * Show the cinematic cast overlay for a "big" spell (artifact creation,
+	 * summon, global enchantment, ritual). Auto-dismisses after 3 seconds.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowSpellCastCinematic(int32 WizardPortraitIndex, ECoMSpellRealm Realm,
+	                            const FString& SpellDisplayName, bool bIsArtifact);
+
 	// -- Spell VFX Overlay -----------------------------------------------------
 
 	/** Show the spell VFX overlay widget (auto-created on HUD show). */
@@ -395,6 +403,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<class UCoMTutorialWidget> TutorialWidgetClass;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<class UCoMSpellCastCinematicWidget> SpellCastCinematicWidgetClass;
+
 private:
 	/** Helper: create a widget of the given class and add it to the viewport. */
 	template<typename T>
@@ -479,7 +490,15 @@ private:
 	UPROPERTY()
 	bool bTutorialShown = false;
 
+	UPROPERTY()
+	class UCoMSpellCastCinematicWidget* CastCinematicInstance = nullptr;
+
 	/** Callback from VFX subsystem when a new effect is requested. */
 	UFUNCTION()
 	void OnSpellVFXRequested(int32 PlaybackID, FName EffectID, FVector WorldPosition, FVector TargetPosition);
+
+	/** Callback from MagicSubsystem when a "big" spell resolves. */
+	UFUNCTION()
+	void OnSpellCastCinematicRequested(int32 CasterWizardIndex, ECoMSpellRealm Realm,
+	                                    FString SpellDisplayName, bool bIsArtifact);
 };

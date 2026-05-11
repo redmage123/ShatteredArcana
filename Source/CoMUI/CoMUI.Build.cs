@@ -22,6 +22,7 @@ public class CoMUI : ModuleRules
 			"GameplayTags",
 			"RenderCore",   // Minimap texture BulkData lock/unlock
 			"RHI",          // PF_B8G8R8A8 pixel format, FTexture2DMipMap
+			"MediaAssets",  // UMediaPlayer / UMediaTexture for cinematic cast clips
 		});
 	}
 }

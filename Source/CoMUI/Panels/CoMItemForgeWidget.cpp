@@ -264,6 +264,11 @@ void UCoMItemForgeWidget::OnForgeClicked()
 	if (UCoMUISubsystem* UI = GI->GetSubsystem<UCoMUISubsystem>())
 	{
 		UI->HideAllPanels();
+		// Cinematic cast for forge actions: artifact tier gets the artifact
+		// banner, normal forging gets a generic enchant cinematic.
+		UI->ShowSpellCastCinematic(OwnerWizardIndex, ECoMSpellRealm::Arcane,
+			bArtifactMode ? TEXT("Create Artifact") : TEXT("Enchant Item"),
+			bArtifactMode);
 	}
 }
 

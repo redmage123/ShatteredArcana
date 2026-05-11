@@ -37,6 +37,8 @@ exports/
 # Generated source PNGs — uassets are the canonical form
 Content/Textures/Wizards/Backgrounds/raw/
 
+# SVD-generated cast clips: keep the mp4s only (no source PNGs needed)
+
 # Mixamo extraction intermediates
 Art/DenizenAnimations/MixamoAnims/*.fbm/
 

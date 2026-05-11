@@ -197,6 +197,12 @@ struct FCoMActiveRune
 // MAGIC SUBSYSTEM
 // ─────────────────────────────────────────────────────────────────────────────
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnSpellCastCinematicRequested,
+    int32, CasterWizardIndex,
+    ECoMSpellRealm, Realm,
+    FString, SpellDisplayName,
+    bool, bIsArtifact);
+
 UCLASS()
 class COMCORE_API UCoMMagicSubsystem : public UGameInstanceSubsystem
 {
@@ -205,6 +211,10 @@ class COMCORE_API UCoMMagicSubsystem : public UGameInstanceSubsystem
 public:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
     virtual void Deinitialize() override;
+
+    /** Fired when a "big" spell resolves (summon / global enchant / artifact). UI binds. */
+    UPROPERTY(BlueprintAssignable, Category = "Magic")
+    FOnSpellCastCinematicRequested OnSpellCastCinematicRequested;
 
     // ── Wizard Magic State ───────────────────────────────────────────────────
 
