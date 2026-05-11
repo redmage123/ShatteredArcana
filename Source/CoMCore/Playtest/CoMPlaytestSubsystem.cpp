@@ -1,0 +1,488 @@
+// Copyright Mythforge Studios. All Rights Reserved.
+
+#include "CoMPlaytestSubsystem.h"
+
+#include "CoMCore/Economy/CoMCitySubsystem.h"
+#include "CoMCore/Framework/CoMGameState.h"
+#include "CoMCore/Framework/CoMGameInstance.h"
+#include "CoMCore/Items/CoMItemSubsystem.h"
+#include "CoMCore/Magic/CoMMagicSubsystem.h"
+#include "CoMCore/Turn/CoMTurnSubsystem.h"
+#include "CoMCore/Units/CoMUnitSubsystem.h"
+#include "CoMCore/Units/CoMHeroSubsystem.h"
+#include "CoMCore/Victory/CoMVictorySubsystem.h"
+#include "CoMCore/Wizards/CoMPlayerState.h"
+#include "CoMCore/World/CoMWorldMapSubsystem.h"
+#include "CoMCore/World/CoMSiteEncounterSubsystem.h"
+#include "CoMCore/World/CoMWorldGenerator.h"
+#include "CoMCore/CoreTypes/CoMGameplayTags.h"
+
+#include "Engine/World.h"
+#include "HAL/FileManager.h"
+#include "HAL/PlatformTime.h"
+#include "Misc/DateTime.h"
+#include "Misc/FileHelper.h"
+#include "Misc/OutputDeviceRedirector.h"
+#include "Misc/Paths.h"
+#include "Serialization/JsonSerializer.h"
+#include "Serialization/JsonWriter.h"
+
+// =============================================================================
+// Error / warning capture
+// =============================================================================
+
+namespace
+{
+	class FPlaytestOutputDevice : public FOutputDevice
+	{
+	public:
+		int32 ErrorCount = 0;
+		int32 WarningCount = 0;
+		TArray<FString> Captured;
+		static constexpr int32 MaxCapturedErrors = 20;
+
+		virtual void Serialize(const TCHAR* V, ELogVerbosity::Type Verbosity, const FName& Category) override
+		{
+			if (Verbosity == ELogVerbosity::Error || Verbosity == ELogVerbosity::Fatal)
+			{
+				++ErrorCount;
+				if (Captured.Num() < MaxCapturedErrors)
+				{
+					Captured.Add(FString::Printf(TEXT("[%s] %s"), *Category.ToString(), V));
+				}
+			}
+			else if (Verbosity == ELogVerbosity::Warning)
+			{
+				++WarningCount;
+			}
+		}
+	};
+}
+
+// =============================================================================
+// Lifecycle
+// =============================================================================
+
+void UCoMPlaytestSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+}
+
+void UCoMPlaytestSubsystem::Deinitialize()
+{
+	LastResults.Empty();
+	Super::Deinitialize();
+}
+
+// =============================================================================
+// Public API
+// =============================================================================
+
+void UCoMPlaytestSubsystem::RunPlaytest(int32 NumGames, int32 MaxTurnsPerGame,
+                                          int32 BaseSeed, const FString& OutFilePath)
+{
+	NumGames        = FMath::Clamp(NumGames, 1, 1000);
+	MaxTurnsPerGame = FMath::Clamp(MaxTurnsPerGame, 1, 5000);
+
+	UE_LOG(LogTemp, Display, TEXT("[Playtest] === Beginning batch: %d games x %d turns, base seed %d ==="),
+		NumGames, MaxTurnsPerGame, BaseSeed);
+	const double StartAll = FPlatformTime::Seconds();
+
+	LastResults.Reset();
+	for (int32 G = 0; G < NumGames; ++G)
+	{
+		FCoMPlaytestGameResult Result;
+		const int32 Seed = BaseSeed + G;
+
+		FPlaytestOutputDevice CaptureDev;
+		GLog->AddOutputDevice(&CaptureDev);
+
+		const double StartGame = FPlatformTime::Seconds();
+		RunOneGame(G, Seed, MaxTurnsPerGame, Result);
+		Result.WallClockSeconds = (float)(FPlatformTime::Seconds() - StartGame);
+		Result.ErrorCount   = CaptureDev.ErrorCount;
+		Result.WarningCount = CaptureDev.WarningCount;
+		Result.CapturedErrors = CaptureDev.Captured;
+
+		GLog->RemoveOutputDevice(&CaptureDev);
+
+		LastResults.Add(Result);
+		UE_LOG(LogTemp, Display,
+			TEXT("[Playtest] Game %d/%d: %d turns, winner=%d, errors=%d, %.2fs"),
+			G + 1, NumGames, Result.TurnsPlayed, Result.WinnerWizardId,
+			Result.ErrorCount, Result.WallClockSeconds);
+	}
+
+	const double Elapsed = FPlatformTime::Seconds() - StartAll;
+	UE_LOG(LogTemp, Display, TEXT("[Playtest] === Done in %.2fs ==="), Elapsed);
+
+	FString FinalPath = OutFilePath;
+	if (FinalPath.IsEmpty())
+	{
+		const FString Stamp = FDateTime::Now().ToString(TEXT("%Y%m%d_%H%M%S"));
+		FinalPath = FPaths::ProjectSavedDir() / TEXT("Playtest") /
+			FString::Printf(TEXT("playtest_%s.json"), *Stamp);
+	}
+	WriteJsonReport(LastResults, FinalPath);
+}
+
+// =============================================================================
+// Per-game flow
+// =============================================================================
+
+void UCoMPlaytestSubsystem::RunOneGame(int32 GameIndex, int32 Seed, int32 MaxTurns, FCoMPlaytestGameResult& OutResult)
+{
+	OutResult.GameIndex = GameIndex;
+	OutResult.Seed      = Seed;
+
+	BootstrapGame(Seed);
+
+	UGameInstance* GI = GetGameInstance();
+	UCoMTurnSubsystem*    Turn    = GI ? GI->GetSubsystem<UCoMTurnSubsystem>()    : nullptr;
+	UCoMVictorySubsystem* Victory = GI ? GI->GetSubsystem<UCoMVictorySubsystem>() : nullptr;
+	if (!Turn) { return; }
+
+	int32 TurnsPlayed = 0;
+	for (; TurnsPlayed < MaxTurns; ++TurnsPlayed)
+	{
+		Turn->ProcessFullTurn();
+
+		if (Victory && Victory->IsGameOver())
+		{
+			OutResult.bReachedVictory   = true;
+			OutResult.WinnerWizardId    = Victory->GetWinningWizard();
+			OutResult.WinningCondition  = static_cast<uint8>(Victory->GetWinningCondition());
+			break;
+		}
+	}
+	OutResult.TurnsPlayed = TurnsPlayed;
+
+	CaptureGameResult(OutResult, TurnsPlayed);
+	TeardownGame();
+}
+
+void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
+{
+	UGameInstance* GI = GetGameInstance();
+	if (!GI) return;
+
+	UCoMWorldMapSubsystem* Map = GI->GetSubsystem<UCoMWorldMapSubsystem>();
+	if (!Map) return;
+	Map->InitializeLayers();
+
+	// Full world gen — placeholder uses simple deterministic terrain across
+	// Aurelith surface; per-plane gen lives on UCoMWorldGenerator which the
+	// commandlet path can invoke for fuller coverage.
+	{
+		UCoMWorldGenerator* Gen = NewObject<UCoMWorldGenerator>(this);
+		Gen->GenerateWorld(Map, Seed);
+	}
+
+	// Spawn 14 AI wizards: capitals + a starting army with settler + swordsman.
+	// Capital placement is a simple stride across the map; we accept overlaps
+	// with terrain since the goal is the AI loop / economy / combat ticks.
+	UCoMCitySubsystem* Cities = GI->GetSubsystem<UCoMCitySubsystem>();
+	UCoMUnitSubsystem* Units  = GI->GetSubsystem<UCoMUnitSubsystem>();
+	const TArray<FGameplayTag> Races = {
+		CoMTags::Race::HighMen,    CoMTags::Race::DarkElves,
+		CoMTags::Race::HighElves,  CoMTags::Race::Dwarves,
+		CoMTags::Race::Orcs,       CoMTags::Race::Trolls,
+		CoMTags::Race::Halflings,  CoMTags::Race::Gnolls,
+		CoMTags::Race::Lizardmen,  CoMTags::Race::Beastmen,
+		CoMTags::Race::Chithari,   CoMTags::Race::Draconians,
+		CoMTags::Race::Nomads,     CoMTags::Race::Barbarians
+	};
+	for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+	{
+		const FIntPoint Pos(20 + (W * 11) % 120, 15 + (W * 7) % 70);
+		if (Cities)
+		{
+			Cities->FoundCity(W, ECoMPlane::Aurelith, ECoMMapLayer::Surface, Pos,
+				Races[W % Races.Num()],
+				FText::FromString(FString::Printf(TEXT("Capital %d"), W)));
+		}
+		if (Units)
+		{
+			const FIntPoint ArmyPos(Pos.X + 1, Pos.Y);
+			const int32 ArmyID = Units->CreateArmy(W, ECoMPlane::Aurelith, ECoMMapLayer::Surface, ArmyPos);
+			const int32 SwordID = Units->SpawnUnit(1, ECoMPlane::Aurelith, ECoMMapLayer::Surface, ArmyPos, W);
+			Units->AddUnitToArmy(SwordID, ArmyID);
+			const int32 SettlerID = Units->SpawnUnit(2, ECoMPlane::Aurelith, ECoMMapLayer::Surface, ArmyPos, W);
+			Units->AddUnitToArmy(SettlerID, ArmyID);
+		}
+	}
+
+	// Bootstrap turn cycle to turn 1.
+	if (UCoMTurnSubsystem* Turn = GI->GetSubsystem<UCoMTurnSubsystem>())
+	{
+		if (!Turn->HasGameStarted())
+		{
+			Turn->StartGame();
+		}
+	}
+}
+
+void UCoMPlaytestSubsystem::TeardownGame()
+{
+	UGameInstance* GI = GetGameInstance();
+	if (!GI) return;
+
+	// Best-effort reset of mutable per-game state. Subsystem Deinit/Init is
+	// not callable mid-session; we wipe the bits that matter to the next run.
+	if (UCoMUnitSubsystem* Units = GI->GetSubsystem<UCoMUnitSubsystem>())
+	{
+		Units->ImportAll({}, {}, 1, 1);
+	}
+	if (UCoMItemSubsystem* Items = GI->GetSubsystem<UCoMItemSubsystem>())
+	{
+		Items->ImportAll({});
+	}
+	if (UCoMWorldMapSubsystem* Map = GI->GetSubsystem<UCoMWorldMapSubsystem>())
+	{
+		Map->ImportAllSites({});
+	}
+}
+
+// =============================================================================
+// Capture
+// =============================================================================
+
+void UCoMPlaytestSubsystem::CaptureGameResult(FCoMPlaytestGameResult& OutResult, int32 TurnsPlayed)
+{
+	UGameInstance* GI = GetGameInstance();
+	if (!GI) return;
+
+	UCoMCitySubsystem*  Cities = GI->GetSubsystem<UCoMCitySubsystem>();
+	UCoMUnitSubsystem*  Units  = GI->GetSubsystem<UCoMUnitSubsystem>();
+	UCoMMagicSubsystem* Magic  = GI->GetSubsystem<UCoMMagicSubsystem>();
+	UCoMItemSubsystem*  Items  = GI->GetSubsystem<UCoMItemSubsystem>();
+	UCoMWorldMapSubsystem* Map = GI->GetSubsystem<UCoMWorldMapSubsystem>();
+
+	// Per-wizard rollup.
+	for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+	{
+		FCoMPlaytestWizardResult WR;
+		WR.WizardIndex = W;
+
+		if (Cities)
+		{
+			const TArray<const FCoMCityData*> Owned = Cities->GetCitiesForWizard(W);
+			WR.Cities = Owned.Num();
+		}
+		if (Units)
+		{
+			const TArray<const FCoMArmyGroup*> Armies = Units->GetArmiesForWizard(W);
+			WR.Armies = Armies.Num();
+			for (const FCoMArmyGroup* A : Armies)
+			{
+				if (!A) continue;
+				WR.Units  += A->UnitIDs.Num();
+				for (int32 UID : A->UnitIDs)
+				{
+					const FCoMUnitInstance* U = Units->GetUnit(UID);
+					if (U && U->bIsHero) { ++WR.Heroes; }
+				}
+			}
+		}
+		if (Magic)
+		{
+			const FCoMWizardMagicState& State = Magic->GetWizardMagic(W);
+			WR.Mana        = State.CurrentMana;
+			WR.SpellsKnown = State.KnownSpells.Num();
+		}
+		if (Items)
+		{
+			const TArray<FCoMItemInstance> Owned = Items->GetItemsForWizard(W);
+			WR.ItemsForged = Owned.Num();
+		}
+		if (Map)
+		{
+			const TArray<FCoMSite> All = Map->GetAllSites();
+			for (const FCoMSite& S : All)
+			{
+				if (S.bCleared && S.ClearedByWizard == W) { ++WR.SitesCleared; }
+			}
+		}
+
+		// Gold via player state, if present.
+		if (UWorld* World = GI->GetWorld())
+		{
+			if (ACoMGameState* GS = Cast<ACoMGameState>(World->GetGameState()))
+			{
+				if (ACoMPlayerState* PS = GS->GetWizardByIndex(W))
+				{
+					WR.Gold   = PS->Gold;
+					WR.bAlive = true;
+				}
+			}
+		}
+
+		OutResult.Wizards.Add(WR);
+
+		OutResult.TotalCities       += WR.Cities;
+		OutResult.TotalUnits        += WR.Units;
+		OutResult.TotalSitesCleared += WR.SitesCleared;
+		OutResult.TotalItemsForged  += WR.ItemsForged;
+		// HeroesHired = heroes alive; approximation.
+		OutResult.TotalHeroesHired  += WR.Heroes;
+	}
+}
+
+// =============================================================================
+// JSON dump
+// =============================================================================
+
+void UCoMPlaytestSubsystem::WriteJsonReport(const TArray<FCoMPlaytestGameResult>& Results, const FString& OutFilePath) const
+{
+	FString OutString;
+	auto W = TJsonWriterFactory<>::Create(&OutString);
+	W->WriteObjectStart();
+	W->WriteValue(TEXT("generated_at"), FDateTime::Now().ToString());
+	W->WriteValue(TEXT("game_count"), Results.Num());
+
+	// Aggregate top-line numbers.
+	int32 TotalErrors = 0;
+	int32 TotalTurns  = 0;
+	int32 TotalVictories = 0;
+	TMap<int32, int32> WinsByWizard;
+	float TotalSeconds = 0.0f;
+	for (const FCoMPlaytestGameResult& R : Results)
+	{
+		TotalErrors  += R.ErrorCount;
+		TotalTurns   += R.TurnsPlayed;
+		TotalSeconds += R.WallClockSeconds;
+		if (R.bReachedVictory)
+		{
+			++TotalVictories;
+			int32& C = WinsByWizard.FindOrAdd(R.WinnerWizardId);
+			++C;
+		}
+	}
+	W->WriteValue(TEXT("total_turns"),    TotalTurns);
+	W->WriteValue(TEXT("total_errors"),   TotalErrors);
+	W->WriteValue(TEXT("total_victories"),TotalVictories);
+	W->WriteValue(TEXT("total_seconds"),  TotalSeconds);
+
+	W->WriteArrayStart(TEXT("wins_by_wizard"));
+	for (const auto& Pair : WinsByWizard)
+	{
+		W->WriteObjectStart();
+		W->WriteValue(TEXT("wizard"), Pair.Key);
+		W->WriteValue(TEXT("wins"),   Pair.Value);
+		W->WriteObjectEnd();
+	}
+	W->WriteArrayEnd();
+
+	W->WriteArrayStart(TEXT("games"));
+	for (const FCoMPlaytestGameResult& R : Results)
+	{
+		W->WriteObjectStart();
+		W->WriteValue(TEXT("game"),                R.GameIndex);
+		W->WriteValue(TEXT("seed"),                R.Seed);
+		W->WriteValue(TEXT("turns_played"),        R.TurnsPlayed);
+		W->WriteValue(TEXT("reached_victory"),     R.bReachedVictory);
+		W->WriteValue(TEXT("winner_wizard"),       R.WinnerWizardId);
+		W->WriteValue(TEXT("winning_condition"),   (int32)R.WinningCondition);
+		W->WriteValue(TEXT("total_cities"),        R.TotalCities);
+		W->WriteValue(TEXT("total_units"),         R.TotalUnits);
+		W->WriteValue(TEXT("total_sites_cleared"), R.TotalSitesCleared);
+		W->WriteValue(TEXT("total_items_forged"),  R.TotalItemsForged);
+		W->WriteValue(TEXT("total_heroes_hired"),  R.TotalHeroesHired);
+		W->WriteValue(TEXT("errors"),              R.ErrorCount);
+		W->WriteValue(TEXT("warnings"),            R.WarningCount);
+		W->WriteValue(TEXT("seconds"),             R.WallClockSeconds);
+
+		W->WriteArrayStart(TEXT("wizards"));
+		for (const FCoMPlaytestWizardResult& WR : R.Wizards)
+		{
+			W->WriteObjectStart();
+			W->WriteValue(TEXT("idx"),     WR.WizardIndex);
+			W->WriteValue(TEXT("alive"),   WR.bAlive);
+			W->WriteValue(TEXT("cities"),  WR.Cities);
+			W->WriteValue(TEXT("armies"),  WR.Armies);
+			W->WriteValue(TEXT("units"),   WR.Units);
+			W->WriteValue(TEXT("heroes"),  WR.Heroes);
+			W->WriteValue(TEXT("gold"),    WR.Gold);
+			W->WriteValue(TEXT("mana"),    WR.Mana);
+			W->WriteValue(TEXT("spells_known"),  WR.SpellsKnown);
+			W->WriteValue(TEXT("items_forged"),  WR.ItemsForged);
+			W->WriteValue(TEXT("sites_cleared"), WR.SitesCleared);
+			W->WriteObjectEnd();
+		}
+		W->WriteArrayEnd();
+
+		W->WriteArrayStart(TEXT("captured_errors"));
+		for (const FString& Err : R.CapturedErrors)
+		{
+			W->WriteValue(Err);
+		}
+		W->WriteArrayEnd();
+
+		W->WriteObjectEnd();
+	}
+	W->WriteArrayEnd();
+
+	W->WriteObjectEnd();
+	W->Close();
+
+	// Ensure dir exists, write file.
+	const FString Dir = FPaths::GetPath(OutFilePath);
+	IFileManager::Get().MakeDirectory(*Dir, /*Tree*/ true);
+	FFileHelper::SaveStringToFile(OutString, *OutFilePath);
+	UE_LOG(LogTemp, Display, TEXT("[Playtest] Report written to %s (%d games)"),
+		*OutFilePath, Results.Num());
+}
+
+// =============================================================================
+// Console command: com.playtest <games> <maxturns> <seed>
+// =============================================================================
+
+// World-bound variant — usable from the in-game tilde console.
+static FAutoConsoleCommandWithWorldAndArgs GPlaytestCmd(
+	TEXT("com.playtest"),
+	TEXT("Run AI-vs-AI playtest batch.  Args: <games> <maxturns> <seed>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda(
+		[](const TArray<FString>& Args, UWorld* World)
+		{
+			if (!World) return;
+			UGameInstance* GI = World->GetGameInstance();
+			if (!GI) return;
+			UCoMPlaytestSubsystem* Sub = GI->GetSubsystem<UCoMPlaytestSubsystem>();
+			if (!Sub) return;
+
+			const int32 Games    = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 5;
+			const int32 MaxTurns = (Args.Num() > 1) ? FCString::Atoi(*Args[1]) : 100;
+			const int32 Seed     = (Args.Num() > 2) ? FCString::Atoi(*Args[2]) : 42;
+			Sub->RunPlaytest(Games, MaxTurns, Seed, /*OutFilePath*/ TEXT(""));
+		}));
+
+// World-less variant — usable from `-ExecCmds` on a no-map commandlet.
+// Walks every loaded GameInstance to find the subsystem.
+static FAutoConsoleCommand GPlaytestCmdNoWorld(
+	TEXT("com.playtest_headless"),
+	TEXT("Headless variant of com.playtest. Args: <games> <maxturns> <seed>"),
+	FConsoleCommandWithArgsDelegate::CreateLambda(
+		[](const TArray<FString>& Args)
+		{
+			// Find a GameInstance via the engine.
+			UGameInstance* GI = nullptr;
+			if (GEngine)
+			{
+				for (const FWorldContext& Ctx : GEngine->GetWorldContexts())
+				{
+					if (Ctx.OwningGameInstance)
+					{
+						GI = Ctx.OwningGameInstance;
+						break;
+					}
+				}
+			}
+			if (!GI) return;
+			UCoMPlaytestSubsystem* Sub = GI->GetSubsystem<UCoMPlaytestSubsystem>();
+			if (!Sub) return;
+
+			const int32 Games    = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 5;
+			const int32 MaxTurns = (Args.Num() > 1) ? FCString::Atoi(*Args[1]) : 100;
+			const int32 Seed     = (Args.Num() > 2) ? FCString::Atoi(*Args[2]) : 42;
+			Sub->RunPlaytest(Games, MaxTurns, Seed, /*OutFilePath*/ TEXT(""));
+		}));

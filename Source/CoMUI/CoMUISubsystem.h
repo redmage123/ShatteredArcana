@@ -7,6 +7,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Blueprint/UserWidget.h"
 #include "CoMCore/CoreTypes/CoMEnums.h"
+#include "CoMCore/Units/CoMHeroSubsystem.h"
 #include "CoMUISubsystem.generated.h"
 
 class UCoMHUDWidget;
@@ -287,6 +288,13 @@ public:
 	void ShowSpellCastCinematic(int32 WizardPortraitIndex, ECoMSpellRealm Realm,
 	                            const FString& SpellDisplayName, bool bIsArtifact);
 
+	/** Show the tavern offer popup for the given wizard. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowHeroOffers(int32 WizardIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideHeroOffers();
+
 	// -- Spell VFX Overlay -----------------------------------------------------
 
 	/** Show the spell VFX overlay widget (auto-created on HUD show). */
@@ -406,6 +414,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<class UCoMSpellCastCinematicWidget> SpellCastCinematicWidgetClass;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<class UCoMHeroOfferWidget> HeroOfferWidgetClass;
+
 private:
 	/** Helper: create a widget of the given class and add it to the viewport. */
 	template<typename T>
@@ -493,6 +504,9 @@ private:
 	UPROPERTY()
 	class UCoMSpellCastCinematicWidget* CastCinematicInstance = nullptr;
 
+	UPROPERTY()
+	class UCoMHeroOfferWidget* HeroOfferInstance = nullptr;
+
 	/** Callback from VFX subsystem when a new effect is requested. */
 	UFUNCTION()
 	void OnSpellVFXRequested(int32 PlaybackID, FName EffectID, FVector WorldPosition, FVector TargetPosition);
@@ -501,4 +515,8 @@ private:
 	UFUNCTION()
 	void OnSpellCastCinematicRequested(int32 CasterWizardIndex, ECoMSpellRealm Realm,
 	                                    FString SpellDisplayName, bool bIsArtifact);
+
+	/** Callback when a tavern offer is generated. Pops UI for the local player. */
+	UFUNCTION()
+	void OnHeroOffered(const FCoMHeroOffer& Offer);
 };

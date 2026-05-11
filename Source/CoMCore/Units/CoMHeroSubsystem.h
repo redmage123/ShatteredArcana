@@ -10,6 +10,27 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHeroDeserted, int32, HeroUnitID, FFixed64, FinalLoyalty);
 
+/**
+ * A pending tavern offer — a hero who is available for hire to a specific wizard
+ * until ExpiresOnTurn. The player accepts or declines; AI calls AcceptOffer
+ * via its tactical pass.
+ */
+USTRUCT(BlueprintType)
+struct COMCORE_API FCoMHeroOffer
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32   OfferID         = -1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32   WizardIndex     = -1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FString HeroName;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) uint8   Tier            = 0; // ECoMHeroTier as uint8
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) uint8   HeroClass       = 0; // ECoMHeroClass as uint8
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32   GoldCost        = 100;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32   ExpiresOnTurn   = 0;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHeroOffered, const FCoMHeroOffer&, Offer);
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Hero Tiers — based on Master of Magic / Caster of Magic hero/champion system
@@ -244,6 +265,35 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Heroes")
 	FOnHeroDeserted OnHeroDeserted;
 
+	UPROPERTY(BlueprintAssignable, Category = "CoM|Heroes")
+	FOnHeroOffered OnHeroOffered;
+
+	// -- Tavern offers ------------------------------------------------------
+
+	/**
+	 * Roll per-wizard hero offers for the turn. Higher Fame raises both the
+	 * chance and the tier of generated offers. Called from ProcessHeroTurn.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
+	void RollHeroOffers(int32 CurrentTurn);
+
+	/** Active (un-expired) offers for a wizard. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Heroes")
+	TArray<FCoMHeroOffer> GetOffersForWizard(int32 WizardIndex) const;
+
+	/**
+	 * Accept an offer: deducts gold from the wizard's player state, spawns a
+	 * hero unit at the wizard's capital, registers tier/class/owner.
+	 * Returns the new HeroUnitID, or -1 on failure (insufficient gold,
+	 * already removed offer, no capital).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
+	int32 AcceptHeroOffer(int32 OfferID);
+
+	/** Decline an offer — removes it from the queue. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Heroes")
+	void DeclineHeroOffer(int32 OfferID);
+
 	// ── Save/Load Export/Import ───────────────────────────────────────────
 
 	/** Export all hero state for save serialization. */
@@ -291,6 +341,12 @@ private:
 
 	UPROPERTY()
 	TArray<FCoMHeroRelationship> Relationships;
+
+	/** Outstanding tavern offers, keyed by OfferID. */
+	UPROPERTY()
+	TArray<FCoMHeroOffer> PendingOffers;
+
+	int32 NextOfferID = 1;
 
 	FRandomStream RngStream;
 };

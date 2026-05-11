@@ -1,6 +1,12 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 
 #include "CoMHeroSubsystem.h"
+#include "CoMCore/Units/CoMUnitSubsystem.h"
+#include "CoMCore/Economy/CoMCitySubsystem.h"
+#include "CoMCore/Framework/CoMGameState.h"
+#include "CoMCore/Wizards/CoMPlayerState.h"
+#include "CoMCore/Turn/CoMTurnSubsystem.h"
+#include "Engine/World.h"
 
 // =====================================================================
 // Subsystem lifecycle
@@ -19,6 +25,8 @@ void UCoMHeroSubsystem::Deinitialize()
 	HeroTiers.Empty();
 	HeroClasses.Empty();
 	HeroOwners.Empty();
+	PendingOffers.Empty();
+	NextOfferID = 1;
 	Super::Deinitialize();
 }
 
@@ -383,6 +391,178 @@ void UCoMHeroSubsystem::ProcessHeroTurn()
 			Relationships.RemoveAt(i);
 		}
 	}
+
+	// 4. Roll tavern offers for every wizard. Resolves CurrentTurn off the
+	//    turn subsystem so we don't need it passed in.
+	int32 CurrentTurn = 1;
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMTurnSubsystem* Turn = GI->GetSubsystem<UCoMTurnSubsystem>())
+		{
+			CurrentTurn = Turn->GetCurrentTurn();
+		}
+	}
+	RollHeroOffers(CurrentTurn);
+}
+
+// =====================================================================
+// Tavern offers
+// =====================================================================
+
+namespace
+{
+	// MoM-flavoured starter name pool. Repeats are intentional; randomization
+	// pulls between these.
+	static const TCHAR* GHeroNames[] = {
+		TEXT("Roland"),  TEXT("Mortu"),    TEXT("Torin"),     TEXT("Valana"),
+		TEXT("Galen"),   TEXT("Sirena"),   TEXT("Ulric"),     TEXT("Yseult"),
+		TEXT("Brand"),   TEXT("Cerys"),    TEXT("Doran"),     TEXT("Elara"),
+		TEXT("Fenrik"),  TEXT("Gwyn"),     TEXT("Hadrian"),   TEXT("Inara"),
+		TEXT("Jorah"),   TEXT("Kaelen"),   TEXT("Lyra"),      TEXT("Maerwyn"),
+		TEXT("Niall"),   TEXT("Oryn"),     TEXT("Perrin"),    TEXT("Quenna"),
+		TEXT("Riven"),   TEXT("Selene"),   TEXT("Tariq"),     TEXT("Uthred"),
+		TEXT("Vesper"),  TEXT("Wren"),     TEXT("Xanthe"),    TEXT("Ysolde"),
+	};
+}
+
+void UCoMHeroSubsystem::RollHeroOffers(int32 CurrentTurn)
+{
+	// Expire old offers first.
+	for (int32 i = PendingOffers.Num() - 1; i >= 0; --i)
+	{
+		if (PendingOffers[i].ExpiresOnTurn <= CurrentTurn)
+		{
+			PendingOffers.RemoveAt(i);
+		}
+	}
+
+	for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+	{
+		// Skip wizards who already have a pending offer.
+		bool bHasOffer = false;
+		for (const FCoMHeroOffer& O : PendingOffers)
+		{
+			if (O.WizardIndex == W) { bHasOffer = true; break; }
+		}
+		if (bHasOffer) continue;
+
+		// Roll: 12% base chance per turn, +1% per turn beyond turn 5 capped at 40%.
+		const int32 Bonus = FMath::Clamp(CurrentTurn - 5, 0, 28);
+		const int32 Chance = 12 + Bonus;
+		if (RngStream.RandRange(0, 99) >= Chance) continue;
+
+		// Tier roll — base Adventurer, escalate by turn.
+		ECoMHeroTier Tier = ECoMHeroTier::Adventurer;
+		if (CurrentTurn >= 30 && RngStream.RandRange(0, 99) < 30) Tier = ECoMHeroTier::Hero;
+		if (CurrentTurn >= 70 && RngStream.RandRange(0, 99) < 12) Tier = ECoMHeroTier::Champion;
+
+		// Class roll — pick a random one from the available pool for the tier.
+		const TArray<ECoMHeroClass> Classes = GetAvailableClasses(Tier, ECoMWizardClass::MAX);
+		if (Classes.Num() == 0) continue;
+		const ECoMHeroClass Class = Classes[RngStream.RandRange(0, Classes.Num() - 1)];
+
+		// Cost: pull from tier config and randomize within its band.
+		const FCoMHeroTierConfig Cfg = GetTierConfig(Tier);
+		const int32 Cost = (Cfg.HireCostMin >= Cfg.HireCostMax)
+			? Cfg.HireCostMin
+			: RngStream.RandRange(Cfg.HireCostMin, Cfg.HireCostMax);
+
+		FCoMHeroOffer Offer;
+		Offer.OfferID       = NextOfferID++;
+		Offer.WizardIndex   = W;
+		Offer.HeroName      = GHeroNames[RngStream.RandRange(0, UE_ARRAY_COUNT(GHeroNames) - 1)];
+		Offer.Tier          = static_cast<uint8>(Tier);
+		Offer.HeroClass     = static_cast<uint8>(Class);
+		Offer.GoldCost      = Cost;
+		Offer.ExpiresOnTurn = CurrentTurn + 3; // 3-turn window
+
+		PendingOffers.Add(Offer);
+		OnHeroOffered.Broadcast(Offer);
+	}
+}
+
+TArray<FCoMHeroOffer> UCoMHeroSubsystem::GetOffersForWizard(int32 WizardIndex) const
+{
+	TArray<FCoMHeroOffer> Out;
+	for (const FCoMHeroOffer& O : PendingOffers)
+	{
+		if (O.WizardIndex == WizardIndex) { Out.Add(O); }
+	}
+	return Out;
+}
+
+int32 UCoMHeroSubsystem::AcceptHeroOffer(int32 OfferID)
+{
+	const int32 Idx = PendingOffers.IndexOfByPredicate(
+		[OfferID](const FCoMHeroOffer& O) { return O.OfferID == OfferID; });
+	if (Idx == INDEX_NONE) return -1;
+
+	const FCoMHeroOffer Offer = PendingOffers[Idx];
+
+	// Cost & spawn need the player state + unit subsystem from the game instance.
+	UGameInstance* GI = GetGameInstance();
+	if (!GI) return -1;
+
+	UCoMUnitSubsystem* Units = GI->GetSubsystem<UCoMUnitSubsystem>();
+	if (!Units) return -1;
+
+	// Locate the wizard's capital from the city subsystem; spawn there.
+	ECoMPlane    SpawnPlane = ECoMPlane::Aurelith;
+	ECoMMapLayer SpawnLayer = ECoMMapLayer::Surface;
+	FIntPoint    SpawnPos   = FIntPoint(80, 50);
+	if (UCoMCitySubsystem* Cities = GI->GetSubsystem<UCoMCitySubsystem>())
+	{
+		const TArray<const FCoMCityData*> Owned = Cities->GetCitiesForWizard(Offer.WizardIndex);
+		if (Owned.Num() > 0 && Owned[0])
+		{
+			SpawnPlane = Owned[0]->Plane;
+			SpawnLayer = Owned[0]->Layer;
+			SpawnPos   = Owned[0]->Position;
+		}
+		else
+		{
+			return -1; // No capital to host the hero.
+		}
+	}
+
+	// Deduct gold. PlayerState is per-wizard via ACoMGameState.
+	if (UWorld* World = GI->GetWorld())
+	{
+		if (ACoMGameState* GS = Cast<ACoMGameState>(World->GetGameState()))
+		{
+			if (ACoMPlayerState* PS = GS->GetWizardByIndex(Offer.WizardIndex))
+			{
+				if (PS->Gold < Offer.GoldCost) return -1;
+				PS->ModifyGold(-Offer.GoldCost);
+			}
+		}
+	}
+
+	// Spawn hero unit. SpecID 100 = hero placeholder (data assets map heroes by
+	// class later; for now any non-spec ID falls back to defaults).
+	const int32 HeroID = Units->SpawnUnit(/*SpecID*/ 100, SpawnPlane, SpawnLayer, SpawnPos, Offer.WizardIndex);
+	if (HeroID <= 0) return -1;
+
+	if (FCoMUnitInstance* Unit = const_cast<FCoMUnitInstance*>(Units->GetUnit(HeroID)))
+	{
+		Unit->bIsHero = true;
+	}
+
+	SetHeroTier(HeroID, static_cast<ECoMHeroTier>(Offer.Tier));
+	SetHeroClass(HeroID, static_cast<ECoMHeroClass>(Offer.HeroClass));
+	SetHeroOwner(HeroID, Offer.WizardIndex);
+	InitializeHeroPersonality(HeroID, RngStream);
+
+	PendingOffers.RemoveAt(Idx);
+	UE_LOG(LogTemp, Log, TEXT("[Heroes] Wizard %d hired %s (unit %d)"),
+		Offer.WizardIndex, *Offer.HeroName, HeroID);
+	return HeroID;
+}
+
+void UCoMHeroSubsystem::DeclineHeroOffer(int32 OfferID)
+{
+	PendingOffers.RemoveAll(
+		[OfferID](const FCoMHeroOffer& O) { return O.OfferID == OfferID; });
 }
 
 FFixed64 UCoMHeroSubsystem::ComputeLoyaltyDecay(const FCoMHeroPersonality& Personality) const

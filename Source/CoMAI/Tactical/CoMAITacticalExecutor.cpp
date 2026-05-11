@@ -13,6 +13,10 @@
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
 #include "CoMCore/Items/CoMItemSubsystem.h"
 #include "CoMCore/Units/CoMHeroSubsystem.h"
+#include "CoMCore/Data/CoMSpellDatabase.h"
+#include "CoMCore/Framework/CoMGameState.h"
+#include "CoMCore/Wizards/CoMPlayerState.h"
+#include "Engine/World.h"
 #include "Difficulty/CoMAIDifficultyModifier.h"
 #include "Engine/GameInstance.h"
 #include "Subsystems/GameInstanceSubsystem.h"
@@ -61,6 +65,34 @@ void UCoMAITacticalExecutor::ExecuteTurn(int32 WizardId, const FCoMAIStrategy& S
 	ManageResearch(WizardId, Strategy);
 	ManageMagic(WizardId, Strategy);
 	ConsiderItemForging(WizardId, Strategy);
+
+	// Auto-hire any affordable tavern offer (player picks via UI).
+	if (UGameInstance* GIH = ResolveGameInstance())
+	{
+		if (UCoMHeroSubsystem* HeroSub = GIH->GetSubsystem<UCoMHeroSubsystem>())
+		{
+			int32 AvailableGold = INT32_MAX;
+			if (UWorld* World = GIH->GetWorld())
+			{
+				if (ACoMGameState* GS = Cast<ACoMGameState>(World->GetGameState()))
+				{
+					if (ACoMPlayerState* PS = GS->GetWizardByIndex(WizardId))
+					{
+						AvailableGold = PS->Gold;
+					}
+				}
+			}
+			for (const FCoMHeroOffer& Offer : HeroSub->GetOffersForWizard(WizardId))
+			{
+				if (Offer.GoldCost <= AvailableGold - 50) // keep a buffer
+				{
+					HeroSub->AcceptHeroOffer(Offer.OfferID);
+					AvailableGold -= Offer.GoldCost;
+					break; // one per turn
+				}
+			}
+		}
+	}
 
 	// Spirit-meld any unguarded mana node we already control a tile on.
 	if (UGameInstance* GI = ResolveGameInstance())
@@ -570,40 +602,165 @@ void UCoMAITacticalExecutor::ManageMagic(int32 WizardId, const FCoMAIStrategy& S
 	if (!GI) return;
 
 	UCoMMagicSubsystem* MagicSub = GI->GetSubsystem<UCoMMagicSubsystem>();
-	if (!MagicSub) return;
+	UCoMUnitSubsystem*  UnitSub  = GI->GetSubsystem<UCoMUnitSubsystem>();
+	if (!MagicSub || !UnitSub) return;
 
 	const FCoMWizardMagicState& MagicState = MagicSub->GetWizardMagic(WizardId);
 
-	// Check if we are already casting something
+	// Already casting? Let it finish.
 	FCoMSpellCast CurrentCast = MagicSub->GetCurrentCasting(WizardId);
-	if (!CurrentCast.SpellId.IsNone())
-	{
-		// Already casting -- let it finish
-		return;
-	}
+	if (!CurrentCast.SpellId.IsNone()) return;
 
-	// If we have excess mana and known spells, try casting a beneficial global spell.
-	// For now we only cast if mana is above 50% capacity to avoid draining reserves.
-	if (MagicState.CurrentMana < MagicState.MaxMana / 2)
-	{
-		return;
-	}
+	// Need a buffer over half max to avoid draining mana reserves.
+	if (MagicState.CurrentMana < MagicState.MaxMana / 2) return;
+	if (MagicState.KnownSpells.Num() == 0) return;
 
-	// Try each known spell to see if we can cast it as a global enchantment
-	for (const FName& SpellId : MagicState.KnownSpells)
+	auto TryCast = [&](FName SpellId, ECoMSpellScope Scope,
+	                   FIntPoint TargetTile, int32 TargetUnit, int32 TargetCity, int32 TargetWizard) -> bool
 	{
-		FCoMSpellCast CastParams;
-		CastParams.SpellId = SpellId;
-		CastParams.CasterWizardId = WizardId;
-		CastParams.Scope = ECoMSpellScope::Global;
-
-		if (MagicSub->CanCastSpell(WizardId, SpellId, CastParams))
+		FCoMSpellCast Params;
+		Params.SpellId         = SpellId;
+		Params.CasterWizardId  = WizardId;
+		Params.Scope           = Scope;
+		Params.TargetTile      = TargetTile;
+		Params.TargetUnitId    = TargetUnit;
+		Params.TargetCityId    = TargetCity;
+		Params.TargetWizardId  = TargetWizard;
+		if (MagicSub->CanCastSpell(WizardId, SpellId, Params))
 		{
-			MagicSub->CastSpell(CastParams);
-			UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d casting global spell %s"),
-			       WizardId, *SpellId.ToString());
-			break; // One spell per turn
+			MagicSub->CastSpell(Params);
+			UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d casts %s scope=%d"),
+				WizardId, *SpellId.ToString(), (int32)Scope);
+			return true;
 		}
+		return false;
+	};
+
+	// Bucket known spells by FCoMSpellInfo::EffectType for quick selection.
+	TArray<FName> DamageSpells, BuffSpells, SummonSpells, HealSpells, GlobalSpells, OtherSpells;
+	for (const FName& SId : MagicState.KnownSpells)
+	{
+		const FCoMSpellInfo Info = CoMSpellDatabase::GetSpellInfo(SId);
+		switch (Info.EffectType)
+		{
+		case ECoMSpellEffect::Damage:           DamageSpells.Add(SId);  break;
+		case ECoMSpellEffect::Healing:          HealSpells.Add(SId);    break;
+		case ECoMSpellEffect::UnitBuff:         BuffSpells.Add(SId);    break;
+		case ECoMSpellEffect::Summon:           SummonSpells.Add(SId);  break;
+		case ECoMSpellEffect::GlobalEnchantment:GlobalSpells.Add(SId);  break;
+		default:                                OtherSpells.Add(SId);   break;
+		}
+	}
+
+	// 1) Damage: find the nearest hostile army to any of our own armies.
+	if (DamageSpells.Num() > 0)
+	{
+		const TArray<const FCoMArmyGroup*> Ours = UnitSub->GetArmiesForWizard(WizardId);
+		const FCoMArmyGroup* Anchor = (Ours.Num() > 0) ? Ours[0] : nullptr;
+		if (Anchor)
+		{
+			FIntPoint Best(-1, -1);
+			int32 BestUnit = -1;
+			int32 BestDist = 30;
+			for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+			{
+				if (W == WizardId) continue;
+				for (const FCoMArmyGroup* Enemy : UnitSub->GetArmiesForWizard(W))
+				{
+					if (!Enemy || Enemy->Plane != Anchor->Plane || Enemy->Layer != Anchor->Layer) continue;
+					const int32 D = WrappedDistance(Anchor->Position, Enemy->Position);
+					if (D < BestDist && Enemy->UnitIDs.Num() > 0)
+					{
+						BestDist = D;
+						Best     = Enemy->Position;
+						BestUnit = Enemy->UnitIDs[0];
+					}
+				}
+			}
+			if (Best.X >= 0)
+			{
+				for (const FName& SId : DamageSpells)
+				{
+					if (TryCast(SId, ECoMSpellScope::Combat, Best, BestUnit, -1, -1)) return;
+				}
+			}
+		}
+	}
+
+	// 2) Heal: if any of our heroes is below half HP, heal them.
+	{
+		int32 WoundedHero = -1;
+		for (const FCoMArmyGroup* Army : UnitSub->GetArmiesForWizard(WizardId))
+		{
+			if (!Army) continue;
+			for (int32 UID : Army->UnitIDs)
+			{
+				const FCoMUnitInstance* U = UnitSub->GetUnit(UID);
+				if (U && U->bIsHero && U->CurrentHP < U->MaxHP / 2)
+				{
+					WoundedHero = UID; break;
+				}
+			}
+			if (WoundedHero >= 0) break;
+		}
+		if (WoundedHero >= 0)
+		{
+			for (const FName& SId : HealSpells)
+			{
+				if (TryCast(SId, ECoMSpellScope::Combat, FIntPoint(-1, -1), WoundedHero, -1, -1)) return;
+			}
+		}
+	}
+
+	// 3) Buff: target our strongest hero (first owned hero in any army).
+	{
+		int32 BuffTarget = -1;
+		int32 BestLevel  = 0;
+		for (const FCoMArmyGroup* Army : UnitSub->GetArmiesForWizard(WizardId))
+		{
+			if (!Army) continue;
+			for (int32 UID : Army->UnitIDs)
+			{
+				const FCoMUnitInstance* U = UnitSub->GetUnit(UID);
+				if (U && U->bIsHero && U->Level > BestLevel)
+				{
+					BestLevel  = U->Level;
+					BuffTarget = UID;
+				}
+			}
+		}
+		if (BuffTarget >= 0)
+		{
+			for (const FName& SId : BuffSpells)
+			{
+				if (TryCast(SId, ECoMSpellScope::Combat, FIntPoint(-1, -1), BuffTarget, -1, -1)) return;
+			}
+		}
+	}
+
+	// 4) Summon: if military budget high or we're being threatened, summon at our first army.
+	if (Strategy.MilitaryBudget > 0.5f || Strategy.ThreatWizardIds.Num() > 0)
+	{
+		const TArray<const FCoMArmyGroup*> Ours = UnitSub->GetArmiesForWizard(WizardId);
+		if (Ours.Num() > 0 && Ours[0])
+		{
+			for (const FName& SId : SummonSpells)
+			{
+				if (TryCast(SId, ECoMSpellScope::Combat, Ours[0]->Position, -1, -1, -1)) return;
+			}
+		}
+	}
+
+	// 5) Fall-through: global enchantments.
+	for (const FName& SId : GlobalSpells)
+	{
+		if (TryCast(SId, ECoMSpellScope::Global, FIntPoint(-1, -1), -1, -1, -1)) return;
+	}
+
+	// 6) Final fallback: try any other known spell at global scope.
+	for (const FName& SId : OtherSpells)
+	{
+		if (TryCast(SId, ECoMSpellScope::Global, FIntPoint(-1, -1), -1, -1, -1)) return;
 	}
 }
 

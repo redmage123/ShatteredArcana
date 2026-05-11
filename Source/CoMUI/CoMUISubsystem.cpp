@@ -27,6 +27,7 @@
 #include "Panels/CoMItemForgeWidget.h"
 #include "Panels/CoMItemVaultWidget.h"
 #include "Panels/CoMTutorialWidget.h"
+#include "Panels/CoMHeroOfferWidget.h"
 #include "HUD/CoMSpellVFXWidget.h"
 #include "HUD/CoMSpellCastCinematicWidget.h"
 #include "Framework/CoMGameInstance.h"
@@ -65,6 +66,7 @@ void UCoMUISubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	if (!ItemVaultWidgetClass)     { ItemVaultWidgetClass     = UCoMItemVaultWidget::StaticClass(); }
 	if (!TutorialWidgetClass)      { TutorialWidgetClass      = UCoMTutorialWidget::StaticClass(); }
 	if (!SpellCastCinematicWidgetClass) { SpellCastCinematicWidgetClass = UCoMSpellCastCinematicWidget::StaticClass(); }
+	if (!HeroOfferWidgetClass)     { HeroOfferWidgetClass     = UCoMHeroOfferWidget::StaticClass(); }
 
 	// Bind to GameInstance delegates so game modes can trigger UI
 	// without a compile-time dependency on CoMUI.
@@ -227,6 +229,12 @@ void UCoMUISubsystem::ShowHUD()
 		{
 			MagicSub->OnSpellCastCinematicRequested.AddDynamic(
 				this, &UCoMUISubsystem::OnSpellCastCinematicRequested);
+		}
+
+		// Heroes: pop offer popup when a tavern offer fires for the local player.
+		if (UCoMHeroSubsystem* HeroSub = VFXGI->GetSubsystem<UCoMHeroSubsystem>())
+		{
+			HeroSub->OnHeroOffered.AddDynamic(this, &UCoMUISubsystem::OnHeroOffered);
 		}
 	}
 
@@ -747,6 +755,25 @@ void UCoMUISubsystem::OnSpellCastCinematicRequested(int32 CasterWizardIndex,
 	ShowSpellCastCinematic(PortraitIdx, Realm, SpellDisplayName, bIsArtifact);
 }
 
+void UCoMUISubsystem::OnHeroOffered(const FCoMHeroOffer& Offer)
+{
+	// Only surface to the local player (wizard 0); AI auto-accepts.
+	if (Offer.WizardIndex != 0) return;
+	ShowHeroOffers(0);
+}
+
+void UCoMUISubsystem::ShowHeroOffers(int32 WizardIndex)
+{
+	UCoMHeroOfferWidget* W = CreateAndShowWidget<UCoMHeroOfferWidget>(
+		HeroOfferWidgetClass, HeroOfferInstance, 12);
+	if (W) { W->Configure(WizardIndex); }
+}
+
+void UCoMUISubsystem::HideHeroOffers()
+{
+	RemoveWidget(HeroOfferInstance);
+}
+
 // =============================================================================
 // Bulk operations
 // =============================================================================
@@ -825,6 +852,7 @@ void UCoMUISubsystem::HideAllPanels()
 	HideItemForge();
 	HideItemVault();
 	HideTutorial();
+	HideHeroOffers();
 }
 
 void UCoMUISubsystem::HideAll()
