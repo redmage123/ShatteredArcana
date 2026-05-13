@@ -84,11 +84,13 @@ void UCoMAITacticalExecutor::ExecuteTurn(int32 WizardId, const FCoMAIStrategy& S
 			}
 			for (const FCoMHeroOffer& Offer : HeroSub->GetOffersForWizard(WizardId))
 			{
-				if (Offer.GoldCost <= AvailableGold - 50) // keep a buffer
+				// Hire aggressively — heroes are MoM's single biggest power
+				// multiplier and the buffer was strangling AI recruitment.
+				if (Offer.GoldCost <= AvailableGold - 10)
 				{
 					HeroSub->AcceptHeroOffer(Offer.OfferID);
 					AvailableGold -= Offer.GoldCost;
-					break; // one per turn
+					break;
 				}
 			}
 		}

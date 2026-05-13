@@ -141,11 +141,14 @@ void ACoMOverworldGameMode::StartNewGame(int32 NumWizards)
 	if (UnitSub)
 	{
 		const int32 ArmyId = UnitSub->CreateArmy(0, ECoMPlane::Aurelith, ECoMMapLayer::Surface, FIntPoint(82, 50));
-		// SpawnUnit takes SpecID (int32); use 1 for swordsmen, 2 for settler as placeholder IDs.
-		const int32 SwordsmenId = UnitSub->SpawnUnit(1, ECoMPlane::Aurelith, ECoMMapLayer::Surface, FIntPoint(82, 50), 0);
-		UnitSub->AddUnitToArmy(SwordsmenId, ArmyId);
-		const int32 SettlerId = UnitSub->SpawnUnit(2, ECoMPlane::Aurelith, ECoMMapLayer::Surface, FIntPoint(82, 50), 0);
-		UnitSub->AddUnitToArmy(SettlerId, ArmyId);
+		// Spawn starter units using the FName-keyed path (legacy int32 IDs were
+		// never registered in CoMUnitDatabase, so SpawnUnit silently returned -1).
+		const int32 SwordsmenId = UnitSub->SpawnUnitByName(FName(TEXT("HighMen_Infantry")),
+			ECoMPlane::Aurelith, ECoMMapLayer::Surface, FIntPoint(82, 50), 0);
+		if (SwordsmenId > 0) UnitSub->AddUnitToArmy(SwordsmenId, ArmyId);
+		const int32 SettlerId = UnitSub->SpawnUnitByName(FName(TEXT("Settler")),
+			ECoMPlane::Aurelith, ECoMMapLayer::Surface, FIntPoint(82, 50), 0);
+		if (SettlerId > 0) UnitSub->AddUnitToArmy(SettlerId, ArmyId);
 		UE_LOG(LogTemp, Log, TEXT("[CoMOverworldGameMode] Spawned starting army, ArmyID=%d (Swordsmen=%d, Settler=%d)"),
 		       ArmyId, SwordsmenId, SettlerId);
 	}

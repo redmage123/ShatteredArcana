@@ -28,6 +28,15 @@ public:
 	/** Spawn a unit from a spec, placing it at the given location. Returns the new UnitID. */
 	int32 SpawnUnit(int32 SpecID, ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position, int32 OwnerWizard);
 
+	/**
+	 * Spawn a unit by FName-keyed SpecID (matching the names registered in
+	 * CoMUnitDatabase: "Settler", "HighMen_Infantry", "Hero_Fighter", etc.).
+	 * Preferred over int32 SpawnUnit, which only works when SpecID has been
+	 * registered under the stringified-integer name (legacy path).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Units")
+	int32 SpawnUnitByName(FName SpecID, ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position, int32 OwnerWizard);
+
 	/** Remove a unit from the world and any army it belongs to. */
 	void DespawnUnit(int32 UnitID);
 
@@ -83,6 +92,10 @@ public:
 
 	const FCoMUnitInstance* GetUnit(int32 UnitID) const;
 	const FCoMArmyGroup* GetArmy(int32 ArmyID) const;
+
+	/** Mutable accessors for subsystems that need to modify army/unit state. */
+	FCoMArmyGroup* GetArmyMutable(int32 ArmyID);
+	FCoMUnitInstance* GetUnitMutable(int32 UnitID);
 
 	/** Set the settler flag on a unit by ID. */
 	void SetUnitSettlerFlag(int32 UnitId, bool bSettler);

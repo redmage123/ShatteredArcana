@@ -492,6 +492,13 @@ struct COMCORE_API FCoMArmyGroup
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<FIntPoint> PlannedRoute;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool              bInCombat         = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<FCoMEnchantmentInstance> GroupEnchantments;
+
+	/**
+	 * Turns until this army can engage another site/node encounter.
+	 * Set to 2 after a lost encounter so a damaged army has a chance to
+	 * heal or relocate instead of dying from attrition on the same tile.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 EncounterCooldown = 0;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

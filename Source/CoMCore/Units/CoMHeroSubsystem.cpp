@@ -538,9 +538,15 @@ int32 UCoMHeroSubsystem::AcceptHeroOffer(int32 OfferID)
 		}
 	}
 
-	// Spawn hero unit. SpecID 100 = hero placeholder (data assets map heroes by
-	// class later; for now any non-spec ID falls back to defaults).
-	const int32 HeroID = Units->SpawnUnit(/*SpecID*/ 100, SpawnPlane, SpawnLayer, SpawnPos, Offer.WizardIndex);
+	// Pick hero spec by class — fallback to Hero_Fighter for unmapped classes.
+	const ECoMHeroClass Cls = static_cast<ECoMHeroClass>(Offer.HeroClass);
+	FName HeroSpec = FName(TEXT("Hero_Fighter"));
+	if (Cls == ECoMHeroClass::Magician || Cls == ECoMHeroClass::Cleric ||
+	    Cls == ECoMHeroClass::Necromancer || Cls == ECoMHeroClass::Druid)
+	{
+		HeroSpec = FName(TEXT("Hero_Magician"));
+	}
+	const int32 HeroID = Units->SpawnUnitByName(HeroSpec, SpawnPlane, SpawnLayer, SpawnPos, Offer.WizardIndex);
 	if (HeroID <= 0) return -1;
 
 	if (FCoMUnitInstance* Unit = const_cast<FCoMUnitInstance*>(Units->GetUnit(HeroID)))

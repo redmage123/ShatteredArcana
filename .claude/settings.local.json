@@ -44,7 +44,8 @@
       "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Binaries/Win64/UnrealEditor-Cmd.exe\" \"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -ExecutePythonScript=\"C:/Users/Braun/repos/ShatteredArcana/Scripts/import_spell_sfx.py\" -unattended -nopause -nosplash -nullrhi)",
       "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Binaries/Win64/UnrealEditor-Cmd.exe\" \"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -ExecutePythonScript=\"C:/Users/Braun/repos/ShatteredArcana/Scripts/run_playtest.py\" -unattended -nopause -nosplash -nullrhi -stdout)",
       "Bash(\"/c/Program Files/Epic Games/UE_5.7/Engine/Binaries/Win64/UnrealEditor-Cmd.exe\" \"C:/Users/Braun/repos/ShatteredArcana/ShatteredArcana.uproject\" -ExecCmds=\"com.playtest 2 50 42\" -unattended -nopause -nosplash -nullrhi -stdout)",
-      "PowerShell(Stop-Process *)"
+      "PowerShell(Stop-Process *)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

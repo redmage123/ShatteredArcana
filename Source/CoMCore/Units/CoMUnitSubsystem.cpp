@@ -42,6 +42,33 @@ void UCoMUnitSubsystem::Deinitialize()
 // Unit Lifecycle
 // ---------------------------------------------------------------------------
 
+int32 UCoMUnitSubsystem::SpawnUnitByName(FName SpecID, ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position, int32 OwnerWizard)
+{
+	if (!CoMUnitDatabase::Contains(SpecID))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UCoMUnitSubsystem::SpawnUnitByName - unknown SpecID %s"),
+			*SpecID.ToString());
+		return INDEX_NONE;
+	}
+
+	const int32 UnitID = NextUnitID++;
+	FCoMUnitInstance& Unit = AllUnits.Add(UnitID);
+	Unit.UnitID           = UnitID;
+	Unit.SpecID           = SpecID;
+	Unit.OwnerWizardIndex = OwnerWizard;
+	Unit.Experience       = 0;
+	Unit.Level            = 1;
+
+	const FCoMUnitSpecInfo& DBSpec = CoMUnitDatabase::GetUnitSpec(SpecID);
+	Unit.CurrentHP = DBSpec.HitPoints;
+	Unit.MaxHP     = DBSpec.HitPoints;
+	Unit.bFlying   = DBSpec.bFlying;
+	Unit.bIsHero   = DBSpec.bHero;
+	Unit.bIsSettler= DBSpec.bSettler;
+
+	return UnitID;
+}
+
 int32 UCoMUnitSubsystem::SpawnUnit(int32 SpecID, ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position, int32 OwnerWizard)
 {
 	const FName SpecFName = FName(*FString::FromInt(SpecID));
@@ -355,6 +382,20 @@ void UCoMUnitSubsystem::MoveArmy(int32 ArmyID, FIntPoint Destination)
 	Destination.X = WrapX(Destination.X);
 	Destination.Y = FMath::Clamp(Destination.Y, 0, MAP_HEIGHT - 1);
 
+	// Lazy-resolve cached subsystems — Initialize() may have run before
+	// WorldMapSubsystem was ready, leaving the cache null forever.
+	if (!WorldMapSubsystem)
+	{
+		if (UGameInstance* GIL = GetGameInstance())
+		{
+			WorldMapSubsystem = GIL->GetSubsystem<UCoMWorldMapSubsystem>();
+		}
+	}
+	if (!Pathfinder)
+	{
+		Pathfinder = NewObject<UCoMPathfinder>(this);
+	}
+
 	if (!Pathfinder || !WorldMapSubsystem)
 	{
 		UE_LOG(LogTemp, Error, TEXT("MoveArmy - Pathfinder or WorldMapSubsystem is null"));
@@ -476,6 +517,16 @@ void UCoMUnitSubsystem::ProcessAutoExplore()
 
 void UCoMUnitSubsystem::ProcessMovementTurn()
 {
+	// Tick down per-army encounter cooldowns so damaged armies regain the
+	// ability to engage sites/nodes after the rest period set by a loss.
+	for (auto& Pair : AllArmies)
+	{
+		if (Pair.Value.EncounterCooldown > 0)
+		{
+			Pair.Value.EncounterCooldown--;
+		}
+	}
+
 	// Process auto-explore orders before regular movement resolution.
 	ProcessAutoExplore();
 
@@ -542,6 +593,16 @@ const FCoMUnitInstance* UCoMUnitSubsystem::GetUnit(int32 UnitID) const
 const FCoMArmyGroup* UCoMUnitSubsystem::GetArmy(int32 ArmyID) const
 {
 	return AllArmies.Find(ArmyID);
+}
+
+FCoMArmyGroup* UCoMUnitSubsystem::GetArmyMutable(int32 ArmyID)
+{
+	return AllArmies.Find(ArmyID);
+}
+
+FCoMUnitInstance* UCoMUnitSubsystem::GetUnitMutable(int32 UnitID)
+{
+	return AllUnits.Find(UnitID);
 }
 
 void UCoMUnitSubsystem::SetUnitSettlerFlag(int32 UnitId, bool bSettler)

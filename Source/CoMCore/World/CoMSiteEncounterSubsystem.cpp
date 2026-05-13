@@ -55,25 +55,33 @@ bool UCoMSiteEncounterSubsystem::ResolveAutoCombat(int32 ArmyID, int32 GuardPowe
 	UGameInstance* GI = GetGameInstance();
 	UCoMUnitSubsystem* Units = GI ? GI->GetSubsystem<UCoMUnitSubsystem>() : nullptr;
 
-	// Win if our power is at least 1.05x theirs; ratio in [1.05, 2.0] = scaled win.
-	const bool bWin = (Ratio >= 1.05f);
+	// If our army has no realistic chance (< 40% of guard power), the AI
+	// should bail rather than throw lives away. From the caller's POV this
+	// counts as a "loss" so the cooldown fires and the army won't retry.
+	const bool bNoChance = (Ratio < 0.40f);
+	const bool bWin      = !bNoChance && (Ratio >= 1.05f);
 
-	if (Units)
+	if (Units && !bNoChance)
 	{
-		// Loser takes proportional damage. Winner still takes a small chip.
+		// Damage scales with the guard's relative strength, but capped per unit
+		// so even a lost encounter doesn't instantly wipe a stack. Starter
+		// armies should be able to flee with HP to spare.
 		const FCoMArmyGroup* Army = Units->GetArmy(ArmyID);
 		if (Army)
 		{
-			const TArray<int32> UnitsCopy = Army->UnitIDs; // ApplyDamage may despawn
+			const TArray<int32> UnitsCopy = Army->UnitIDs;
 			const float DamageFactor = bWin
-				? FMath::Clamp(Theirs / FMath::Max(Ours, 1.0f), 0.05f, 0.30f)
-				: FMath::Clamp(Theirs / FMath::Max(Ours, 1.0f), 0.50f, 1.00f);
+				? FMath::Clamp(Theirs / FMath::Max(Ours, 1.0f), 0.05f, 0.20f)
+				: FMath::Clamp(Theirs / FMath::Max(Ours, 1.0f), 0.20f, 0.40f);
 
 			for (int32 UID : UnitsCopy)
 			{
 				const FCoMUnitInstance* U = Units->GetUnit(UID);
 				if (!U) continue;
-				const int32 Damage = FMath::Max(1, FMath::RoundToInt(U->MaxHP * DamageFactor));
+				// Cap damage at MaxHP - 1 so a unit never dies in a single
+				// encounter; multiple lost encounters can still wear it down.
+				int32 Damage = FMath::RoundToInt(U->MaxHP * DamageFactor);
+				Damage = FMath::Clamp(Damage, 1, FMath::Max(1, U->CurrentHP - 1));
 				Units->ApplyDamage(UID, Damage);
 			}
 		}
@@ -115,6 +123,7 @@ bool UCoMSiteEncounterSubsystem::TryResolveEncounterForArmy(int32 ArmyID)
 	const FCoMArmyGroup* Army = Units->GetArmy(ArmyID);
 	if (!Army || Army->UnitIDs.Num() == 0) return false;
 	if (Army->bInCombat) return false;
+	if (Army->EncounterCooldown > 0) return false;
 
 	const FCoMTileData* Tile = Map->GetTile(Army->Plane, Army->Layer, Army->Position.X, Army->Position.Y);
 	if (!Tile) return false;
@@ -160,6 +169,13 @@ bool UCoMSiteEncounterSubsystem::TryResolveEncounterForArmy(int32 ArmyID)
 			}
 			else
 			{
+				// Loss: skip future site encounters for this army for 2 turns
+				// so a damaged army can heal or relocate instead of fighting
+				// the same guards to death.
+				if (FCoMArmyGroup* Mut = Units->GetArmyMutable(ArmyID))
+				{
+					Mut->EncounterCooldown = 2;
+				}
 				UE_LOG(LogTemp, Log,
 					TEXT("[SiteEncounter] Wizard %d failed to clear site %d at (%d,%d) — army repulsed"),
 					WizardIndex, Site->SiteID, Site->Position.X, Site->Position.Y);

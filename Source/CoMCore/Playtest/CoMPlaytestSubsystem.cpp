@@ -7,6 +7,7 @@
 #include "CoMCore/Framework/CoMGameInstance.h"
 #include "CoMCore/Items/CoMItemSubsystem.h"
 #include "CoMCore/Magic/CoMMagicSubsystem.h"
+#include "CoMCore/Data/CoMSpellDatabase.h"
 #include "CoMCore/Turn/CoMTurnSubsystem.h"
 #include "CoMCore/Units/CoMUnitSubsystem.h"
 #include "CoMCore/Units/CoMHeroSubsystem.h"
@@ -178,6 +179,31 @@ void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
 		Gen->GenerateWorld(Map, Seed);
 	}
 
+	// Spawn 14 ACoMPlayerState actors so gold/mana/fame tracking works for
+	// AI wizards. Without this, GetWizardByIndex returns nullptr and every
+	// economy hook silently no-ops.
+	if (UWorld* World = GI->GetWorld())
+	{
+		if (ACoMGameState* GS = Cast<ACoMGameState>(World->GetGameState()))
+		{
+			for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+			{
+				if (GS->GetWizardByIndex(W)) continue; // already present
+				FActorSpawnParameters Params;
+				Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+				ACoMPlayerState* PS = World->SpawnActor<ACoMPlayerState>(
+					ACoMPlayerState::StaticClass(), FTransform::Identity, Params);
+				if (!PS) continue;
+				PS->WizardIndex   = W;
+				PS->bIsHumanPlayer= (W == 0);
+				PS->WizardName    = FString::Printf(TEXT("Wizard %d"), W);
+				PS->Gold          = 400; // starter gold so AI can hire + forge a Tier 2 hero
+				PS->Mana          = 50;
+				GS->AddPlayerState(PS);
+			}
+		}
+	}
+
 	// Spawn 14 AI wizards: capitals + a starting army with settler + swordsman.
 	// Capital placement is a simple stride across the map; we accept overlaps
 	// with terrain since the goal is the AI loop / economy / combat ticks.
@@ -192,9 +218,13 @@ void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
 		CoMTags::Race::Chithari,   CoMTags::Race::Draconians,
 		CoMTags::Race::Nomads,     CoMTags::Race::Barbarians
 	};
+	// Wider spread so capitals don't cluster on dense site/node terrain.
+	// 14 wizards on a 160x100 map -> ~7 per row, 30 X-stride / 40 Y-stride.
 	for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
 	{
-		const FIntPoint Pos(20 + (W * 11) % 120, 15 + (W * 7) % 70);
+		const int32 Col = W % 7;
+		const int32 Row = W / 7;
+		const FIntPoint Pos(20 + Col * 20, 25 + Row * 50);
 		if (Cities)
 		{
 			Cities->FoundCity(W, ECoMPlane::Aurelith, ECoMMapLayer::Surface, Pos,
@@ -205,10 +235,64 @@ void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
 		{
 			const FIntPoint ArmyPos(Pos.X + 1, Pos.Y);
 			const int32 ArmyID = Units->CreateArmy(W, ECoMPlane::Aurelith, ECoMMapLayer::Surface, ArmyPos);
-			const int32 SwordID = Units->SpawnUnit(1, ECoMPlane::Aurelith, ECoMMapLayer::Surface, ArmyPos, W);
-			Units->AddUnitToArmy(SwordID, ArmyID);
-			const int32 SettlerID = Units->SpawnUnit(2, ECoMPlane::Aurelith, ECoMMapLayer::Surface, ArmyPos, W);
-			Units->AddUnitToArmy(SettlerID, ArmyID);
+			// 2 infantry + 1 hero + 1 settler. The hero significantly boosts the
+			// stack's encounter power so they can clear early-tier sites.
+			for (int32 i = 0; i < 2; ++i)
+			{
+				const int32 InfID = Units->SpawnUnitByName(FName(TEXT("HighMen_Infantry")),
+					ECoMPlane::Aurelith, ECoMMapLayer::Surface, ArmyPos, W);
+				if (InfID > 0) Units->AddUnitToArmy(InfID, ArmyID);
+			}
+			const int32 HeroID = Units->SpawnUnitByName(FName(TEXT("Hero_Fighter")),
+				ECoMPlane::Aurelith, ECoMMapLayer::Surface, ArmyPos, W);
+			if (HeroID > 0)
+			{
+				Units->AddUnitToArmy(HeroID, ArmyID);
+				if (FCoMUnitInstance* HMut = Units->GetUnitMutable(HeroID))
+				{
+					HMut->bIsHero = true;
+				}
+			}
+			const int32 SettlerID = Units->SpawnUnitByName(FName(TEXT("Settler")),
+				ECoMPlane::Aurelith, ECoMMapLayer::Surface, ArmyPos, W);
+			if (SettlerID > 0) Units->AddUnitToArmy(SettlerID, ArmyID);
+		}
+	}
+
+	// Seed each AI wizard with a starting spell book + a handful of known
+	// spells. Without this AI never casts (ManageMagic iterates KnownSpells).
+	if (UCoMMagicSubsystem* Magic = GI->GetSubsystem<UCoMMagicSubsystem>())
+	{
+		const TArray<ECoMSpellRealm> Realms = {
+			ECoMSpellRealm::Life,    ECoMSpellRealm::Death,
+			ECoMSpellRealm::Chaos,   ECoMSpellRealm::Nature,
+			ECoMSpellRealm::Sorcery, ECoMSpellRealm::Arcane,
+			ECoMSpellRealm::Binding, ECoMSpellRealm::Spirit,
+			ECoMSpellRealm::Glamour
+		};
+		for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+		{
+			FCoMWizardMagicState& State = Magic->GetWizardMagic(W);
+			State.WizardId      = W;
+			State.PrimaryRealm  = Realms[W % Realms.Num()];
+			State.SpellBooks.Add(State.PrimaryRealm, 4); // 4 books = Common + Uncommon
+			State.MaxMana       = 200;
+			State.CurrentMana   = 60;
+			State.CastingSkill  = 10;
+
+			// Hand out the starting / learnable common-tier spells for the realm.
+			TArray<FName> Learnable, Starting;
+			CoMSpellDatabase::GetSpellsForBookCount(State.PrimaryRealm, 4, Learnable, Starting);
+			for (const FName& SId : Starting)
+			{
+				State.KnownSpells.AddUnique(SId);
+			}
+			// Pick the first learnable spell as initial research target.
+			if (State.CurrentResearchSpell.IsNone() && Learnable.Num() > 0)
+			{
+				State.CurrentResearchSpell = Learnable[0];
+				State.ResearchAllocation   = 5;
+			}
 		}
 	}
 
@@ -240,6 +324,31 @@ void UCoMPlaytestSubsystem::TeardownGame()
 	if (UCoMWorldMapSubsystem* Map = GI->GetSubsystem<UCoMWorldMapSubsystem>())
 	{
 		Map->ImportAllSites({});
+	}
+	if (UCoMCitySubsystem* Cities = GI->GetSubsystem<UCoMCitySubsystem>())
+	{
+		Cities->ImportAll({}, 1);
+	}
+	if (UCoMMagicSubsystem* Magic = GI->GetSubsystem<UCoMMagicSubsystem>())
+	{
+		Magic->ImportAll({}, {}, {}, {}, {});
+	}
+
+	// Tear down spawned PlayerStates so the next bootstrap can recreate them
+	// fresh. Without this their gold/mana carry over between games.
+	if (UWorld* World = GI->GetWorld())
+	{
+		if (ACoMGameState* GS = Cast<ACoMGameState>(World->GetGameState()))
+		{
+			for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+			{
+				if (ACoMPlayerState* PS = GS->GetWizardByIndex(W))
+				{
+					GS->RemovePlayerState(PS);
+					PS->Destroy();
+				}
+			}
+		}
 	}
 }
 
