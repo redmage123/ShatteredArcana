@@ -22,6 +22,11 @@ void UCoMDragonSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	RngStream.Initialize(0x44726167);
 }
 
+void UCoMDragonSubsystem::ReseedRandom(int32 MasterSeed)
+{
+	RngStream.Initialize(MasterSeed ^ 0x44726167);
+}
+
 void UCoMDragonSubsystem::Deinitialize()
 {
 	Dragons.Empty();

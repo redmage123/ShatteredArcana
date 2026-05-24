@@ -171,6 +171,11 @@ public:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
     virtual void Deinitialize() override;
 
+    /** Re-seed this subsystem's RNG from a per-game master seed so playtests vary
+     *  by seed and stay reproducible. Mixes a per-subsystem salt so each stream is
+     *  independent. Called from UCoMPlaytestSubsystem::BootstrapGame. */
+    void ReseedRandom(int32 MasterSeed);
+
     // ── Agent Management ─────────────────────────────────────────────────────
 
     /** Recruit a new spy agent. Cost depends on skill level. */

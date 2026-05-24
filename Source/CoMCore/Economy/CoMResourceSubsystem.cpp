@@ -22,6 +22,11 @@ void UCoMResourceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	ResourceRng.Initialize(0x5265736F);
 }
 
+void UCoMResourceSubsystem::ReseedRandom(int32 MasterSeed)
+{
+	ResourceRng.Initialize(MasterSeed ^ 0x5265736F);
+}
+
 void UCoMResourceSubsystem::Deinitialize()
 {
 	AllMines.Empty();

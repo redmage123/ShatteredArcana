@@ -10,6 +10,13 @@ void UCoMSiegeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	RngStream.Initialize(FPlatformTime::Cycles());
 }
 
+void UCoMSiegeSubsystem::ReseedRandom(int32 MasterSeed)
+{
+	// Default Initialize() uses FPlatformTime::Cycles() (non-reproducible);
+	// this gives the playtest a deterministic, seed-varying siege stream.
+	RngStream.Initialize(MasterSeed ^ 0x53696567);
+}
+
 void UCoMSiegeSubsystem::Deinitialize()
 {
 	AllSieges.Empty();

@@ -32,6 +32,11 @@ void UCoMMagicSubsystem::Initialize(FSubsystemCollectionBase& Collection)
     NextRuneInstanceId = 1;
     RngStream.Initialize(0x4D616769);
 }
+void UCoMMagicSubsystem::ReseedRandom(int32 MasterSeed)
+{
+    RngStream.Initialize(MasterSeed ^ 0x4D616769);
+}
+
 void UCoMMagicSubsystem::Deinitialize()
 {
     Super::Deinitialize();

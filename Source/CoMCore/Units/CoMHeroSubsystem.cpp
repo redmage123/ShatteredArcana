@@ -18,6 +18,11 @@ void UCoMHeroSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	RngStream.Initialize(0x4865726F);
 }
 
+void UCoMHeroSubsystem::ReseedRandom(int32 MasterSeed)
+{
+	RngStream.Initialize(MasterSeed ^ 0x4865726F);
+}
+
 void UCoMHeroSubsystem::Deinitialize()
 {
 	Personalities.Empty();

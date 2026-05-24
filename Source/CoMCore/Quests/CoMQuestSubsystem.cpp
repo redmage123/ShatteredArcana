@@ -108,6 +108,11 @@ void UCoMQuestSubsystem::Initialize(FSubsystemCollectionBase& Collection)
     LastGenerationTurn = 0;
 }
 
+void UCoMQuestSubsystem::ReseedRandom(int32 MasterSeed)
+{
+    RngStream.Initialize(MasterSeed ^ 0x51756573);
+}
+
 void UCoMQuestSubsystem::Deinitialize()
 {
     AllQuests.Empty();

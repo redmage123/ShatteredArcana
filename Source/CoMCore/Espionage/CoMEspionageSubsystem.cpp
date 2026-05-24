@@ -18,6 +18,11 @@ void UCoMEspionageSubsystem::Initialize(FSubsystemCollectionBase& Collection)
     RngStream.Initialize(0x45737069);
 }
 
+void UCoMEspionageSubsystem::ReseedRandom(int32 MasterSeed)
+{
+    RngStream.Initialize(MasterSeed ^ 0x45737069);
+}
+
 void UCoMEspionageSubsystem::Deinitialize()
 {
     Super::Deinitialize();

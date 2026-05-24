@@ -59,6 +59,13 @@ void UCoMCombatSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	RngStream.Initialize(FPlatformTime::Cycles());
 }
 
+void UCoMCombatSubsystem::ReseedRandom(int32 MasterSeed)
+{
+	// Default Initialize() uses FPlatformTime::Cycles() (non-reproducible);
+	// this gives the playtest a deterministic, seed-varying combat stream.
+	RngStream.Initialize(MasterSeed ^ 0x436F6D62);
+}
+
 void UCoMCombatSubsystem::Deinitialize()
 {
 	Super::Deinitialize();

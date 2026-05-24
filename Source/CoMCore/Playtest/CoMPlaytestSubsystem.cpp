@@ -17,6 +17,14 @@
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
 #include "CoMCore/World/CoMSiteEncounterSubsystem.h"
 #include "CoMCore/World/CoMWorldGenerator.h"
+#include "CoMCore/World/CoMWeatherSubsystem.h"
+#include "CoMCore/Events/CoMWorldEventSubsystem.h"
+#include "CoMCore/Economy/CoMResourceSubsystem.h"
+#include "CoMCore/Espionage/CoMEspionageSubsystem.h"
+#include "CoMCore/Quests/CoMQuestSubsystem.h"
+#include "CoMCore/Combat/CoMCombatSubsystem.h"
+#include "CoMCore/Combat/CoMSiegeSubsystem.h"
+#include "CoMCore/Units/CoMDragonSubsystem.h"
 #include "CoMCore/CoreTypes/CoMGameplayTags.h"
 
 #include "Engine/World.h"
@@ -204,6 +212,22 @@ void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
 		UCoMWorldGenerator* Gen = NewObject<UCoMWorldGenerator>(this);
 		Gen->GenerateWorld(Map, Seed);
 	}
+
+	// Re-seed every RNG-owning subsystem from this game's seed. Without this the
+	// subsystems keep the fixed constants from their Initialize() (0x4865726F,
+	// 0x4D616769, ...) so every game in a batch plays out identically. Each
+	// ReseedRandom mixes its own salt, so passing the same Seed still yields an
+	// independent stream per subsystem while staying reproducible.
+	if (UCoMHeroSubsystem*       S = GI->GetSubsystem<UCoMHeroSubsystem>())       { S->ReseedRandom(Seed); }
+	if (UCoMMagicSubsystem*      S = GI->GetSubsystem<UCoMMagicSubsystem>())      { S->ReseedRandom(Seed); }
+	if (UCoMCombatSubsystem*     S = GI->GetSubsystem<UCoMCombatSubsystem>())     { S->ReseedRandom(Seed); }
+	if (UCoMSiegeSubsystem*      S = GI->GetSubsystem<UCoMSiegeSubsystem>())      { S->ReseedRandom(Seed); }
+	if (UCoMResourceSubsystem*   S = GI->GetSubsystem<UCoMResourceSubsystem>())   { S->ReseedRandom(Seed); }
+	if (UCoMEspionageSubsystem*  S = GI->GetSubsystem<UCoMEspionageSubsystem>())  { S->ReseedRandom(Seed); }
+	if (UCoMQuestSubsystem*      S = GI->GetSubsystem<UCoMQuestSubsystem>())      { S->ReseedRandom(Seed); }
+	if (UCoMDragonSubsystem*     S = GI->GetSubsystem<UCoMDragonSubsystem>())     { S->ReseedRandom(Seed); }
+	if (UCoMWorldEventSubsystem* S = GI->GetSubsystem<UCoMWorldEventSubsystem>()) { S->ReseedRandom(Seed); }
+	if (UCoMWeatherSubsystem*    S = GI->GetSubsystem<UCoMWeatherSubsystem>())    { S->InitializeWeather(Seed); }
 
 	// Spawn 14 ACoMPlayerState actors so gold/mana/fame tracking works for
 	// AI wizards. Without this, GetWizardByIndex returns nullptr and every

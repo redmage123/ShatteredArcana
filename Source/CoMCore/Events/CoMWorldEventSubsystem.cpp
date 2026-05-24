@@ -32,6 +32,14 @@ void UCoMWorldEventSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	EventRng = FCoMDeterministicRandom(0x4576656EULL, 3);
 }
 
+void UCoMWorldEventSubsystem::ReseedRandom(int32 MasterSeed)
+{
+	// Mix the master seed into the "Even" stream (sequence 3) so world events
+	// vary per game while staying reproducible.
+	const uint64 Salt = static_cast<uint64>(static_cast<uint32>(MasterSeed)) ^ 0x4576656EULL;
+	EventRng = FCoMDeterministicRandom(Salt, 3);
+}
+
 void UCoMWorldEventSubsystem::Deinitialize()
 {
 	ActiveEvents.Empty();
