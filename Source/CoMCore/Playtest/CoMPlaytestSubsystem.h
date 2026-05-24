@@ -41,6 +41,17 @@ struct COMCORE_API FCoMPlaytestWizardResult
 	UPROPERTY() int32 SitesCleared  = 0;
 };
 
+/** Per-phase timing entry for the perf section of the report. */
+USTRUCT()
+struct COMCORE_API FCoMPlaytestPhaseTime
+{
+	GENERATED_BODY()
+
+	UPROPERTY() FName  Phase;
+	UPROPERTY() double TotalSeconds = 0.0;
+	UPROPERTY() int32  CallCount    = 0;
+};
+
 /** One full game's worth of summary data. */
 USTRUCT()
 struct COMCORE_API FCoMPlaytestGameResult
@@ -61,8 +72,11 @@ struct COMCORE_API FCoMPlaytestGameResult
 	UPROPERTY() int32   ErrorCount     = 0;
 	UPROPERTY() int32   WarningCount   = 0;
 	UPROPERTY() float   WallClockSeconds = 0.0f;
+	UPROPERTY() float   BootstrapSeconds = 0.0f;
+	UPROPERTY() float   TeardownSeconds  = 0.0f;
 	UPROPERTY() TArray<FCoMPlaytestWizardResult> Wizards;
-	UPROPERTY() TArray<FString> CapturedErrors;   // first ~20 errors only
+	UPROPERTY() TArray<FString> CapturedErrors;
+	UPROPERTY() TArray<FCoMPlaytestPhaseTime> PhaseTimes;
 };
 
 /**

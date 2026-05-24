@@ -125,6 +125,15 @@ bool UCoMSiteEncounterSubsystem::TryResolveEncounterForArmy(int32 ArmyID)
 	if (Army->bInCombat) return false;
 	if (Army->EncounterCooldown > 0) return false;
 
+	// Skip encounters when the army contains a settler — settlers can't fight
+	// and walking them into site guards is suicide. The AI's other armies do
+	// the dungeon-crawling once cities are established.
+	for (int32 UID : Army->UnitIDs)
+	{
+		const FCoMUnitInstance* U = Units->GetUnit(UID);
+		if (U && U->bIsSettler) { return false; }
+	}
+
 	const FCoMTileData* Tile = Map->GetTile(Army->Plane, Army->Layer, Army->Position.X, Army->Position.Y);
 	if (!Tile) return false;
 

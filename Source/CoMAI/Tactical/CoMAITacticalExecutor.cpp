@@ -871,11 +871,17 @@ FIntPoint UCoMAITacticalExecutor::FindBestSettlerTarget(
 				TileScore = 1; // No map data available, accept any non-excluded tile.
 			}
 
-			// Prefer tiles closer to our cities but not too close (good expansion distance).
+			// Strongly prefer tiles ~3-8 tiles from our capital. Settler move
+			// speed is 1/turn, so tiles 25 away take 25 turns; we want first
+			// secondary city up by turn 8-10.
 			const int32 DistFromBase = WrappedDistance(Candidate, SearchCenter);
-			if (DistFromBase >= CoM::MIN_CITY_DISTANCE && DistFromBase <= 15)
+			if (DistFromBase >= CoM::MIN_CITY_DISTANCE && DistFromBase <= 8)
 			{
-				TileScore += 2; // Bonus for moderate distance.
+				TileScore += 5; // Strong bonus for nearby founding tiles.
+			}
+			else if (DistFromBase > 8 && DistFromBase <= 15)
+			{
+				TileScore += 1; // Mild bonus for moderate distance.
 			}
 
 			if (TileScore > BestScore)

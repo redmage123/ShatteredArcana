@@ -9,6 +9,7 @@
 #include "CoMCore/Magic/CoMMagicSubsystem.h"
 #include "CoMCore/Data/CoMSpellDatabase.h"
 #include "CoMCore/Turn/CoMTurnSubsystem.h"
+#include "CoMCore/Turn/CoMTurnTimings.h"
 #include "CoMCore/Units/CoMUnitSubsystem.h"
 #include "CoMCore/Units/CoMHeroSubsystem.h"
 #include "CoMCore/Victory/CoMVictorySubsystem.h"
@@ -136,12 +137,22 @@ void UCoMPlaytestSubsystem::RunOneGame(int32 GameIndex, int32 Seed, int32 MaxTur
 	OutResult.GameIndex = GameIndex;
 	OutResult.Seed      = Seed;
 
+	// Enable per-phase timing for this game only.
+	CoMTurnTimings::Reset();
+	CoMTurnTimings::bEnabled = true;
+
+	const double BootstrapStart = FPlatformTime::Seconds();
 	BootstrapGame(Seed);
+	OutResult.BootstrapSeconds = (float)(FPlatformTime::Seconds() - BootstrapStart);
 
 	UGameInstance* GI = GetGameInstance();
 	UCoMTurnSubsystem*    Turn    = GI ? GI->GetSubsystem<UCoMTurnSubsystem>()    : nullptr;
 	UCoMVictorySubsystem* Victory = GI ? GI->GetSubsystem<UCoMVictorySubsystem>() : nullptr;
-	if (!Turn) { return; }
+	if (!Turn)
+	{
+		CoMTurnTimings::bEnabled = false;
+		return;
+	}
 
 	int32 TurnsPlayed = 0;
 	for (; TurnsPlayed < MaxTurns; ++TurnsPlayed)
@@ -159,7 +170,22 @@ void UCoMPlaytestSubsystem::RunOneGame(int32 GameIndex, int32 Seed, int32 MaxTur
 	OutResult.TurnsPlayed = TurnsPlayed;
 
 	CaptureGameResult(OutResult, TurnsPlayed);
+
+	// Snapshot the timings before teardown so we have a clean per-game view.
+	for (const auto& Pair : CoMTurnTimings::Elapsed)
+	{
+		FCoMPlaytestPhaseTime PT;
+		PT.Phase        = Pair.Key;
+		PT.TotalSeconds = Pair.Value;
+		PT.CallCount    = CoMTurnTimings::CallCounts.FindRef(Pair.Key);
+		OutResult.PhaseTimes.Add(PT);
+	}
+	CoMTurnTimings::bEnabled = false;
+	CoMTurnTimings::Reset();
+
+	const double TeardownStart = FPlatformTime::Seconds();
 	TeardownGame();
+	OutResult.TeardownSeconds = (float)(FPlatformTime::Seconds() - TeardownStart);
 }
 
 void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
@@ -500,6 +526,19 @@ void UCoMPlaytestSubsystem::WriteJsonReport(const TArray<FCoMPlaytestGameResult>
 		W->WriteValue(TEXT("errors"),              R.ErrorCount);
 		W->WriteValue(TEXT("warnings"),            R.WarningCount);
 		W->WriteValue(TEXT("seconds"),             R.WallClockSeconds);
+		W->WriteValue(TEXT("bootstrap_seconds"),   R.BootstrapSeconds);
+		W->WriteValue(TEXT("teardown_seconds"),    R.TeardownSeconds);
+
+		W->WriteArrayStart(TEXT("phase_times"));
+		for (const FCoMPlaytestPhaseTime& PT : R.PhaseTimes)
+		{
+			W->WriteObjectStart();
+			W->WriteValue(TEXT("phase"), PT.Phase.ToString());
+			W->WriteValue(TEXT("total_seconds"), PT.TotalSeconds);
+			W->WriteValue(TEXT("call_count"),    PT.CallCount);
+			W->WriteObjectEnd();
+		}
+		W->WriteArrayEnd();
 
 		W->WriteArrayStart(TEXT("wizards"));
 		for (const FCoMPlaytestWizardResult& WR : R.Wizards)

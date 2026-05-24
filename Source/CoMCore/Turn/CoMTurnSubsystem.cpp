@@ -3,6 +3,7 @@
 // COM-028
 
 #include "Turn/CoMTurnSubsystem.h"
+#include "Turn/CoMTurnTimings.h"
 #include "Framework/CoMGameState.h"
 #include "Wizards/CoMPlayerState.h"
 #include "Engine/World.h"
@@ -162,24 +163,29 @@ void UCoMTurnSubsystem::ProcessFullTurn()
 	       TEXT("UCoMTurnSubsystem: ═══ Processing full turn %d ═══"), CurrentTurn);
 
 	// 1. World processing (seasons, weather, build wizard order)
-	ProcessWorldPhase();
+	COM_TIMED_TICK("WorldPhase", ProcessWorldPhase());
 
 	// 2. Tick all gameplay subsystems in canonical order
 	ProcessAllSubsystemTurns();
 
 	// 3. End-of-turn cleanup (sets EndOfTurn phase, broadcasts OnTurnEnded)
-	ProcessEndOfTurn();
+	COM_TIMED_TICK("EndOfTurn", ProcessEndOfTurn());
 
 	// 4. Turn counter is advanced by BeginNextTurn() (the FSM path).
-	//    Do NOT increment here — that would cause a double increment
-	//    when AdvanceGlobalPhase() -> BeginNextTurn() fires.
 
-	// 5. Autosave at end of each full turn
-	if (UGameInstance* AutoGI = GetGameInstance())
+	// 5. Autosave every N turns. Per-turn autosave serialized the entire
+	//    24-layer world map + every subsystem each turn (measured at 11+
+	//    seconds vs ~8 ms of actual game logic — 99.93% of wallclock).
+	//    The playtest harness disables it entirely via CoMTurnTimings::bEnabled.
+	static constexpr int32 AutosaveEveryNTurns = 5;
+	if (!CoMTurnTimings::bEnabled && (CurrentTurn % AutosaveEveryNTurns) == 0)
 	{
-		if (UCoMSaveSubsystem* SaveSub = AutoGI->GetSubsystem<UCoMSaveSubsystem>())
+		if (UGameInstance* AutoGI = GetGameInstance())
 		{
-			SaveSub->Autosave();
+			if (UCoMSaveSubsystem* SaveSub = AutoGI->GetSubsystem<UCoMSaveSubsystem>())
+			{
+				SaveSub->Autosave();
+			}
 		}
 	}
 
@@ -326,45 +332,38 @@ void UCoMTurnSubsystem::ProcessAllSubsystemTurns()
 	// ── Seasons / Weather ────────────────────────────────────────────
 	if (UCoMSeasonSubsystem* Seasons = GI->GetSubsystem<UCoMSeasonSubsystem>())
 	{
-		Seasons->AdvanceTurn();
-		UE_LOG(LogTemp, Log, TEXT("  [Seasons] Season subsystem ticked."));
+		COM_TIMED_TICK("Seasons", Seasons->AdvanceTurn());
 	}
 	if (UCoMWeatherSubsystem* Weather = GI->GetSubsystem<UCoMWeatherSubsystem>())
 	{
-		Weather->ProcessWeatherTurn();
-		UE_LOG(LogTemp, Log, TEXT("  [Weather] Weather subsystem ticked."));
+		COM_TIMED_TICK("Weather", Weather->ProcessWeatherTurn());
 	}
 
 	// ── World Events ────────────────────────────────────────────────
 	if (UCoMWorldEventSubsystem* WorldEvents = GI->GetSubsystem<UCoMWorldEventSubsystem>())
 	{
-		WorldEvents->ProcessEventTurn(CurrentTurn);
-		UE_LOG(LogTemp, Log, TEXT("  [WorldEvents] World events subsystem ticked."));
+		COM_TIMED_TICK("WorldEvents", WorldEvents->ProcessEventTurn(CurrentTurn));
 	}
 
 	// ── Movement ─────────────────────────────────────────────────────
 	if (UCoMUnitSubsystem* Units = GI->GetSubsystem<UCoMUnitSubsystem>())
 	{
-		Units->ProcessMovementTurn();
-		UE_LOG(LogTemp, Log, TEXT("  [Movement] Unit movement processed."));
+		COM_TIMED_TICK("Movement", Units->ProcessMovementTurn());
 	}
 
 	// ── Combat ───────────────────────────────────────────────────────
 	if (UCoMCombatSubsystem* Combat = GI->GetSubsystem<UCoMCombatSubsystem>())
 	{
-		// ── Audio: switch to combat music before resolving encounters ─────
 		if (UCoMAudioSubsystem* Audio = GI->GetSubsystem<UCoMAudioSubsystem>())
 		{
-			Audio->SetCombatIntensity(2); // Battle-level music
+			Audio->SetCombatIntensity(2);
 		}
 
-		Combat->ResolveAllEncounters(CurrentTurn);
-		UE_LOG(LogTemp, Log, TEXT("  [Combat] Combat encounters resolved."));
+		COM_TIMED_TICK("Combat", Combat->ResolveAllEncounters(CurrentTurn));
 
-		// ── Audio: return to peace after combat resolves ──────────────────
 		if (UCoMAudioSubsystem* Audio = GI->GetSubsystem<UCoMAudioSubsystem>())
 		{
-			Audio->SetCombatIntensity(0); // Peace — reverts to overworld
+			Audio->SetCombatIntensity(0);
 		}
 	}
 
@@ -375,50 +374,45 @@ void UCoMTurnSubsystem::ProcessAllSubsystemTurns()
 	// ── Naval ────────────────────────────────────────────────────────
 	if (UCoMNavalSubsystem* Naval = GI->GetSubsystem<UCoMNavalSubsystem>())
 	{
-		Naval->ProcessNavalTurn();
-		UE_LOG(LogTemp, Log, TEXT("  [Naval] Naval subsystem ticked."));
+		COM_TIMED_TICK("Naval", Naval->ProcessNavalTurn());
 	}
 
 	// ── Production ───────────────────────────────────────────────────
 	if (UCoMResourceSubsystem* Resources = GI->GetSubsystem<UCoMResourceSubsystem>())
 	{
-		Resources->ProcessMineTurn();
-		Resources->ProcessTradeTurn();
-		Resources->ProcessDiseaseTurn();
-		UE_LOG(LogTemp, Log, TEXT("  [Production] Resource subsystem ticked (mine/trade/disease)."));
+		COM_TIMED_TICK("Resources", {
+			Resources->ProcessMineTurn();
+			Resources->ProcessTradeTurn();
+			Resources->ProcessDiseaseTurn();
+		});
 	}
 	if (UCoMCitySubsystem* CitySub = GI->GetSubsystem<UCoMCitySubsystem>())
 	{
-		CitySub->ProcessCityTurn();
-		UE_LOG(LogTemp, Log, TEXT("  [Production] City subsystem ticked."));
+		COM_TIMED_TICK("Cities", CitySub->ProcessCityTurn());
 	}
 
 	// ── Magic ────────────────────────────────────────────────────────
 	if (UCoMMagicSubsystem* Magic = GI->GetSubsystem<UCoMMagicSubsystem>())
 	{
-		Magic->ProcessTurn(CurrentTurn);
-		UE_LOG(LogTemp, Log, TEXT("  [Magic] Magic subsystem ticked."));
+		COM_TIMED_TICK("Magic", Magic->ProcessTurn(CurrentTurn));
 	}
 
 	// ── Heroes ───────────────────────────────────────────────────────
 	if (UCoMHeroSubsystem* Heroes = GI->GetSubsystem<UCoMHeroSubsystem>())
 	{
-		Heroes->ProcessHeroTurn();
-		UE_LOG(LogTemp, Log, TEXT("  [Heroes] Hero subsystem ticked."));
+		COM_TIMED_TICK("Heroes", Heroes->ProcessHeroTurn());
 	}
 
 	// ── Dragons ──────────────────────────────────────────────────────
 	if (UCoMDragonSubsystem* DragonSub = GI->GetSubsystem<UCoMDragonSubsystem>())
 	{
-		DragonSub->ProcessDragonTurn();
-		UE_LOG(LogTemp, Log, TEXT("  [Dragons] Dragon subsystem ticked."));
+		COM_TIMED_TICK("Dragons", DragonSub->ProcessDragonTurn());
 	}
 
 	// ── Diplomacy ────────────────────────────────────────────────────
 	if (UCoMDiplomacySubsystem* Diplomacy = GI->GetSubsystem<UCoMDiplomacySubsystem>())
 	{
-		Diplomacy->ProcessTurn(CurrentTurn);
-		UE_LOG(LogTemp, Log, TEXT("  [Diplomacy] Diplomacy subsystem ticked."));
+		COM_TIMED_TICK("Diplomacy", Diplomacy->ProcessTurn(CurrentTurn));
 	}
 
 	// ── AI Wizard Diplomacy (delegate) ──────────────────────────────
@@ -431,29 +425,25 @@ void UCoMTurnSubsystem::ProcessAllSubsystemTurns()
 	// ── Espionage ────────────────────────────────────────────────────
 	if (UCoMEspionageSubsystem* Espionage = GI->GetSubsystem<UCoMEspionageSubsystem>())
 	{
-		Espionage->ProcessTurn(CurrentTurn);
-		UE_LOG(LogTemp, Log, TEXT("  [Espionage] Espionage subsystem ticked."));
+		COM_TIMED_TICK("Espionage", Espionage->ProcessTurn(CurrentTurn));
 	}
 
 	// ── Quests ───────────────────────────────────────────────────────
 	if (UCoMQuestSubsystem* Quests = GI->GetSubsystem<UCoMQuestSubsystem>())
 	{
-		Quests->ProcessTurn(CurrentTurn, GetActiveWizardCount());
-		UE_LOG(LogTemp, Log, TEXT("  [Quests] Quest subsystem ticked."));
+		COM_TIMED_TICK("Quests", Quests->ProcessTurn(CurrentTurn, GetActiveWizardCount()));
 	}
 
 	// ── Fog of War ───────────────────────────────────────────────────
 	if (UCoMFogOfWarSubsystem* FoW = GI->GetSubsystem<UCoMFogOfWarSubsystem>())
 	{
-		FoW->UpdateAllVision();
-		UE_LOG(LogTemp, Log, TEXT("  [FogOfWar] Vision updated for all wizards."));
+		COM_TIMED_TICK("FogOfWar", FoW->UpdateAllVision());
 	}
 
 	// ── Victory Conditions ───────────────────────────────────────────
 	if (UCoMVictorySubsystem* VictorySub = GI->GetSubsystem<UCoMVictorySubsystem>())
 	{
-		VictorySub->CheckVictoryConditions(CurrentTurn);
-		UE_LOG(LogTemp, Log, TEXT("  [Victory] Victory conditions evaluated."));
+		COM_TIMED_TICK("Victory", VictorySub->CheckVictoryConditions(CurrentTurn));
 
 		if (VictorySub->IsGameOver())
 		{
@@ -465,11 +455,7 @@ void UCoMTurnSubsystem::ProcessAllSubsystemTurns()
 	}
 
 	// ── AI strategic + tactical execution ────────────────────────────
-	// Fires at the very end so AI sees the post-tick world. CoMAISubsystem
-	// binds to this to run city/army/research/diplomacy decisions for every
-	// AI wizard. AI orders that move armies will resolve combat next turn.
-	OnAITurnTick.Broadcast(CurrentTurn);
-	UE_LOG(LogTemp, Log, TEXT("  [AI] OnAITurnTick broadcast (turn %d)."), CurrentTurn);
+	COM_TIMED_TICK("AI", OnAITurnTick.Broadcast(CurrentTurn));
 }
 
 void UCoMTurnSubsystem::BeginWizardTurn(int32 WizardIndex)
