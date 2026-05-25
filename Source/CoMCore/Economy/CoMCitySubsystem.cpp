@@ -174,9 +174,11 @@ int32 UCoMCitySubsystem::ProduceSettler(int32 CityId)
 		return -1;
 	}
 
-	// Spawn a settler unit (SpecID 0 = generic settler placeholder).
-	const int32 SettlerUnitId = UnitSub->SpawnUnit(
-		0, City->Plane, City->Layer, City->Position, City->OwnerWizardIndex);
+	// Spawn a settler by its database spec name. The int32 SpawnUnit path
+	// stringifies the id ("0") and can't match the FName-keyed unit database,
+	// so it always failed here ("unknown SpecID 0") — no city ever expanded.
+	const int32 SettlerUnitId = UnitSub->SpawnUnitByName(
+		FName(TEXT("Settler")), City->Plane, City->Layer, City->Position, City->OwnerWizardIndex);
 
 	if (SettlerUnitId == INDEX_NONE)
 	{
@@ -1440,30 +1442,12 @@ int32 UCoMCitySubsystem::SpawnRecruitedUnit(const FCoMCityData& City, FName Unit
 		return INDEX_NONE;
 	}
 
-	// Resolve the SpecID int32 from the FName.
-	UAssetManager& AM = UAssetManager::Get();
-	const FPrimaryAssetType UnitSpecType(TEXT("CoMUnitSpec"));
-	TArray<FPrimaryAssetId> AssetList;
-	AM.GetPrimaryAssetIdList(UnitSpecType, AssetList);
-
-	int32 ResolvedSpecID = 0;
-	for (const FPrimaryAssetId& AssetId : AssetList)
-	{
-		FSoftObjectPath Path = AM.GetPrimaryAssetPath(AssetId);
-		if (const UCoMUnitSpecDataAsset* Spec = Cast<UCoMUnitSpecDataAsset>(Path.ResolveObject()))
-		{
-			if (Spec->UnitSpecID == UnitSpecID)
-			{
-				// UCoMUnitSubsystem::SpawnUnit takes an int32 SpecID.
-				// Use the type hash as a mapping, matching the resolver pattern.
-				ResolvedSpecID = GetTypeHash(UnitSpecID);
-				break;
-			}
-		}
-	}
-
-	const int32 UnitId = UnitSub->SpawnUnit(
-		ResolvedSpecID, City.Plane, City.Layer, City.Position, City.OwnerWizardIndex);
+	// Spawn directly by spec name. The old path resolved the FName to
+	// GetTypeHash(UnitSpecID) and fed it to the int32 SpawnUnit overload, which
+	// stringifies the id and can't match the FName-keyed database — so every
+	// city recruit silently failed.
+	const int32 UnitId = UnitSub->SpawnUnitByName(
+		UnitSpecID, City.Plane, City.Layer, City.Position, City.OwnerWizardIndex);
 
 	if (UnitId == INDEX_NONE)
 	{

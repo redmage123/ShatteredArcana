@@ -371,7 +371,7 @@ int32 UCoMUnitSubsystem::FoundCityWithSettler(int32 ArmyId, int32 SettlerUnitId)
 // Movement
 // ---------------------------------------------------------------------------
 
-void UCoMUnitSubsystem::MoveArmy(int32 ArmyID, FIntPoint Destination)
+void UCoMUnitSubsystem::MoveArmy(int32 ArmyID, FIntPoint Destination, bool bAllowUnexplored)
 {
 	FCoMArmyGroup* Army = AllArmies.Find(ArmyID);
 	if (!Army || Army->UnitIDs.Num() == 0)
@@ -412,7 +412,7 @@ void UCoMUnitSubsystem::MoveArmy(int32 ArmyID, FIntPoint Destination)
 	Request.GoalPos    = Destination;
 	Request.WizardIndex    = Army->OwnerWizardIndex;
 	Request.bAllowPortals  = false;
-	Request.bAllowUnexplored = false;
+	Request.bAllowUnexplored = bAllowUnexplored;
 
 	FCoMPathResult Result = Pathfinder->FindPath(WorldMapSubsystem.Get(), nullptr, Request);
 	if (!Result.bFound || Result.Segments.Num() == 0)

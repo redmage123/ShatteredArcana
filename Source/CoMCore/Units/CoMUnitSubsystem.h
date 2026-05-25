@@ -72,8 +72,14 @@ public:
 
 	// --- Movement ---
 
-	/** Move an army toward Destination, consuming movement points via pathfinder costs. */
-	void MoveArmy(int32 ArmyID, FIntPoint Destination);
+	/**
+	 * Move an army toward Destination, consuming movement points via pathfinder
+	 * costs. bAllowUnexplored lets the route cross tiles the owner hasn't
+	 * revealed yet — required for AI armies, which would otherwise be unable to
+	 * path to any goal in the fog (settlers never reached founding sites).
+	 * Terrain passability is still respected via per-tile move cost.
+	 */
+	void MoveArmy(int32 ArmyID, FIntPoint Destination, bool bAllowUnexplored = false);
 
 	/** End-of-turn movement processing: restore movement points, resolve any pending encounters. */
 	void ProcessMovementTurn();

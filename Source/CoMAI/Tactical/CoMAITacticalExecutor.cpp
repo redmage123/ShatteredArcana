@@ -249,7 +249,7 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 				const FIntPoint SettlerTarget = FindBestSettlerTarget(WizardId, Army->Plane, CitySub, MapSub);
 				if (SettlerTarget.X >= 0)
 				{
-					UnitSub->MoveArmy(Army->ArmyGroupID, SettlerTarget);
+					UnitSub->MoveArmy(Army->ArmyGroupID, SettlerTarget, /*bAllowUnexplored*/ true);
 					UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d settler army %d moving to (%d,%d)"),
 					       WizardId, Army->ArmyGroupID, SettlerTarget.X, SettlerTarget.Y);
 				}
@@ -268,7 +268,7 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 					const int32 DistToDef = WrappedDistance(Army->Position, DefTarget);
 					if (DistToDef > 1) // Not already there
 					{
-						UnitSub->MoveArmy(Army->ArmyGroupID, DefTarget);
+						UnitSub->MoveArmy(Army->ArmyGroupID, DefTarget, /*bAllowUnexplored*/ true);
 						UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d army %d moving to defend (%d,%d)"),
 						       WizardId, Army->ArmyGroupID, DefTarget.X, DefTarget.Y);
 						continue;
@@ -298,7 +298,7 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 
 					if (OurPower >= EnemyPowerAtTarget * ATTACK_POWER_RATIO || EnemyPowerAtTarget <= 0.0f)
 					{
-						UnitSub->MoveArmy(Army->ArmyGroupID, AtkTarget);
+						UnitSub->MoveArmy(Army->ArmyGroupID, AtkTarget, /*bAllowUnexplored*/ true);
 						UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d army %d attacking toward (%d,%d)"),
 						       WizardId, Army->ArmyGroupID, AtkTarget.X, AtkTarget.Y);
 						continue;
@@ -316,7 +316,7 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 					const int32 DistToSite = WrappedDistance(Army->Position, SiteTarget);
 					if (DistToSite > 0)
 					{
-						UnitSub->MoveArmy(Army->ArmyGroupID, SiteTarget);
+						UnitSub->MoveArmy(Army->ArmyGroupID, SiteTarget, /*bAllowUnexplored*/ true);
 						UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d army %d hunting site/node at (%d,%d)"),
 						       WizardId, Army->ArmyGroupID, SiteTarget.X, SiteTarget.Y);
 						continue;
@@ -334,7 +334,7 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 				const int32 DistToCenter = WrappedDistance(Army->Position, MapCenter);
 				if (DistToCenter > 30)
 				{
-					UnitSub->MoveArmy(Army->ArmyGroupID, MapCenter);
+					UnitSub->MoveArmy(Army->ArmyGroupID, MapCenter, /*bAllowUnexplored*/ true);
 					UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d army %d exploring toward center"),
 					       WizardId, Army->ArmyGroupID);
 				}
