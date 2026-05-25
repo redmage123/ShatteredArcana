@@ -716,15 +716,26 @@ FFixed64 UCoMUnitSubsystem::ComputeArmyMovementSpeed(const FCoMArmyGroup& Army) 
 			continue;
 		}
 
-		// Parse SpecID back to int for asset lookup.
-		const int32 ParsedSpecID = FCString::Atoi(*Unit->SpecID.ToString());
-		const UCoMUnitSpecDataAsset* Spec = ResolveSpec(ParsedSpecID);
-		if (!Spec)
+		// Units carry an FName SpecID (e.g. "Settler"). Resolve movement from the
+		// FName-keyed C++ database first; fall back to an editor data asset for
+		// asset-authored specs. The old code did FCString::Atoi("Settler") -> 0
+		// and ResolveSpec(0) -> nullptr, so every unit was skipped and the army's
+		// speed came back as 0 — MoveArmy then bailed on the first tile and no
+		// army (settlers included) ever actually moved.
+		FFixed64 UnitMove(0);
+		if (CoMUnitDatabase::Contains(Unit->SpecID))
+		{
+			UnitMove = FFixed64(CoMUnitDatabase::GetUnitSpec(Unit->SpecID).Movement);
+		}
+		else if (const UCoMUnitSpecDataAsset* Spec = ResolveSpec(FCString::Atoi(*Unit->SpecID.ToString())))
+		{
+			UnitMove = FFixed64(Spec->MovePoints);
+		}
+		else
 		{
 			continue;
 		}
 
-		const FFixed64 UnitMove = FFixed64(Spec->MovePoints);
 		if (UnitMove < Slowest)
 		{
 			Slowest = UnitMove;
