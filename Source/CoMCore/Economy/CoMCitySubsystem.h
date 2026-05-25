@@ -232,6 +232,13 @@ public:
 	/** Return city data by ID, or nullptr if not found. */
 	const FCoMCityData* GetCity(int32 CityID) const;
 
+	/** Mutable city data by ID, or nullptr. For systems (e.g. global enchantments)
+	 *  that need to push state changes like unrest or population. */
+	FCoMCityData* GetCityMutable(int32 CityID);
+
+	/** IDs of every city in the world (all owners, all planes). */
+	TArray<int32> GetAllCityIDs() const;
+
 	/** All cities owned by a given wizard. */
 	TArray<const FCoMCityData*> GetCitiesForWizard(int32 WizardIndex) const;
 

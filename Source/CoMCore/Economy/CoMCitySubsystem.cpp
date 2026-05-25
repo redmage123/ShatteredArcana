@@ -318,6 +318,18 @@ const FCoMCityData* UCoMCitySubsystem::GetCity(int32 CityID) const
 	return AllCities.Find(CityID);
 }
 
+FCoMCityData* UCoMCitySubsystem::GetCityMutable(int32 CityID)
+{
+	return AllCities.Find(CityID);
+}
+
+TArray<int32> UCoMCitySubsystem::GetAllCityIDs() const
+{
+	TArray<int32> Out;
+	AllCities.GetKeys(Out);
+	return Out;
+}
+
 TArray<const FCoMCityData*> UCoMCitySubsystem::GetCitiesForWizard(int32 WizardIndex) const
 {
 	TArray<const FCoMCityData*> Result;

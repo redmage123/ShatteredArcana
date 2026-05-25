@@ -753,9 +753,11 @@ void UCoMAITacticalExecutor::ManageMagic(int32 WizardId, const FCoMAIStrategy& S
 		}
 	}
 
-	// 5) Fall-through: global enchantments.
+	// 5) Fall-through: global enchantments. Skip ones already maintained so the
+	// AI doesn't pointlessly re-cast an active enchantment every turn.
 	for (const FName& SId : GlobalSpells)
 	{
+		if (MagicSub->IsGlobalEnchantmentActive(WizardId, SId)) continue;
 		if (TryCast(SId, ECoMSpellScope::Global, FIntPoint(-1, -1), -1, -1, -1)) return;
 	}
 

@@ -203,6 +203,18 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnSpellCastCinematicRequested,
     FString, SpellDisplayName,
     bool, bIsArtifact);
 
+/**
+ * Fired whenever a wizard gains or loses a global enchantment. Every player is
+ * notified (Caster of Magic style) — the UI routes it to the notification
+ * centre and the enchantments panel. bActive = newly cast (true) or
+ * dispelled/lapsed (false).
+ */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnGlobalEnchantmentChanged,
+    int32, CasterWizardIndex,
+    FName, SpellID,
+    FString, SpellDisplayName,
+    bool, bActive);
+
 UCLASS()
 class COMCORE_API UCoMMagicSubsystem : public UGameInstanceSubsystem
 {
@@ -220,6 +232,45 @@ public:
     /** Fired when a "big" spell resolves (summon / global enchant / artifact). UI binds. */
     UPROPERTY(BlueprintAssignable, Category = "Magic")
     FOnSpellCastCinematicRequested OnSpellCastCinematicRequested;
+
+    /** Fired when any wizard gains/loses a global enchantment (all-player alert). */
+    UPROPERTY(BlueprintAssignable, Category = "Magic")
+    FOnGlobalEnchantmentChanged OnGlobalEnchantmentChanged;
+
+    // ── Global Enchantments (Caster of Magic style) ──────────────────────────
+
+    /**
+     * Apply all active global enchantments' per-turn effects (unrest reduction,
+     * city decay, healing, mana boons, doomsday countdown, map vision, ...).
+     * Called once per turn from ProcessTurn.
+     */
+    void ProcessGlobalEnchantments(int32 CurrentTurn);
+
+    /** True if WizardId currently maintains the given global enchantment. */
+    UFUNCTION(BlueprintCallable, Category = "Magic|Enchantments")
+    bool IsGlobalEnchantmentActive(int32 WizardId, FName SpellID) const;
+
+    /** True if any wizard other than WizardId maintains SpellID. */
+    UFUNCTION(BlueprintCallable, Category = "Magic|Enchantments")
+    bool IsEnchantmentActiveByOther(int32 WizardId, FName SpellID) const;
+
+    /**
+     * Multiplier applied to WizardId's spell costs from hostile global
+     * enchantments (e.g. an enemy's Suppress Magic). 1.0 = no penalty.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Magic|Enchantments")
+    float GetIncomingCastCostMultiplier(int32 WizardId) const;
+
+    /** Voluntarily cancel one of WizardId's global enchantments (stops upkeep). */
+    UFUNCTION(BlueprintCallable, Category = "Magic|Enchantments")
+    void CancelGlobalEnchantment(int32 WizardId, FName SpellID);
+
+    /** Active global enchantments for one wizard. */
+    UFUNCTION(BlueprintCallable, Category = "Magic|Enchantments")
+    TArray<FName> GetActiveEnchantments(int32 WizardId) const;
+
+    /** Every active global enchantment in play, paired with its owner wizard. */
+    void GetAllActiveEnchantments(TArray<int32>& OutOwners, TArray<FName>& OutSpellIDs) const;
 
     // ── Wizard Magic State ───────────────────────────────────────────────────
 

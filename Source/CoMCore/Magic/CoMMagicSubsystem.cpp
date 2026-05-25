@@ -1,9 +1,12 @@
 
 #include "CoMMagicSubsystem.h"
 #include "CoMCore/Data/CoMSpellDatabase.h"
+#include "CoMCore/Data/CoMGlobalEnchantmentData.h"
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
+#include "CoMCore/World/CoMFogOfWarSubsystem.h"
 #include "CoMCore/Units/CoMUnitSubsystem.h"
 #include "CoMCore/Economy/CoMCitySubsystem.h"
+#include "CoMCore/Victory/CoMVictorySubsystem.h"
 #include "CoMCore/Magic/CoMSpellVFXSubsystem.h"
 #include "CoMCore/Audio/CoMAudioSubsystem.h"
 #include "CoMCore/CoreTypes/CoMConstants.h"
@@ -275,8 +278,10 @@ bool UCoMMagicSubsystem::CanCastSpell(int32 WizardId, FName SpellId, const FCoMS
     if (!State) return false;
     // Must know the spell
     if (!State->KnownSpells.Contains(SpellId)) return false;
-    // Must have enough mana
-    if (State->CurrentMana < CastParams.ManaCost) return false;
+    // Must have enough mana — hostile global enchantments (Suppress Magic) can
+    // inflate the effective cost.
+    const int32 EffectiveCost = FMath::CeilToInt(CastParams.ManaCost * GetIncomingCastCostMultiplier(WizardId));
+    if (State->CurrentMana < EffectiveCost) return false;
     // Can't cast while already casting (overworld)
     if (CastParams.Scope != ECoMSpellScope::Combat && ActiveCastings.Contains(WizardId))
     {
@@ -291,8 +296,9 @@ bool UCoMMagicSubsystem::CastSpell(const FCoMSpellCast& CastParams)
         return false;
     }
     FCoMWizardMagicState& State = GetWizardMagic(CastParams.CasterWizardId);
-    // Deduct mana
-    State.CurrentMana -= CastParams.ManaCost;
+    // Deduct mana, inflated by any hostile Suppress Magic enchantment.
+    const int32 EffectiveCost = FMath::CeilToInt(CastParams.ManaCost * GetIncomingCastCostMultiplier(CastParams.CasterWizardId));
+    State.CurrentMana -= EffectiveCost;
     FCoMSpellCast Cast = CastParams;
     Cast.TurnsRemaining = CastParams.CastingTime;
     Cast.EffectivePower = CalculateSpellPower(CastParams.CasterWizardId, CastParams.SpellId);
@@ -633,6 +639,12 @@ void UCoMMagicSubsystem::ProcessTurn(int32 CurrentTurn)
             State.ActiveEnchantments.RemoveAt(State.ActiveEnchantments.Num() - 1);
             Maintenance -= DismissedUpkeep;
             ProjectedMana += DismissedUpkeep;
+
+            // Out of mana to maintain it — announce the lapse to all players.
+            const FCoMGlobalEnchantmentDef& LapsedDef = CoMGlobalEnchantmentData::Get(DismissedSpell);
+            const FString LapsedName = LapsedDef.IsValid()
+                ? LapsedDef.DisplayName.ToString() : DismissedSpell.ToString();
+            OnGlobalEnchantmentChanged.Broadcast(Pair.Key, DismissedSpell, LapsedName, /*bActive*/ false);
         }
         State.CurrentMana = FMath::Clamp(ProjectedMana, 0, State.MaxMana);
         State.MaintenanceCost = Maintenance;
@@ -699,7 +711,194 @@ void UCoMMagicSubsystem::ProcessTurn(int32 CurrentTurn)
     }
     // 9. Tick rune charges
     TickRunes();
+
+    // 10. Apply active global enchantment effects (unrest, decay, vision, ...)
+    ProcessGlobalEnchantments(CurrentTurn);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GLOBAL ENCHANTMENTS — per-turn effects + queries
+// ─────────────────────────────────────────────────────────────────────────────
+void UCoMMagicSubsystem::ProcessGlobalEnchantments(int32 CurrentTurn)
+{
+    UGameInstance* GI = GetGameInstance();
+    if (!GI) { return; }
+
+    UCoMCitySubsystem*     Cities = GI->GetSubsystem<UCoMCitySubsystem>();
+    UCoMUnitSubsystem*     Units  = GI->GetSubsystem<UCoMUnitSubsystem>();
+    UCoMFogOfWarSubsystem* FoW    = GI->GetSubsystem<UCoMFogOfWarSubsystem>();
+
+    // A single Tranquility anywhere blunts world-catastrophe enchantments.
+    bool bPeace = false;
+    for (const auto& Pair : WizardMagicStates)
+    {
+        for (const FName& E : Pair.Value.ActiveEnchantments)
+        {
+            if (CoMGlobalEnchantmentData::Get(E).Effect == ECoMEnchantEffect::GlobalPeaceAura)
+            {
+                bPeace = true; break;
+            }
+        }
+        if (bPeace) { break; }
+    }
+
+    for (auto& Pair : WizardMagicStates)
+    {
+        const int32 WizardId = Pair.Key;
+        FCoMWizardMagicState& State = Pair.Value;
+
+        for (const FName& EnchID : State.ActiveEnchantments)
+        {
+            const FCoMGlobalEnchantmentDef& Def = CoMGlobalEnchantmentData::Get(EnchID);
+            if (!Def.IsValid()) { continue; }
+
+            switch (Def.Effect)
+            {
+            case ECoMEnchantEffect::ReduceOwnUnrest:
+                if (Cities)
+                {
+                    for (const FCoMCityData* C : Cities->GetCitiesForWizard(WizardId))
+                    {
+                        if (!C) { continue; }
+                        if (FCoMCityData* M = Cities->GetCityMutable(C->CityID))
+                        {
+                            M->Unrest = FMath::Max(0, M->Unrest - Def.Magnitude);
+                        }
+                    }
+                }
+                break;
+
+            case ECoMEnchantEffect::HealOwnUnits:
+                if (Units)
+                {
+                    for (const FCoMArmyGroup* A : Units->GetArmiesForWizard(WizardId))
+                    {
+                        if (!A) { continue; }
+                        for (int32 UID : A->UnitIDs) { Units->ApplyHeal(UID, Def.Magnitude); }
+                    }
+                }
+                break;
+
+            case ECoMEnchantEffect::BoostOwnMana:
+                State.CurrentMana = FMath::Min(State.MaxMana, State.CurrentMana + Def.Magnitude);
+                break;
+
+            case ECoMEnchantEffect::GlobalChaosBoon:
+                // Raw chaos empowers the caster with bonus mana each turn.
+                State.CurrentMana = FMath::Min(State.MaxMana, State.CurrentMana + Def.Magnitude * 5);
+                break;
+
+            case ECoMEnchantEffect::DoomsdayCountdown:
+                // The doomsday clock floods chaos mana to its master.
+                State.CurrentMana = FMath::Min(State.MaxMana, State.CurrentMana + Def.Magnitude);
+                break;
+
+            case ECoMEnchantEffect::GlobalMapVision:
+                if (FoW)
+                {
+                    FoW->RevealArea(WizardId, ECoMPlane::Aurelith,
+                        FIntPoint(CoM::MAP_WIDTH / 2, CoM::MAP_HEIGHT / 2), CoM::MAP_WIDTH);
+                }
+                break;
+
+            case ECoMEnchantEffect::GlobalCityDecay:
+            case ECoMEnchantEffect::GlobalDeathToll:
+                if (Cities && !bPeace)
+                {
+                    for (int32 CID : Cities->GetAllCityIDs())
+                    {
+                        FCoMCityData* M = Cities->GetCityMutable(CID);
+                        if (M && M->OwnerWizardIndex >= 0 && M->OwnerWizardIndex != WizardId)
+                        {
+                            M->Population = FMath::Max(1, M->Population - Def.Magnitude);
+                        }
+                    }
+                }
+                break;
+
+            default:
+                // Combat / query / passive effects are applied where they are read
+                // (cast cost, combat resolution); instant effects fire at cast time.
+                break;
+            }
+        }
+    }
+}
+
+bool UCoMMagicSubsystem::IsGlobalEnchantmentActive(int32 WizardId, FName SpellID) const
+{
+    const FCoMWizardMagicState* S = WizardMagicStates.Find(WizardId);
+    return S && S->ActiveEnchantments.Contains(SpellID);
+}
+
+bool UCoMMagicSubsystem::IsEnchantmentActiveByOther(int32 WizardId, FName SpellID) const
+{
+    for (const auto& Pair : WizardMagicStates)
+    {
+        if (Pair.Key != WizardId && Pair.Value.ActiveEnchantments.Contains(SpellID))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+float UCoMMagicSubsystem::GetIncomingCastCostMultiplier(int32 WizardId) const
+{
+    float Mult = 1.0f;
+    for (const auto& Pair : WizardMagicStates)
+    {
+        if (Pair.Key == WizardId) { continue; }
+        for (const FName& E : Pair.Value.ActiveEnchantments)
+        {
+            const FCoMGlobalEnchantmentDef& Def = CoMGlobalEnchantmentData::Get(E);
+            if (Def.Effect == ECoMEnchantEffect::RaiseEnemyCastCost)
+            {
+                Mult += static_cast<float>(Def.Magnitude) / 100.0f;
+            }
+        }
+    }
+    return Mult;
+}
+
+void UCoMMagicSubsystem::CancelGlobalEnchantment(int32 WizardId, FName SpellID)
+{
+    FCoMWizardMagicState* S = WizardMagicStates.Find(WizardId);
+    if (!S) { return; }
+    if (S->ActiveEnchantments.Remove(SpellID) > 0)
+    {
+        const FCoMGlobalEnchantmentDef& Def = CoMGlobalEnchantmentData::Get(SpellID);
+        const FString Name = Def.IsValid() ? Def.DisplayName.ToString() : SpellID.ToString();
+        OnGlobalEnchantmentChanged.Broadcast(WizardId, SpellID, Name, /*bActive*/ false);
+    }
+}
+
+TArray<FName> UCoMMagicSubsystem::GetActiveEnchantments(int32 WizardId) const
+{
+    if (const FCoMWizardMagicState* S = WizardMagicStates.Find(WizardId))
+    {
+        return S->ActiveEnchantments;
+    }
+    return TArray<FName>();
+}
+
+void UCoMMagicSubsystem::GetAllActiveEnchantments(TArray<int32>& OutOwners, TArray<FName>& OutSpellIDs) const
+{
+    OutOwners.Reset();
+    OutSpellIDs.Reset();
+    for (const auto& Pair : WizardMagicStates)
+    {
+        for (const FName& E : Pair.Value.ActiveEnchantments)
+        {
+            if (CoMGlobalEnchantmentData::IsGlobalEnchantment(E))
+            {
+                OutOwners.Add(Pair.Key);
+                OutSpellIDs.Add(E);
+            }
+        }
+    }
+}
+
 int32 UCoMMagicSubsystem::CalculateManaIncome(int32 WizardId) const
 {
     const FCoMWizardMagicState* State = WizardMagicStates.Find(WizardId);
@@ -986,22 +1185,45 @@ void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
         }
         if (SpawnTile.X < 0) { LogResolve(TEXT("Summon (no spawn tile)")); break; }
 
-        // Pick a placeholder spec from rarity. Higher rarity = higher SpecID
-        // until we wire actual summoned creatures (skeletons, gargoyles, etc).
-        int32 SummonSpec = 1;
+        // Map rarity to an existing creature spec (FName-keyed unit database).
+        // These stand in for bespoke summoned creatures (skeletons, gargoyles,
+        // demons, ...) until those are authored; higher rarity = tougher unit.
+        // The old code fed placeholder int ids 1-4 to the int32 SpawnUnit
+        // overload, which can't resolve the FName database, so every summon
+        // failed silently ("unknown SpecID 1").
+        FName SummonSpec;
         switch (Info.Rarity)
         {
-        case ECoMSpellRarity::Common:    SummonSpec = 1; break;
-        case ECoMSpellRarity::Uncommon:  SummonSpec = 2; break;
-        case ECoMSpellRarity::Rare:      SummonSpec = 3; break;
-        case ECoMSpellRarity::VeryRare:  SummonSpec = 4; break;
-        default:                         SummonSpec = 1; break;
+        case ECoMSpellRarity::Common:    SummonSpec = TEXT("Undead_Infantry"); break;
+        case ECoMSpellRarity::Uncommon:  SummonSpec = TEXT("Demons_Infantry");  break;
+        case ECoMSpellRarity::Rare:      SummonSpec = TEXT("Demons_Cavalry");   break;
+        case ECoMSpellRarity::VeryRare:  SummonSpec = TEXT("Trolls_Infantry");  break;
+        default:                         SummonSpec = TEXT("Undead_Infantry"); break;
         }
 
-        const int32 NewID = Units->SpawnUnit(SummonSpec, Plane, Layer, SpawnTile, Cast.CasterWizardId);
+        const int32 NewID = Units->SpawnUnitByName(SummonSpec, Plane, Layer, SpawnTile, Cast.CasterWizardId);
         if (NewID > 0)
         {
-            LogResolve(*FString::Printf(TEXT("Summon -> unit %d"), NewID));
+            // Fold the summon into an army at the spawn tile (its own if one is
+            // there, otherwise a fresh army) so it can actually move and fight
+            // instead of sitting loose on the map.
+            int32 TargetArmy = INDEX_NONE;
+            const TArray<const FCoMArmyGroup*> AtTile =
+                Units->GetArmiesAtPosition(Plane, Layer, SpawnTile);
+            for (const FCoMArmyGroup* A : AtTile)
+            {
+                if (A && A->OwnerWizardIndex == Cast.CasterWizardId)
+                {
+                    TargetArmy = A->ArmyGroupID;
+                    break;
+                }
+            }
+            if (TargetArmy == INDEX_NONE)
+            {
+                TargetArmy = Units->CreateArmy(Cast.CasterWizardId, Plane, Layer, SpawnTile);
+            }
+            Units->AddUnitToArmy(NewID, TargetArmy);
+            LogResolve(*FString::Printf(TEXT("Summon -> unit %d (army %d)"), NewID, TargetArmy));
         }
         else
         {
@@ -1013,8 +1235,29 @@ void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
     case ECoMSpellEffect::GlobalEnchantment:
     {
         FCoMWizardMagicState& State = GetWizardMagic(Cast.CasterWizardId);
-        State.ActiveEnchantments.AddUnique(Cast.SpellId);
-        LogResolve(TEXT("GlobalEnchantment"));
+        const bool bWasNew = (State.ActiveEnchantments.AddUnique(Cast.SpellId) != INDEX_NONE);
+
+        const FCoMGlobalEnchantmentDef& Def = CoMGlobalEnchantmentData::Get(Cast.SpellId);
+        const FString DisplayName = Def.IsValid()
+            ? Def.DisplayName.ToString() : Cast.SpellId.ToString();
+
+        // Caster of Magic style: announce the new enchantment to every player.
+        if (bWasNew)
+        {
+            OnGlobalEnchantmentChanged.Broadcast(Cast.CasterWizardId, Cast.SpellId,
+                DisplayName, /*bActive*/ true);
+        }
+
+        // Spell of Mastery is an instant win — flag the victory subsystem.
+        if (Def.Effect == ECoMEnchantEffect::InstantMagicVictory && GI)
+        {
+            if (UCoMVictorySubsystem* Victory = GI->GetSubsystem<UCoMVictorySubsystem>())
+            {
+                Victory->NotifySpellOfMasteryCast(Cast.CasterWizardId);
+            }
+        }
+
+        LogResolve(*FString::Printf(TEXT("GlobalEnchantment: %s"), *DisplayName));
         break;
     }
 

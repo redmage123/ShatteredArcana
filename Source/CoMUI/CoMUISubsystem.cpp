@@ -229,6 +229,10 @@ void UCoMUISubsystem::ShowHUD()
 		{
 			MagicSub->OnSpellCastCinematicRequested.AddDynamic(
 				this, &UCoMUISubsystem::OnSpellCastCinematicRequested);
+
+			// Global enchantments: announce every wizard's cast to all players.
+			MagicSub->OnGlobalEnchantmentChanged.AddDynamic(
+				this, &UCoMUISubsystem::OnGlobalEnchantmentChanged);
 		}
 
 		// Heroes: pop offer popup when a tavern offer fires for the local player.
@@ -760,6 +764,24 @@ void UCoMUISubsystem::OnHeroOffered(const FCoMHeroOffer& Offer)
 	// Only surface to the local player (wizard 0); AI auto-accepts.
 	if (Offer.WizardIndex != 0) return;
 	ShowHeroOffers(0);
+}
+
+void UCoMUISubsystem::OnGlobalEnchantmentChanged(int32 CasterWizardIndex, FName SpellID,
+                                                   FString SpellDisplayName, bool bActive)
+{
+	// Caster of Magic style: every player is told when a global enchantment is
+	// cast or ends, so they can react (counter, dispel, gloat).
+	if (!HUDWidgetInstance) { return; }
+
+	const FString Who = (CasterWizardIndex == 0)
+		? TEXT("You have")
+		: FString::Printf(TEXT("Wizard %d has"), CasterWizardIndex);
+
+	const FString Msg = bActive
+		? FString::Printf(TEXT("%s cast the global enchantment \"%s\"!"), *Who, *SpellDisplayName)
+		: FString::Printf(TEXT("The global enchantment \"%s\" has ended."), *SpellDisplayName);
+
+	HUDWidgetInstance->AddNotification(Msg);
 }
 
 void UCoMUISubsystem::ShowHeroOffers(int32 WizardIndex)

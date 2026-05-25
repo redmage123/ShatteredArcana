@@ -343,6 +343,29 @@ void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
 				State.CurrentResearchSpell = Learnable[0];
 				State.ResearchAllocation   = 5;
 			}
+
+			// Seed each wizard with their realm's signature global enchantment so
+			// the playtest actually exercises the global-enchantment system (these
+			// are Rare/Very Rare and would never be researched in a short AI game).
+			// Extra mana lets the AI afford the high cast cost within a few turns.
+			FName GlobalForRealm = NAME_None;
+			switch (State.PrimaryRealm)
+			{
+			case ECoMSpellRealm::Life:    GlobalForRealm = TEXT("Just_Cause");     break;
+			case ECoMSpellRealm::Death:   GlobalForRealm = TEXT("Zombie_Mastery"); break;
+			case ECoMSpellRealm::Chaos:   GlobalForRealm = TEXT("Great_Wasting");  break;
+			case ECoMSpellRealm::Nature:  GlobalForRealm = TEXT("Gaia_Force");     break;
+			case ECoMSpellRealm::Sorcery: GlobalForRealm = TEXT("Suppress_Magic"); break;
+			case ECoMSpellRealm::Arcane:  GlobalForRealm = TEXT("Detect_Magic");   break;
+			case ECoMSpellRealm::Spirit:  GlobalForRealm = TEXT("Spirit_T1_Dream_Vision"); break;
+			default: break;
+			}
+			if (!GlobalForRealm.IsNone())
+			{
+				State.KnownSpells.AddUnique(GlobalForRealm);
+				State.MaxMana     = 500;
+				State.CurrentMana = 350; // enough to cast a Very Rare global early
+			}
 		}
 	}
 

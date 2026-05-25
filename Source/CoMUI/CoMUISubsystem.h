@@ -519,4 +519,9 @@ private:
 	/** Callback when a tavern offer is generated. Pops UI for the local player. */
 	UFUNCTION()
 	void OnHeroOffered(const FCoMHeroOffer& Offer);
+
+	/** Callback when any wizard gains/loses a global enchantment (all-player alert). */
+	UFUNCTION()
+	void OnGlobalEnchantmentChanged(int32 CasterWizardIndex, FName SpellID,
+	                                FString SpellDisplayName, bool bActive);
 };
