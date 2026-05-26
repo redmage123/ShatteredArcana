@@ -17,6 +17,7 @@
 #include "Units/CoMUnitSubsystem.h"
 #include "Economy/CoMResourceSubsystem.h"
 #include "Combat/CoMNavalSubsystem.h"
+#include "Combat/CoMSiegeSubsystem.h"
 #include "Combat/CoMCombatSubsystem.h"
 #include "Diplomacy/CoMDiplomacySubsystem.h"
 #include "Espionage/CoMEspionageSubsystem.h"
@@ -368,8 +369,10 @@ void UCoMTurnSubsystem::ProcessAllSubsystemTurns()
 	}
 
 	// ── Siege ────────────────────────────────────────────────────────
-	// TODO: SiegeSubsystem->ProcessSiegeTurn()
-	UE_LOG(LogTemp, Log, TEXT("  [Siege] Placeholder — no SiegeSubsystem yet."));
+	if (UCoMSiegeSubsystem* Siege = GI->GetSubsystem<UCoMSiegeSubsystem>())
+	{
+		COM_TIMED_TICK("Siege", Siege->ProcessSiegeTurn());
+	}
 
 	// ── Naval ────────────────────────────────────────────────────────
 	if (UCoMNavalSubsystem* Naval = GI->GetSubsystem<UCoMNavalSubsystem>())

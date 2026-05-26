@@ -239,6 +239,10 @@ public:
 	/** IDs of every city in the world (all owners, all planes). */
 	TArray<int32> GetAllCityIDs() const;
 
+	/** Transfer a city to a new owner (siege conquest). Resets production and
+	 *  raises unrest from the hostile takeover. Returns true on success. */
+	bool CaptureCity(int32 CityID, int32 NewOwnerWizard);
+
 	/** All cities owned by a given wizard. */
 	TArray<const FCoMCityData*> GetCitiesForWizard(int32 WizardIndex) const;
 

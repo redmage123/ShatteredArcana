@@ -1,5 +1,8 @@
 // Copyright Shattered Arcana. All Rights Reserved.
 #include "CoMSiegeSubsystem.h"
+#include "Engine/GameInstance.h"
+#include "CoMCore/Units/CoMUnitSubsystem.h"
+#include "CoMCore/Economy/CoMCitySubsystem.h"
 
 
 void UCoMSiegeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -60,14 +63,37 @@ int32 UCoMSiegeSubsystem::BeginSiege(int32 AttackerArmyID, int32 DefenderCityID)
 
 void UCoMSiegeSubsystem::EndSiege(int32 SiegeID, bool bAttackerVictory)
 {
-	if (AllSieges.Contains(SiegeID))
-	{
-		OnSiegeEnded.Broadcast(SiegeID, bAttackerVictory);
+	FCoMSiegeState* Siege = AllSieges.Find(SiegeID);
+	if (!Siege) { return; }
 
-		UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d ended: %s"), SiegeID,
-			bAttackerVictory ? TEXT("attacker victory") : TEXT("defender held"));
-		AllSieges.Remove(SiegeID);
+	const int32 AttackerArmyID = Siege->AttackerArmyGroupID;
+	const int32 CityID         = Siege->DefenderCityID;
+
+	OnSiegeEnded.Broadcast(SiegeID, bAttackerVictory);
+	UE_LOG(LogTemp, Log, TEXT("[Siege] Siege %d ended: %s"), SiegeID,
+		bAttackerVictory ? TEXT("attacker victory") : TEXT("defender held"));
+
+	// On an attacker victory, transfer the city to the besieger and march the
+	// army in. This is what actually produces eliminations -> conquest victory.
+	if (bAttackerVictory)
+	{
+		if (UGameInstance* GI = GetGameInstance())
+		{
+			UCoMUnitSubsystem* Units = GI->GetSubsystem<UCoMUnitSubsystem>();
+			UCoMCitySubsystem* Cities = GI->GetSubsystem<UCoMCitySubsystem>();
+			const FCoMArmyGroup* Army = Units ? Units->GetArmy(AttackerArmyID) : nullptr;
+			const FCoMCityData* City = Cities ? Cities->GetCity(CityID) : nullptr;
+			if (Army && City && Cities)
+			{
+				const int32 NewOwner = Army->OwnerWizardIndex;
+				const FIntPoint CityPos = City->Position;
+				Cities->CaptureCity(CityID, NewOwner);
+				Units->MoveArmy(AttackerArmyID, CityPos, /*bAllowUnexplored*/ true);
+			}
+		}
 	}
+
+	AllSieges.Remove(SiegeID);
 }
 
 void UCoMSiegeSubsystem::ProcessSiegeTurn()

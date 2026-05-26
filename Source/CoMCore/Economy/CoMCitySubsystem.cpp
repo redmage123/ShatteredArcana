@@ -330,6 +330,30 @@ TArray<int32> UCoMCitySubsystem::GetAllCityIDs() const
 	return Out;
 }
 
+bool UCoMCitySubsystem::CaptureCity(int32 CityID, int32 NewOwnerWizard)
+{
+	FCoMCityData* City = AllCities.Find(CityID);
+	if (!City) { return false; }
+
+	const int32 FormerOwner = City->OwnerWizardIndex;
+	if (FormerOwner == NewOwnerWizard) { return false; }
+
+	City->OwnerWizardIndex   = NewOwnerWizard;
+	City->Unrest             = FMath::Min(MaxUnrest, City->Unrest + 4); // resentment of conquest
+	City->CurrentBuildingID  = -1;
+	City->BuildingProgress   = 0;
+	City->ProductionQueue.Empty();
+	City->AccumulatedProduction = 0;
+	City->GarrisonArmyID     = -1;
+
+	UE_LOG(LogTemp, Log, TEXT("[City] City %d (%s) captured by wizard %d from wizard %d"),
+		CityID, *City->CityName.ToString(), NewOwnerWizard, FormerOwner);
+
+	// Reuse the rebellion delegate so listeners refresh ownership/UI.
+	OnCityRebelled.Broadcast(CityID, FormerOwner);
+	return true;
+}
+
 TArray<const FCoMCityData*> UCoMCitySubsystem::GetCitiesForWizard(int32 WizardIndex) const
 {
 	TArray<const FCoMCityData*> Result;

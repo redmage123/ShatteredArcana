@@ -8,6 +8,7 @@
 #include "CoMCore/CoreTypes/CoMStructs.h"
 #include "CoMCore/Economy/CoMCitySubsystem.h"
 #include "CoMCore/Units/CoMUnitSubsystem.h"
+#include "CoMCore/Combat/CoMSiegeSubsystem.h"
 #include "CoMCore/Diplomacy/CoMDiplomacySubsystem.h"
 #include "CoMCore/Magic/CoMMagicSubsystem.h"
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
@@ -212,6 +213,7 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 	if (!UnitSub || !CitySub) return;
 
 	UCoMWorldMapSubsystem* MapSub = GI->GetSubsystem<UCoMWorldMapSubsystem>();
+	UCoMSiegeSubsystem*    SiegeSub = GI->GetSubsystem<UCoMSiegeSubsystem>();
 
 	// We re-fetch the army list after any operation that may invalidate pointers
 	// (e.g. founding a city can disband the settler army).
@@ -276,7 +278,38 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 				}
 			}
 
-			// --- Offensive mode: attack weaker enemies ---
+			// --- Siege mode: seek and besiege the nearest enemy city ---
+				// Capturing cities eliminates rivals -> conquest victory.
+				// Defensive armies (handled above) take priority over this.
+				if (SiegeSub && OurPower > 0.0f)
+				{
+					const FCoMCityData* TargetCity = nullptr;
+					int32 BestCityDist = INT_MAX;
+					for (const FCoMCityData* C : CitySub->GetCitiesOnPlane(Army->Plane))
+					{
+						if (!C || C->Layer != Army->Layer) continue;
+						if (C->OwnerWizardIndex < 0 || C->OwnerWizardIndex == WizardId) continue;
+						const int32 D = WrappedDistance(Army->Position, C->Position);
+						if (D < BestCityDist) { BestCityDist = D; TargetCity = C; }
+					}
+					if (TargetCity)
+					{
+						if (BestCityDist <= 1)
+						{
+							if (!SiegeSub->IsCityUnderSiege(TargetCity->CityID))
+							{
+								SiegeSub->BeginSiege(Army->ArmyGroupID, TargetCity->CityID);
+								UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d army %d besieging city %d"),
+								       WizardId, Army->ArmyGroupID, TargetCity->CityID);
+							}
+							continue; // hold position to maintain the siege
+						}
+						UnitSub->MoveArmy(Army->ArmyGroupID, TargetCity->Position, /*bAllowUnexplored*/ true);
+						continue;
+					}
+				}
+
+				// --- Offensive mode: attack weaker enemies ---
 			if (Strategy.TopPriority == ECoMAIPriority::BuildMilitary ||
 			    Strategy.MilitaryBudget > 0.4f)
 			{
