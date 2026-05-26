@@ -3,6 +3,7 @@
 #include "CoMUnitSubsystem.h"
 #include "CoMCore/World/CoMPathfinder.h"
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
+#include "CoMCore/World/CoMLeyPortalSubsystem.h"
 #include "CoMCore/World/CoMSiteEncounterSubsystem.h"
 #include "CoMCore/World/CoMWeatherSubsystem.h"
 #include "CoMCore/Data/CoMUnitSpecDataAsset.h"
@@ -414,7 +415,16 @@ void UCoMUnitSubsystem::MoveArmy(int32 ArmyID, FIntPoint Destination, bool bAllo
 	Request.bAllowPortals  = false;
 	Request.bAllowUnexplored = bAllowUnexplored;
 
-	FCoMPathResult Result = Pathfinder->FindPath(WorldMapSubsystem.Get(), nullptr, Request);
+	// FindPath bails immediately on a null LeyPortal subsystem (even when portals
+	// aren't used), so we MUST pass it — passing nullptr meant every path request
+	// failed and no army ever moved.
+	UCoMLeyPortalSubsystem* LeyPortals = nullptr;
+	if (UGameInstance* GIL = GetGameInstance())
+	{
+		LeyPortals = GIL->GetSubsystem<UCoMLeyPortalSubsystem>();
+	}
+
+	FCoMPathResult Result = Pathfinder->FindPath(WorldMapSubsystem.Get(), LeyPortals, Request);
 	if (!Result.bFound || Result.Segments.Num() == 0)
 	{
 		return;
