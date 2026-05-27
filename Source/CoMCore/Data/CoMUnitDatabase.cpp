@@ -716,4 +716,35 @@ void CoMUnitDatabase::InitializeDatabase()
 		U.CategoryTag = TEXT("Ranged"); U.RequiredBuildingTag = TEXT("Barracks");
 		RegisterUnit(MoveTemp(U));
 	}
+
+	// ── Summoned creatures (conjured by Summon spells, not recruited) ─────────
+	// Single powerful figures with mana upkeep and no food cost. Mapped from
+	// summon spells by realm + rarity in UCoMMagicSubsystem::ResolveSpell.
+	auto AddSummon = [&](const TCHAR* Id, const TCHAR* Name, int32 HP, int32 Melee,
+		int32 Ranged, int32 Def, int32 Res, int32 Move, int32 Figures, int32 Mana,
+		bool bFly, bool bGhost)
+	{
+		FCoMUnitSpecInfo U;
+		U.SpecID = FName(Id);
+		U.DisplayName = FText::FromString(Name);
+		U.RaceTag = TEXT("Summoned");
+		U.HitPoints = HP; U.MeleeAttack = Melee; U.RangedAttack = Ranged;
+		U.Defense = Def; U.Resistance = Res; U.Movement = Move; U.Figures = Figures;
+		U.RangedShots = (Ranged > 0) ? 2 : 0;
+		U.ProductionCost = 0; U.UpkeepGold = 0; U.UpkeepFood = 0; U.UpkeepMana = Mana;
+		U.bFlying = bFly; U.bNonCorporeal = bGhost;
+		U.CategoryTag = TEXT("Summoned"); U.RequiredBuildingTag = TEXT("");
+		RegisterUnit(MoveTemp(U));
+	};
+
+	//        Id                       Name               HP Mel Rng Def Res Mov Fig Mana Fly  Ghost
+	AddSummon(TEXT("Summon_Skeleton"),       TEXT("Skeletons"),        6,  4, 0, 2, 5, 2, 3, 1, false, false);
+	AddSummon(TEXT("Summon_PhantomWarrior"), TEXT("Phantom Warriors"), 8,  5, 0, 3, 7, 2, 1, 1, false, true);
+	AddSummon(TEXT("Summon_WarBear"),        TEXT("War Bears"),        12, 7, 0, 4, 5, 3, 2, 2, false, false);
+	AddSummon(TEXT("Summon_Hellhound"),      TEXT("Hell Hounds"),      10, 6, 0, 3, 5, 4, 2, 2, false, false);
+	AddSummon(TEXT("Summon_GuardianSpirit"), TEXT("Guardian Spirit"),  10, 5, 0, 5, 8, 2, 1, 2, false, false);
+	AddSummon(TEXT("Summon_Gargoyle"),       TEXT("Gargoyle"),         16, 8, 0, 9, 6, 3, 1, 4, true,  false);
+	AddSummon(TEXT("Summon_Wraith"),         TEXT("Wraith"),           18, 9, 0, 5, 9, 3, 1, 4, true,  true);
+	AddSummon(TEXT("Summon_Angel"),          TEXT("Angel"),            20, 10,0, 8, 10,3, 1, 5, true,  false);
+	AddSummon(TEXT("Summon_Drake"),          TEXT("Great Drake"),      30, 14,8, 8, 9, 4, 1, 6, true,  false);
 }
