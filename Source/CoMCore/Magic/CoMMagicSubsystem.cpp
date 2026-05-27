@@ -1263,17 +1263,42 @@ void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
 
     case ECoMSpellEffect::Dispel:
     {
-        // Dispel target enchantment on TargetWizardId. Caller must have set it.
+        // Probabilistic dispel of the target's most valuable enchantment. The
+        // chance scales the dispel's power against the enchantment's casting
+        // cost (its "entrenchment"), so expensive globals resist and have real
+        // staying power instead of being stripped every turn.
         if (Cast.TargetWizardId >= 0)
         {
             FCoMWizardMagicState& Target = GetWizardMagic(Cast.TargetWizardId);
             if (Target.ActiveEnchantments.Num() > 0)
             {
-                // Strip the most-recent enchantment as a simple heuristic.
-                Target.ActiveEnchantments.Pop();
+                int32 BestIdx = 0;
+                int32 BestCost = -1;
+                for (int32 i = 0; i < Target.ActiveEnchantments.Num(); ++i)
+                {
+                    const int32 C = CoMSpellDatabase::GetSpellInfo(Target.ActiveEnchantments[i]).CastingCost;
+                    if (C > BestCost) { BestCost = C; BestIdx = i; }
+                }
+                const FName TargetEnch = Target.ActiveEnchantments[BestIdx];
+
+                const int32 DispelPower = FMath::Max(1, Cast.EffectivePower);
+                const int32 Entrench    = FMath::Max(1, BestCost);
+                const int32 ChancePct   = FMath::Clamp((DispelPower * 100) / (DispelPower + Entrench), 5, 95);
+
+                if (RngStream.RandRange(0, 99) < ChancePct)
+                {
+                    Target.ActiveEnchantments.RemoveAt(BestIdx);
+                    const FCoMGlobalEnchantmentDef& DDef = CoMGlobalEnchantmentData::Get(TargetEnch);
+                    const FString DName = DDef.IsValid() ? DDef.DisplayName.ToString() : TargetEnch.ToString();
+                    OnGlobalEnchantmentChanged.Broadcast(Cast.TargetWizardId, TargetEnch, DName, /*bActive*/ false);
+                    LogResolve(*FString::Printf(TEXT("Dispel SUCCESS: %s (%d%%)"), *DName, ChancePct));
+                }
+                else
+                {
+                    LogResolve(*FString::Printf(TEXT("Dispel FAILED (%d%%)"), ChancePct));
+                }
             }
         }
-        LogResolve(TEXT("Dispel"));
         break;
     }
 
