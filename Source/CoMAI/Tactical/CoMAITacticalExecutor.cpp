@@ -685,7 +685,7 @@ void UCoMAITacticalExecutor::ManageMagic(int32 WizardId, const FCoMAIStrategy& S
 	};
 
 	// Bucket known spells by FCoMSpellInfo::EffectType for quick selection.
-	TArray<FName> DamageSpells, BuffSpells, SummonSpells, HealSpells, GlobalSpells, OtherSpells;
+	TArray<FName> DamageSpells, BuffSpells, SummonSpells, HealSpells, GlobalSpells, DispelSpells, OtherSpells;
 	for (const FName& SId : MagicState.KnownSpells)
 	{
 		const FCoMSpellInfo Info = CoMSpellDatabase::GetSpellInfo(SId);
@@ -696,7 +696,29 @@ void UCoMAITacticalExecutor::ManageMagic(int32 WizardId, const FCoMAIStrategy& S
 		case ECoMSpellEffect::UnitBuff:         BuffSpells.Add(SId);    break;
 		case ECoMSpellEffect::Summon:           SummonSpells.Add(SId);  break;
 		case ECoMSpellEffect::GlobalEnchantment:GlobalSpells.Add(SId);  break;
+		case ECoMSpellEffect::Dispel:           DispelSpells.Add(SId);  break;
 		default:                                OtherSpells.Add(SId);   break;
+		}
+	}
+
+	// 0) Counterplay: if we know a dispel/disjunction and a rival is maintaining
+	// a global enchantment, strip it (CoM-style response to "rival cast X!").
+	if (DispelSpells.Num() > 0)
+	{
+		TArray<int32> EnchOwners;
+		TArray<FName>  EnchSpells;
+		MagicSub->GetAllActiveEnchantments(EnchOwners, EnchSpells);
+		int32 TargetRival = -1;
+		for (int32 i = 0; i < EnchOwners.Num(); ++i)
+		{
+			if (EnchOwners[i] != WizardId) { TargetRival = EnchOwners[i]; break; }
+		}
+		if (TargetRival >= 0)
+		{
+			for (const FName& SId : DispelSpells)
+			{
+				if (TryCast(SId, ECoMSpellScope::Global, FIntPoint(-1, -1), -1, -1, TargetRival)) return;
+			}
 		}
 	}
 

@@ -377,6 +377,10 @@ void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
 				State.MaxMana     = 500;
 				State.CurrentMana = 350; // enough to cast a Very Rare global early
 			}
+
+			// Also seed a dispel so the global-enchantment counterplay (AI strips
+			// rival enchantments) is exercised in the playtest.
+			State.KnownSpells.AddUnique(FName(TEXT("Arcane_T2_Dispel_Magic")));
 		}
 	}
 
