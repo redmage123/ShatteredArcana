@@ -90,6 +90,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void ShowSpellBook(int32 WizardId);
 
+	/** Create and show the global-enchantments panel from a wizard's viewpoint. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowEnchantments(int32 ViewerWizardId);
+
 	/** Close the spell book. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HideSpellBook();
@@ -340,6 +344,11 @@ public:
 	UFUNCTION()
 	void OnEndTurnFromHUD();
 
+	/** HUD side-button handlers (open the matching panel for the local wizard). */
+	UFUNCTION() void OnSpellBookFromHUD();
+	UFUNCTION() void OnDiplomacyFromHUD();
+	UFUNCTION() void OnEnchantmentsFromHUD();
+
 	// -- Widget Class Configuration --------------------------------------------
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
@@ -353,6 +362,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<UCoMSpellBookWidget> SpellBookWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<class UCoMEnchantmentPanelWidget> EnchantmentPanelWidgetClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<UCoMDiplomacyWidget> DiplomacyWidgetClass;
@@ -439,6 +451,9 @@ private:
 
 	UPROPERTY()
 	UCoMSpellBookWidget* SpellBookInstance = nullptr;
+
+	UPROPERTY()
+	class UCoMEnchantmentPanelWidget* EnchantmentPanelInstance = nullptr;
 
 	UPROPERTY()
 	UCoMDiplomacyWidget* DiplomacyInstance = nullptr;

@@ -8,6 +8,7 @@
 #include "HUD/CoMHUDWidget.h"
 #include "Panels/CoMCityScreenWidget.h"
 #include "Panels/CoMSpellBookWidget.h"
+#include "Panels/CoMEnchantmentPanelWidget.h"
 #include "Panels/CoMDiplomacyWidget.h"
 #include "Panels/CoMArmyPanelWidget.h"
 #include "Panels/CoMCreditsWidget.h"
@@ -46,6 +47,7 @@ void UCoMUISubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	if (!HUDWidgetClass)           { HUDWidgetClass           = UCoMHUDWidget::StaticClass(); }
 	if (!CityScreenWidgetClass)    { CityScreenWidgetClass    = UCoMCityScreenWidget::StaticClass(); }
 	if (!SpellBookWidgetClass)     { SpellBookWidgetClass     = UCoMSpellBookWidget::StaticClass(); }
+	if (!EnchantmentPanelWidgetClass) { EnchantmentPanelWidgetClass = UCoMEnchantmentPanelWidget::StaticClass(); }
 	if (!DiplomacyWidgetClass)     { DiplomacyWidgetClass     = UCoMDiplomacyWidget::StaticClass(); }
 	if (!ArmyPanelWidgetClass)     { ArmyPanelWidgetClass     = UCoMArmyPanelWidget::StaticClass(); }
 	if (!SettingsWidgetClass)      { SettingsWidgetClass       = UCoMSettingsWidget::StaticClass(); }
@@ -172,10 +174,13 @@ void UCoMUISubsystem::ShowHUD()
 {
 	CreateAndShowWidget<UCoMHUDWidget>(HUDWidgetClass, HUDWidgetInstance, 0);
 
-	// Bind End Turn button delegate from HUD.
+	// Bind HUD side-button delegates.
 	if (HUDWidgetInstance)
 	{
 		HUDWidgetInstance->OnEndTurnRequested.AddDynamic(this, &UCoMUISubsystem::OnEndTurnFromHUD);
+		HUDWidgetInstance->OnSpellBookRequested.AddDynamic(this, &UCoMUISubsystem::OnSpellBookFromHUD);
+		HUDWidgetInstance->OnDiplomacyRequested.AddDynamic(this, &UCoMUISubsystem::OnDiplomacyFromHUD);
+		HUDWidgetInstance->OnEnchantmentsRequested.AddDynamic(this, &UCoMUISubsystem::OnEnchantmentsFromHUD);
 	}
 
 	// Create the turn notification overlay (lives on top of HUD).
@@ -314,6 +319,17 @@ void UCoMUISubsystem::ShowSpellBook(int32 WizardId)
 void UCoMUISubsystem::HideSpellBook()
 {
 	RemoveWidget(SpellBookInstance);
+}
+
+void UCoMUISubsystem::ShowEnchantments(int32 ViewerWizardId)
+{
+	UCoMEnchantmentPanelWidget* Widget = CreateAndShowWidget<UCoMEnchantmentPanelWidget>(
+		EnchantmentPanelWidgetClass, EnchantmentPanelInstance, 11);
+
+	if (Widget)
+	{
+		Widget->Configure(ViewerWizardId);
+	}
 }
 
 // =============================================================================
@@ -920,3 +936,7 @@ void UCoMUISubsystem::OnEndTurnFromHUD()
 		HUDWidgetInstance->AddNotification(FString::Printf(TEXT("Turn %d complete."), Turn));
 	}
 }
+
+void UCoMUISubsystem::OnSpellBookFromHUD()    { ShowSpellBook(0); }
+void UCoMUISubsystem::OnDiplomacyFromHUD()     { ShowDiplomacy(0); }
+void UCoMUISubsystem::OnEnchantmentsFromHUD()  { ShowEnchantments(0); }
