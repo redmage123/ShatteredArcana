@@ -18,6 +18,7 @@ class UVerticalBox;
 class USlider;
 class UCoMMagicSubsystem;
 class USizeBox;
+class UImage;
 
 /**
  * UCoMSpellBookWidget
@@ -98,6 +99,10 @@ protected:
 
 	// -- Realm Tab Callbacks ---------------------------------------------------
 
+	/** Page-turn arrows: cycle to the previous / next realm "chapter". */
+	UFUNCTION() void OnPrevPageClicked();
+	UFUNCTION() void OnNextPageClicked();
+
 	UFUNCTION() void OnLifeTabClicked();
 	UFUNCTION() void OnDeathTabClicked();
 	UFUNCTION() void OnChaosTabClicked();
@@ -155,6 +160,17 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> CloseButton;
 
+	/** Open-book backdrop art. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UImage> BookBackground;
+
+	/** Page-turn arrow buttons that cycle the realm chapters. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> PrevPageButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> NextPageButton;
+
 	/** Auto-research toggle checkbox. */
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCheckBox> AutoResearchCheckBox;
@@ -177,6 +193,9 @@ protected:
 private:
 	/** Refresh the spell list for the current realm. */
 	void RefreshSpellList();
+
+	/** Cycle the current realm chapter by Dir (+1 next page, -1 previous). */
+	void CycleRealm(int32 Dir);
 
 	/** Resolve the magic subsystem. */
 	UCoMMagicSubsystem* GetMagicSubsystem();

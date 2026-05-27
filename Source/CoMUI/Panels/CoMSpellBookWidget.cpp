@@ -18,6 +18,8 @@
 #include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
 #include "Components/Spacer.h"
+#include "Components/Image.h"
+#include "Engine/Texture2D.h"
 #include "Blueprint/WidgetTree.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/PlayerController.h"
@@ -74,26 +76,47 @@ void UCoMSpellBookWidget::BuildLayout()
 	UOverlay* ScreenOverlay = WidgetTree->ConstructWidget<UOverlay>();
 	Background->AddChild(ScreenOverlay);
 
-	// ── Center panel ─────────────────────────────────────────────────────
-	UBorder* PanelBorder = WidgetTree->ConstructWidget<UBorder>();
-	PanelBorder->SetBrushColor(SpellColours::GoldDim);
-	PanelBorder->SetPadding(FMargin(1.5f));
-
-	UBorder* PanelInner = WidgetTree->ConstructWidget<UBorder>();
-	PanelInner->SetBrushColor(SpellColours::PanelBg);
-	PanelInner->SetPadding(FMargin(20.0f, 15.0f));
-	PanelBorder->AddChild(PanelInner);
-
+	// ── Open-book panel: leather-tome backdrop with the content on the pages ─
 	USizeBox* PanelSize = WidgetTree->ConstructWidget<USizeBox>();
-	PanelSize->SetWidthOverride(900.0f);
-	PanelSize->SetHeightOverride(700.0f);
-	PanelSize->AddChild(PanelBorder);
+	PanelSize->SetWidthOverride(960.0f);
+	PanelSize->SetHeightOverride(640.0f); // 3:2 to match the book art
 
 	UOverlaySlot* PanelSlot = ScreenOverlay->AddChildToOverlay(PanelSize);
 	if (PanelSlot)
 	{
 		PanelSlot->SetHorizontalAlignment(HAlign_Center);
 		PanelSlot->SetVerticalAlignment(VAlign_Center);
+	}
+
+	UOverlay* BookOverlay = WidgetTree->ConstructWidget<UOverlay>();
+	PanelSize->AddChild(BookOverlay);
+
+	// Open leather-tome art (falls back to a parchment tint if not imported yet).
+	BookBackground = WidgetTree->ConstructWidget<UImage>();
+	if (UTexture2D* BookTex = LoadObject<UTexture2D>(nullptr,
+		TEXT("/Game/UI/SpellBook/spellbook_bg.spellbook_bg")))
+	{
+		BookBackground->SetBrushFromTexture(BookTex);
+	}
+	else
+	{
+		BookBackground->SetColorAndOpacity(FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+	}
+	if (UOverlaySlot* BgSlot = BookOverlay->AddChildToOverlay(BookBackground))
+	{
+		BgSlot->SetHorizontalAlignment(HAlign_Fill);
+		BgSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+
+	// Content inset onto the open pages. A faint dark tint keeps the light text
+	// readable over the parchment art.
+	UBorder* PanelInner = WidgetTree->ConstructWidget<UBorder>();
+	PanelInner->SetBrushColor(FLinearColor(0.03f, 0.02f, 0.015f, 0.45f));
+	PanelInner->SetPadding(FMargin(64.0f, 44.0f));
+	if (UOverlaySlot* InnerSlot = BookOverlay->AddChildToOverlay(PanelInner))
+	{
+		InnerSlot->SetHorizontalAlignment(HAlign_Fill);
+		InnerSlot->SetVerticalAlignment(VAlign_Fill);
 	}
 
 	// ── Content column ───────────────────────────────────────────────────
@@ -153,17 +176,45 @@ void UCoMSpellBookWidget::BuildLayout()
 		if (TabSlotRef) { TabSlotRef->SetPadding(FMargin(0, 0, 0, 8)); }
 	}
 
-	// ── Current realm label ──────────────────────────────────────────────
+	// ── Chapter header: ◄ <Realm> ► page-turn arrows ─────────────────────
 	{
+		UHorizontalBox* ChapterRow = WidgetTree->ConstructWidget<UHorizontalBox>();
+
+		USizeBox* PrevBox = nullptr;
+		PrevPageButton = CreateActionButton(TEXT("<"), 44.f, &PrevBox);
+		if (PrevBox)
+		{
+			UHorizontalBoxSlot* S = ChapterRow->AddChildToHorizontalBox(PrevBox);
+			if (S) { S->SetVerticalAlignment(VAlign_Center); S->SetPadding(FMargin(0, 0, 12, 0)); }
+		}
+
 		CurrentRealmText = WidgetTree->ConstructWidget<UTextBlock>();
 		CurrentRealmText->SetText(FText::FromString(TEXT("Arcane")));
 		CurrentRealmText->SetColorAndOpacity(FSlateColor(SpellColours::Gold));
-		FSlateFontInfo RealmFont = CurrentRealmText->GetFont();
-		RealmFont.Size = 18;
-		CurrentRealmText->SetFont(RealmFont);
+		CurrentRealmText->SetJustification(ETextJustify::Center);
+		{
+			FSlateFontInfo RealmFont = CurrentRealmText->GetFont();
+			RealmFont.Size = 20;
+			RealmFont.TypefaceFontName = FName(TEXT("Bold"));
+			CurrentRealmText->SetFont(RealmFont);
+		}
+		if (UHorizontalBoxSlot* RS = ChapterRow->AddChildToHorizontalBox(CurrentRealmText))
+		{
+			RS->SetVerticalAlignment(VAlign_Center);
+			RS->SetHorizontalAlignment(HAlign_Center);
+			RS->SetSize(ESlateSizeRule::Fill);
+		}
 
-		UVerticalBoxSlot* RealmSlotRef = RootContentBox->AddChildToVerticalBox(CurrentRealmText);
-		if (RealmSlotRef) { RealmSlotRef->SetPadding(FMargin(0, 0, 0, 5)); }
+		USizeBox* NextBox = nullptr;
+		NextPageButton = CreateActionButton(TEXT(">"), 44.f, &NextBox);
+		if (NextBox)
+		{
+			UHorizontalBoxSlot* S = ChapterRow->AddChildToHorizontalBox(NextBox);
+			if (S) { S->SetVerticalAlignment(VAlign_Center); S->SetPadding(FMargin(12, 0, 0, 0)); }
+		}
+
+		UVerticalBoxSlot* RealmSlotRef = RootContentBox->AddChildToVerticalBox(ChapterRow);
+		if (RealmSlotRef) { RealmSlotRef->SetPadding(FMargin(0, 0, 0, 6)); }
 	}
 
 	// ── Research progress ────────────────────────────────────────────────
@@ -372,6 +423,10 @@ void UCoMSpellBookWidget::NativeConstruct()
 	if (BindingTab) { BindingTab->OnClicked.AddDynamic(this, &UCoMSpellBookWidget::OnBindingTabClicked); }
 	if (SpiritTab)  { SpiritTab->OnClicked.AddDynamic(this, &UCoMSpellBookWidget::OnSpiritTabClicked); }
 	if (GlamourTab) { GlamourTab->OnClicked.AddDynamic(this, &UCoMSpellBookWidget::OnGlamourTabClicked); }
+
+	// Bind page-turn arrows.
+	if (PrevPageButton) { PrevPageButton->OnClicked.AddDynamic(this, &UCoMSpellBookWidget::OnPrevPageClicked); }
+	if (NextPageButton) { NextPageButton->OnClicked.AddDynamic(this, &UCoMSpellBookWidget::OnNextPageClicked); }
 
 	// Bind action buttons.
 	if (CastButton)     { CastButton->OnClicked.AddDynamic(this, &UCoMSpellBookWidget::OnCastButtonClicked); }
@@ -692,6 +747,29 @@ void UCoMSpellBookWidget::OnArcaneTabClicked()  { SelectRealm(ECoMSpellRealm::Ar
 void UCoMSpellBookWidget::OnBindingTabClicked() { SelectRealm(ECoMSpellRealm::Binding); }
 void UCoMSpellBookWidget::OnSpiritTabClicked()  { SelectRealm(ECoMSpellRealm::Spirit); }
 void UCoMSpellBookWidget::OnGlamourTabClicked() { SelectRealm(ECoMSpellRealm::Glamour); }
+
+// Page-turn arrows cycle through the realm "chapters" in tab order.
+void UCoMSpellBookWidget::OnPrevPageClicked() { CycleRealm(-1); }
+void UCoMSpellBookWidget::OnNextPageClicked() { CycleRealm(+1); }
+
+void UCoMSpellBookWidget::CycleRealm(int32 Dir)
+{
+	// Chapter order matches the realm tab row.
+	static const ECoMSpellRealm Order[] = {
+		ECoMSpellRealm::Life,    ECoMSpellRealm::Death,   ECoMSpellRealm::Chaos,
+		ECoMSpellRealm::Nature,  ECoMSpellRealm::Sorcery, ECoMSpellRealm::Arcane,
+		ECoMSpellRealm::Binding, ECoMSpellRealm::Spirit,  ECoMSpellRealm::Glamour
+	};
+	const int32 Count = UE_ARRAY_COUNT(Order);
+
+	int32 Idx = 0;
+	for (int32 i = 0; i < Count; ++i)
+	{
+		if (Order[i] == CurrentRealm) { Idx = i; break; }
+	}
+	Idx = ((Idx + Dir) % Count + Count) % Count; // wrap both directions
+	SelectRealm(Order[Idx]);
+}
 
 void UCoMSpellBookWidget::OnAutoResearchToggled(bool bIsChecked)
 {
