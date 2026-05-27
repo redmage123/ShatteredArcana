@@ -89,13 +89,16 @@ void UCoMPlaytestSubsystem::Deinitialize()
 // =============================================================================
 
 void UCoMPlaytestSubsystem::RunPlaytest(int32 NumGames, int32 MaxTurnsPerGame,
-                                          int32 BaseSeed, const FString& OutFilePath)
+                                          int32 BaseSeed, const FString& OutFilePath, int32 NumWizards)
 {
 	NumGames        = FMath::Clamp(NumGames, 1, 1000);
 	MaxTurnsPerGame = FMath::Clamp(MaxTurnsPerGame, 1, 5000);
+	ActiveWizardCount = (NumWizards <= 0)
+		? CoM::MAX_WIZARDS
+		: FMath::Clamp(NumWizards, 2, CoM::MAX_WIZARDS);
 
-	UE_LOG(LogTemp, Display, TEXT("[Playtest] === Beginning batch: %d games x %d turns, base seed %d ==="),
-		NumGames, MaxTurnsPerGame, BaseSeed);
+	UE_LOG(LogTemp, Display, TEXT("[Playtest] === Beginning batch: %d games x %d turns, %d wizards, base seed %d ==="),
+		NumGames, MaxTurnsPerGame, ActiveWizardCount, BaseSeed);
 	const double StartAll = FPlatformTime::Seconds();
 
 	LastResults.Reset();
@@ -201,6 +204,14 @@ void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
 	UGameInstance* GI = GetGameInstance();
 	if (!GI) return;
 
+	// Clear win/elimination state from the previous game — the subsystem instance
+	// is reused across the batch, so a stale victory would end the next game at
+	// turn 0.
+	if (UCoMVictorySubsystem* Victory = GI->GetSubsystem<UCoMVictorySubsystem>())
+	{
+		Victory->ResetForNewGame();
+	}
+
 	UCoMWorldMapSubsystem* Map = GI->GetSubsystem<UCoMWorldMapSubsystem>();
 	if (!Map) return;
 	Map->InitializeLayers();
@@ -236,7 +247,7 @@ void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
 	{
 		if (ACoMGameState* GS = Cast<ACoMGameState>(World->GetGameState()))
 		{
-			for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+			for (int32 W = 0; W < ActiveWizardCount; ++W)
 			{
 				if (GS->GetWizardByIndex(W)) continue; // already present
 				FActorSpawnParameters Params;
@@ -270,7 +281,7 @@ void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
 	};
 	// Wider spread so capitals don't cluster on dense site/node terrain.
 	// 14 wizards on a 160x100 map -> ~7 per row, 30 X-stride / 40 Y-stride.
-	for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+	for (int32 W = 0; W < ActiveWizardCount; ++W)
 	{
 		const int32 Col = W % 7;
 		const int32 Row = W / 7;
@@ -320,7 +331,7 @@ void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
 			ECoMSpellRealm::Binding, ECoMSpellRealm::Spirit,
 			ECoMSpellRealm::Glamour
 		};
-		for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+		for (int32 W = 0; W < ActiveWizardCount; ++W)
 		{
 			FCoMWizardMagicState& State = Magic->GetWizardMagic(W);
 			State.WizardId      = W;
@@ -413,7 +424,7 @@ void UCoMPlaytestSubsystem::TeardownGame()
 	{
 		if (ACoMGameState* GS = Cast<ACoMGameState>(World->GetGameState()))
 		{
-			for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+			for (int32 W = 0; W < ActiveWizardCount; ++W)
 			{
 				if (ACoMPlayerState* PS = GS->GetWizardByIndex(W))
 				{
@@ -441,7 +452,7 @@ void UCoMPlaytestSubsystem::CaptureGameResult(FCoMPlaytestGameResult& OutResult,
 	UCoMWorldMapSubsystem* Map = GI->GetSubsystem<UCoMWorldMapSubsystem>();
 
 	// Per-wizard rollup.
-	for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+	for (int32 W = 0; W < ActiveWizardCount; ++W)
 	{
 		FCoMPlaytestWizardResult WR;
 		WR.WizardIndex = W;
@@ -635,7 +646,7 @@ void UCoMPlaytestSubsystem::WriteJsonReport(const TArray<FCoMPlaytestGameResult>
 // World-bound variant — usable from the in-game tilde console.
 static FAutoConsoleCommandWithWorldAndArgs GPlaytestCmd(
 	TEXT("com.playtest"),
-	TEXT("Run AI-vs-AI playtest batch.  Args: <games> <maxturns> <seed>"),
+	TEXT("Run AI-vs-AI playtest batch.  Args: <games> <maxturns> <seed> <numWizards>"),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda(
 		[](const TArray<FString>& Args, UWorld* World)
 		{
@@ -648,14 +659,15 @@ static FAutoConsoleCommandWithWorldAndArgs GPlaytestCmd(
 			const int32 Games    = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 5;
 			const int32 MaxTurns = (Args.Num() > 1) ? FCString::Atoi(*Args[1]) : 100;
 			const int32 Seed     = (Args.Num() > 2) ? FCString::Atoi(*Args[2]) : 42;
-			Sub->RunPlaytest(Games, MaxTurns, Seed, /*OutFilePath*/ TEXT(""));
+			const int32 Wizards  = (Args.Num() > 3) ? FCString::Atoi(*Args[3]) : 0;
+			Sub->RunPlaytest(Games, MaxTurns, Seed, /*OutFilePath*/ TEXT(""), Wizards);
 		}));
 
 // World-less variant — usable from `-ExecCmds` on a no-map commandlet.
 // Walks every loaded GameInstance to find the subsystem.
 static FAutoConsoleCommand GPlaytestCmdNoWorld(
 	TEXT("com.playtest_headless"),
-	TEXT("Headless variant of com.playtest. Args: <games> <maxturns> <seed>"),
+	TEXT("Headless variant of com.playtest. Args: <games> <maxturns> <seed> <numWizards>"),
 	FConsoleCommandWithArgsDelegate::CreateLambda(
 		[](const TArray<FString>& Args)
 		{
@@ -679,5 +691,6 @@ static FAutoConsoleCommand GPlaytestCmdNoWorld(
 			const int32 Games    = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 5;
 			const int32 MaxTurns = (Args.Num() > 1) ? FCString::Atoi(*Args[1]) : 100;
 			const int32 Seed     = (Args.Num() > 2) ? FCString::Atoi(*Args[2]) : 42;
-			Sub->RunPlaytest(Games, MaxTurns, Seed, /*OutFilePath*/ TEXT(""));
+			const int32 Wizards  = (Args.Num() > 3) ? FCString::Atoi(*Args[3]) : 0;
+			Sub->RunPlaytest(Games, MaxTurns, Seed, /*OutFilePath*/ TEXT(""), Wizards);
 		}));

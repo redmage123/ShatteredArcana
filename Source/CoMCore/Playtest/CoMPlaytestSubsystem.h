@@ -113,7 +113,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Playtest")
 	void RunPlaytest(int32 NumGames, int32 MaxTurnsPerGame,
-	                 int32 BaseSeed, const FString& OutFilePath);
+	                 int32 BaseSeed, const FString& OutFilePath, int32 NumWizards = 0);
 
 	/** Returns last batch's results (in-memory, for tests). */
 	const TArray<FCoMPlaytestGameResult>& GetLastResults() const { return LastResults; }
@@ -126,4 +126,7 @@ private:
 	void WriteJsonReport(const TArray<FCoMPlaytestGameResult>& Results, const FString& OutFilePath) const;
 
 	TArray<FCoMPlaytestGameResult> LastResults;
+
+	/** Wizards to spawn per game (clamped to [2, MAX_WIZARDS]); 0 arg = all. */
+	int32 ActiveWizardCount = 14;
 };

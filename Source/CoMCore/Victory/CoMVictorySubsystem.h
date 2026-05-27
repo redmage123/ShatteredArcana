@@ -95,6 +95,11 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
+	/** Clear all win/elimination state for a fresh game (used by the playtest
+	 *  harness, which reuses one subsystem instance across many games). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Victory")
+	void ResetForNewGame();
+
 	// -- Core check (called each turn) ----------------------------------------
 
 	/**
@@ -109,6 +114,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "CoM|Victory")
 	bool CheckDomination(int32 WizardId) const;
+
+	/** Domination by majority: this wizard controls more than half of all cities
+	 *  in the world while at least one rival survives. Resolves games where one
+	 *  power is clearly dominant without requiring total elimination. */
+	UFUNCTION(BlueprintPure, Category = "CoM|Victory")
+	bool CheckCityDominance(int32 WizardId) const;
 
 	UFUNCTION(BlueprintPure, Category = "CoM|Victory")
 	bool CheckSpellOfMastery(int32 WizardId) const;

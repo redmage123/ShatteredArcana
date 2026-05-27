@@ -283,14 +283,23 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 				// Defensive armies (handled above) take priority over this.
 				if (SiegeSub && OurPower > 0.0f)
 				{
+					// Score = owner's total cities * 100 + distance: focus the
+					// WEAKEST reachable wizard so conquest cascades into
+					// eliminations (a winner) instead of endless city-trading.
 					const FCoMCityData* TargetCity = nullptr;
 					int32 BestCityDist = INT_MAX;
+					int32 BestScore = INT_MAX;
 					for (const FCoMCityData* C : CitySub->GetCitiesOnPlane(Army->Plane))
 					{
 						if (!C || C->Layer != Army->Layer) continue;
 						if (C->OwnerWizardIndex < 0 || C->OwnerWizardIndex == WizardId) continue;
 						const int32 D = WrappedDistance(Army->Position, C->Position);
-						if (D < BestCityDist) { BestCityDist = D; TargetCity = C; }
+						const int32 OwnerCities = CitySub->GetCitiesForWizard(C->OwnerWizardIndex).Num();
+						// Distance-dominant so armies besiege NEARBY cities (keeps
+						// conquest tempo up); owner weakness is only a tiebreaker so
+						// we finish off faltering wizards when they're close.
+						const int32 Score = D * 8 + OwnerCities;
+						if (Score < BestScore) { BestScore = Score; BestCityDist = D; TargetCity = C; }
 					}
 					if (TargetCity)
 					{
@@ -661,6 +670,10 @@ void UCoMAITacticalExecutor::ManageMagic(int32 WizardId, const FCoMAIStrategy& S
 		Params.TargetUnitId    = TargetUnit;
 		Params.TargetCityId    = TargetCity;
 		Params.TargetWizardId  = TargetWizard;
+		// Set the real mana cost from the spell DB — without this AI casts were
+		// free (ManaCost defaulted to 0), so magic had no economy and a rival's
+		// Suppress Magic never bit.
+		Params.ManaCost = CoMSpellDatabase::GetSpellInfo(SpellId).CastingCost;
 		if (MagicSub->CanCastSpell(WizardId, SpellId, Params))
 		{
 			MagicSub->CastSpell(Params);

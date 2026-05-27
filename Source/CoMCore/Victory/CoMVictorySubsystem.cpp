@@ -41,6 +41,19 @@ void UCoMVictorySubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
+void UCoMVictorySubsystem::ResetForNewGame()
+{
+	EliminatedWizards.Empty();
+	WizardVictories.Empty();
+	DestabilizedPlanes.Empty();
+	bGameOver = false;
+	WinningWizardId = -1;
+	WinningCondition = ECoMVictoryType::MAX;
+	bSaelThrixSlain = false;
+	bSpellOfMasteryCast = false;
+	MasteryCasterWizardId = -1;
+}
+
 // =========================================================================
 // Core victory check
 // =========================================================================
@@ -80,6 +93,13 @@ void UCoMVictorySubsystem::CheckVictoryConditions(int32 CurrentTurn)
 
 		// Domination (control all capitals)
 		if (CheckDomination(WizardId))
+		{
+			DeclareVictory(WizardId, ECoMVictoryType::Domination);
+			return;
+		}
+
+		// Domination by majority (control >50% of all cities, rivals remain)
+		if (CheckCityDominance(WizardId))
 		{
 			DeclareVictory(WizardId, ECoMVictoryType::Domination);
 			return;
@@ -159,6 +179,27 @@ bool UCoMVictorySubsystem::CheckDomination(int32 WizardId) const
 	// (They'll be eliminated this turn in CheckForEliminations.)
 	// This is effectively domination -- WizardId controls all territory.
 	return true;
+}
+
+bool UCoMVictorySubsystem::CheckCityDominance(int32 WizardId) const
+{
+	UGameInstance* GI = GetGameInstance();
+	if (!GI) { return false; }
+
+	UCoMCitySubsystem* CitySub = GI->GetSubsystem<UCoMCitySubsystem>();
+	if (!CitySub) { return false; }
+
+	// Need at least two survivors — otherwise this is a Conquest win.
+	const TArray<int32> Survivors = GetSurvivingWizardIndices();
+	if (Survivors.Num() < 2) { return false; }
+
+	const int32 TotalCities = CitySub->GetAllCityIDs().Num();
+	if (TotalCities < 4) { return false; } // avoid trivial early-game triggers
+
+	const int32 OwnCities = CitySub->GetCitiesForWizard(WizardId).Num();
+
+	// Strictly more than half of all cities in the world.
+	return OwnCities * 2 > TotalCities;
 }
 
 bool UCoMVictorySubsystem::CheckSpellOfMastery(int32 WizardId) const
