@@ -17,10 +17,14 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Components/Image.h"
 #include "Blueprint/WidgetTree.h"
 #include "Engine/GameInstance.h"
+#include "Engine/Texture2D.h"
 #include "Kismet/GameplayStatics.h"
 #include "CoMCore/Turn/CoMTurnSubsystem.h"
+#include "CoMCore/Magic/CoMMagicSubsystem.h"
+#include "CoMCore/Data/CoMGlobalEnchantmentData.h"
 
 // ─── RebuildWidget — constructs the full HUD layout in C++ ────────────────────
 TSharedRef<SWidget> UCoMHUDWidget::RebuildWidget()
@@ -95,6 +99,17 @@ void UCoMHUDWidget::BuildLayout()
 		TurnSlotRef->SetPadding(FMargin(20.f, 8.f, 12.f, 8.f));
 		TurnSlotRef->SetHorizontalAlignment(HAlign_Right);
 		TurnSlotRef->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	}
+
+	// ── ACTIVE ENCHANTMENTS STRIP (top-centre, below the top bar) ─────────────
+	EnchantmentStrip = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("EnchantmentStrip"));
+	UCanvasPanelSlot* EnchSlot = Canvas->AddChildToCanvas(EnchantmentStrip);
+	if (EnchSlot)
+	{
+		EnchSlot->SetAnchors(FAnchors(0.5f, 0.f, 0.5f, 0.f));
+		EnchSlot->SetAlignment(FVector2D(0.5f, 0.f));
+		EnchSlot->SetPosition(FVector2D(0.f, 44.f));
+		EnchSlot->SetAutoSize(true);
 	}
 
 	// ── RIGHT-SIDE BUTTON COLUMN ──────────────────────────────────────────────
@@ -247,6 +262,48 @@ void UCoMHUDWidget::UpdateTurnInfo(int32 TurnNumber, const FString& WizardName)
 	{
 		TurnInfoText->SetText(FText::FromString(
 			FString::Printf(TEXT("Turn %d - %s"), TurnNumber, *WizardName)));
+	}
+
+	// Keep the active-enchantment strip current as the world state changes.
+	RefreshEnchantments();
+}
+
+void UCoMHUDWidget::RefreshEnchantments()
+{
+	if (!EnchantmentStrip) { return; }
+	EnchantmentStrip->ClearChildren();
+
+	UGameInstance* GI = UGameplayStatics::GetGameInstance(this);
+	UCoMMagicSubsystem* Magic = GI ? GI->GetSubsystem<UCoMMagicSubsystem>() : nullptr;
+	if (!Magic) { return; }
+
+	TArray<int32> Owners;
+	TArray<FName>  SpellIDs;
+	Magic->GetAllActiveEnchantments(Owners, SpellIDs);
+
+	for (int32 i = 0; i < SpellIDs.Num(); ++i)
+	{
+		const FCoMGlobalEnchantmentDef& Def = CoMGlobalEnchantmentData::Get(SpellIDs[i]);
+		if (!Def.IsValid()) { continue; }
+
+		UImage* Icon = WidgetTree->ConstructWidget<UImage>();
+		const FString TexPath = FString::Printf(
+			TEXT("/Game/UI/Enchantments/enchant_%s.enchant_%s"),
+			*Def.CardImageSlug, *Def.CardImageSlug);
+		if (UTexture2D* Tex = LoadObject<UTexture2D>(nullptr, *TexPath))
+		{
+			Icon->SetBrushFromTexture(Tex);
+		}
+		Icon->SetDesiredSizeOverride(FVector2D(34.0f, 48.0f));
+		// Tooltip: "<Enchantment> - You / Wizard N"
+		const FString Who = (Owners[i] == 0) ? TEXT("You") : FString::Printf(TEXT("Wizard %d"), Owners[i]);
+		Icon->SetToolTipText(FText::FromString(
+			FString::Printf(TEXT("%s  (%s)"), *Def.DisplayName.ToString(), *Who)));
+
+		if (UHorizontalBoxSlot* IconSlot = EnchantmentStrip->AddChildToHorizontalBox(Icon))
+		{
+			IconSlot->SetPadding(FMargin(2.0f, 0.0f));
+		}
 	}
 }
 

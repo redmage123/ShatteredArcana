@@ -14,6 +14,7 @@ class UVerticalBox;
 class UHorizontalBox;
 class UScrollBox;
 class UBorder;
+class UImage;
 class UCoMMinimapWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEndTurnRequested);
@@ -77,6 +78,14 @@ public:
 	/** Clear all notifications. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|HUD")
 	void ClearNotifications();
+
+	// -- Global Enchantments ---------------------------------------------------
+
+	/** Rebuild the active-enchantment icon strip from the magic subsystem.
+	 *  Shows every global enchantment in play (CoM-style), with its tarot-card
+	 *  thumbnail and owner. Call on turn changes. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|HUD")
+	void RefreshEnchantments();
 
 	// -- Game Speed Control ----------------------------------------------------
 
@@ -187,6 +196,10 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> MinimapFrame;
+
+	/** Horizontal strip of active global-enchantment icons (top-centre). */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UHorizontalBox> EnchantmentStrip;
 
 	/** The actual minimap widget, created in C++ and added to MinimapFrame. */
 	UPROPERTY()
