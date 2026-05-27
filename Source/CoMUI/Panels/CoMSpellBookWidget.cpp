@@ -23,6 +23,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "CoMCore/Magic/CoMMagicSubsystem.h"
+#include "CoMCore/Data/CoMSpellDatabase.h"
 #include "CoMUI/CoMUISubsystem.h"
 
 // Realm colours for tabs
@@ -187,6 +188,30 @@ void UCoMSpellBookWidget::BuildLayout()
 
 		UVerticalBoxSlot* BarSlotRef = RootContentBox->AddChildToVerticalBox(BarSize);
 		if (BarSlotRef) { BarSlotRef->SetPadding(FMargin(0, 0, 0, 10)); }
+	}
+
+	// ── Now casting (overworld spell in progress) ────────────────────────
+	{
+		CastingText = WidgetTree->ConstructWidget<UTextBlock>();
+		CastingText->SetText(FText::FromString(TEXT("Not casting")));
+		CastingText->SetColorAndOpacity(FSlateColor(SpellColours::Silver));
+		FSlateFontInfo CastFont = CastingText->GetFont();
+		CastFont.Size = 13;
+		CastingText->SetFont(CastFont);
+
+		UVerticalBoxSlot* CastSlotRef = RootContentBox->AddChildToVerticalBox(CastingText);
+		if (CastSlotRef) { CastSlotRef->SetPadding(FMargin(0, 0, 0, 4)); }
+
+		CastingProgressBar = WidgetTree->ConstructWidget<UProgressBar>();
+		CastingProgressBar->SetPercent(0.0f);
+		CastingProgressBar->SetFillColorAndOpacity(FLinearColor(0.85f, 0.5f, 0.15f, 1.0f));
+
+		USizeBox* CastBarSize = WidgetTree->ConstructWidget<USizeBox>();
+		CastBarSize->SetHeightOverride(16.0f);
+		CastBarSize->AddChild(CastingProgressBar);
+
+		UVerticalBoxSlot* CastBarSlotRef = RootContentBox->AddChildToVerticalBox(CastBarSize);
+		if (CastBarSlotRef) { CastBarSlotRef->SetPadding(FMargin(0, 0, 0, 10)); }
 	}
 
 	// ── Spell list (scrollable) ──────────────────────────────────────────
@@ -423,6 +448,43 @@ void UCoMSpellBookWidget::SetWizardId(int32 WizardId)
 	if (ResearchProgressBar)
 	{
 		ResearchProgressBar->SetPercent(static_cast<float>(ProgressPct) / 100.f);
+	}
+
+	// Now casting (overworld spell in progress) — the other half of the CoM
+	// magic screen: shows the spell being cast this turn and its progress.
+	const FCoMSpellCast CurrentCast = MagicSub->GetCurrentCasting(WizardId);
+	if (CastingText)
+	{
+		if (!CurrentCast.SpellId.IsNone())
+		{
+			const FCoMSpellInfo CastInfo = CoMSpellDatabase::GetSpellInfo(CurrentCast.SpellId);
+			const FString CastName = CastInfo.DisplayName.IsEmpty()
+				? CurrentCast.SpellId.ToString() : CastInfo.DisplayName.ToString();
+			if (CurrentCast.TurnsRemaining > 0)
+			{
+				CastingText->SetText(FText::FromString(FString::Printf(
+					TEXT("Now casting: %s  (~%d turns)"), *CastName, CurrentCast.TurnsRemaining)));
+			}
+			else
+			{
+				CastingText->SetText(FText::FromString(FString::Printf(TEXT("Now casting: %s"), *CastName)));
+			}
+		}
+		else
+		{
+			CastingText->SetText(FText::FromString(TEXT("Not casting")));
+		}
+	}
+
+	if (CastingProgressBar)
+	{
+		float CastPct = 0.f;
+		if (!CurrentCast.SpellId.IsNone() && CurrentCast.CastingTime > 0)
+		{
+			CastPct = static_cast<float>(CurrentCast.CastingTime - CurrentCast.TurnsRemaining)
+				/ static_cast<float>(CurrentCast.CastingTime);
+		}
+		CastingProgressBar->SetPercent(FMath::Clamp(CastPct, 0.f, 1.f));
 	}
 
 	// Mana allocation slider.

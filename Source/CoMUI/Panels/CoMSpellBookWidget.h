@@ -129,6 +129,12 @@ protected:
 	TObjectPtr<UProgressBar> ResearchProgressBar;
 
 	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> CastingText;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UProgressBar> CastingProgressBar;
+
+	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<USlider> ManaAllocationSlider;
 
 	UPROPERTY(meta = (BindWidgetOptional))
