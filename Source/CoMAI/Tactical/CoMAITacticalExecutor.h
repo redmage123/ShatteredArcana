@@ -39,6 +39,12 @@ public:
 	void ExecuteTurn(int32 WizardId, const FCoMAIStrategy& Strategy, ECoMAIDifficulty Difficulty = ECoMAIDifficulty::Normal);
 
 private:
+	/** Turns remaining to hold a freshly-arrived army on one of our cities
+	 *  (capture-and-hold garrison: prevents an immediate recapture). Keyed by
+	 *  army group ID. */
+	UPROPERTY()
+	TMap<int32, int32> GarrisonCountdown;
+
 	// ---- City management --------------------------------------------------
 
 	/** Set build queues for all cities owned by WizardId. */

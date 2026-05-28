@@ -305,7 +305,32 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 				}
 			}
 
-			// --- Siege mode: seek and besiege the nearest enemy city ---
+			// --- Garrison: hold any army that's sitting on one of our cities
+				// for a few turns. After a successful siege EndSiege moves the
+				// attacker onto the captured city, so this prevents an immediate
+				// recapture and tips contested games over the majority threshold.
+				bool bOnOwnCity = false;
+				for (const FCoMCityData* OwnC : CitySub->GetCitiesForWizard(WizardId))
+				{
+					if (OwnC && OwnC->Plane == Army->Plane && OwnC->Layer == Army->Layer
+						&& OwnC->Position == Army->Position)
+					{
+						bOnOwnCity = true; break;
+					}
+				}
+				if (bOnOwnCity)
+				{
+					int32& Rem = GarrisonCountdown.FindOrAdd(Army->ArmyGroupID, 0);
+					if (Rem <= 0) { Rem = 3; } // just arrived — garrison for 3 turns
+					Rem--;
+					if (Rem > 0) { continue; } // hold position
+				}
+				else
+				{
+					GarrisonCountdown.Remove(Army->ArmyGroupID);
+				}
+
+				// --- Siege mode: seek and besiege the nearest enemy city ---
 				// Capturing cities eliminates rivals -> conquest victory.
 				// Defensive armies (handled above) take priority over this.
 				if (SiegeSub && OurPower > 0.0f)
