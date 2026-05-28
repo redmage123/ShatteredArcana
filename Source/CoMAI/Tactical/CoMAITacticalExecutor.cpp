@@ -215,6 +215,33 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 	UCoMWorldMapSubsystem* MapSub = GI->GetSubsystem<UCoMWorldMapSubsystem>();
 	UCoMSiegeSubsystem*    SiegeSub = GI->GetSubsystem<UCoMSiegeSubsystem>();
 
+	// Pick this turn's primary campaign target: a surviving rival CLEARLY
+	// weaker than us (2+ fewer cities). Only then do offensive armies all
+	// converge on them to finish them off. When the field is balanced we keep
+	// the previous "besiege the nearest enemy" tempo so armies aren't
+	// travelling uselessly across symmetric maps.
+	int32 PrimaryTargetWizard = -1;
+	{
+		const int32 OurCities = CitySub->GetCitiesForWizard(WizardId).Num();
+		int32 BestTargetCities = INT_MAX;
+		for (int32 OtherW = 0; OtherW < CoM::MAX_WIZARDS; ++OtherW)
+		{
+			if (OtherW == WizardId) continue;
+			const int32 N = CitySub->GetCitiesForWizard(OtherW).Num();
+			if (N > 0 && N < BestTargetCities)
+			{
+				BestTargetCities = N;
+				PrimaryTargetWizard = OtherW;
+			}
+		}
+		// Only concentrate when there's a wizard with at least 2 fewer cities
+		// than us — otherwise fall back to nearest-enemy tempo.
+		if (PrimaryTargetWizard >= 0 && BestTargetCities >= OurCities - 1)
+		{
+			PrimaryTargetWizard = -1;
+		}
+	}
+
 	// We re-fetch the army list after any operation that may invalidate pointers
 	// (e.g. founding a city can disband the settler army).
 	bool bNeedRefresh = true;
@@ -293,13 +320,35 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 					{
 						if (!C || C->Layer != Army->Layer) continue;
 						if (C->OwnerWizardIndex < 0 || C->OwnerWizardIndex == WizardId) continue;
+						// Concentrate force: only consider cities of the primary
+						// target wizard (the weakest survivor) when one is set.
+						// Falls back to any rival city if our primary already has
+						// none on this plane (so we don't idle).
+						if (PrimaryTargetWizard >= 0 && C->OwnerWizardIndex != PrimaryTargetWizard)
+						{
+							continue;
+						}
 						const int32 D = WrappedDistance(Army->Position, C->Position);
 						const int32 OwnerCities = CitySub->GetCitiesForWizard(C->OwnerWizardIndex).Num();
-						// Distance-dominant so armies besiege NEARBY cities (keeps
-						// conquest tempo up); owner weakness is only a tiebreaker so
-						// we finish off faltering wizards when they're close.
+						// Within the chosen target's cities, prefer the nearest;
+						// owner-weakness tiebreak still applies if we fell back.
 						const int32 Score = D * 8 + OwnerCities;
 						if (Score < BestScore) { BestScore = Score; BestCityDist = D; TargetCity = C; }
+					}
+					// Fallback: if the primary target has no reachable cities on
+					// this army's plane/layer, scan again across any rival so the
+					// army isn't paralysed.
+					if (!TargetCity && PrimaryTargetWizard >= 0)
+					{
+						for (const FCoMCityData* C : CitySub->GetCitiesOnPlane(Army->Plane))
+						{
+							if (!C || C->Layer != Army->Layer) continue;
+							if (C->OwnerWizardIndex < 0 || C->OwnerWizardIndex == WizardId) continue;
+							const int32 D = WrappedDistance(Army->Position, C->Position);
+							const int32 OwnerCities = CitySub->GetCitiesForWizard(C->OwnerWizardIndex).Num();
+							const int32 Score = D * 8 + OwnerCities;
+							if (Score < BestScore) { BestScore = Score; BestCityDist = D; TargetCity = C; }
+						}
 					}
 					if (TargetCity)
 					{
