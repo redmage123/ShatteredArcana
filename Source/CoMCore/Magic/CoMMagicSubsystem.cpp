@@ -1305,6 +1305,35 @@ void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
     }
 
     case ECoMSpellEffect::Terrain:
+    {
+        if (Cast.SpellId == FName(TEXT("Nature_T2_Enchant_Road")) && GI)
+        {
+            // MoM-style Enchant Road: every existing built road in the world
+            // becomes an enchanted road (RoadLevel 1 -> 2), granting the bigger
+            // 0.25x movement-cost bonus to any unit walking it.
+            UCoMWorldMapSubsystem* MapSub = GI->GetSubsystem<UCoMWorldMapSubsystem>();
+            int32 Upgraded = 0;
+            if (MapSub)
+            {
+                for (int32 Y = 0; Y < CoM::MAP_HEIGHT; ++Y)
+                {
+                    for (int32 X = 0; X < CoM::MAP_WIDTH; ++X)
+                    {
+                        FCoMTileData* T = MapSub->GetTileMutable(
+                            ECoMPlane::Aurelith, ECoMMapLayer::Surface, X, Y);
+                        if (T && T->RoadLevel == 1) { T->RoadLevel = 2; ++Upgraded; }
+                    }
+                }
+            }
+            LogResolve(*FString::Printf(TEXT("Enchant Road -> %d roads upgraded"), Upgraded));
+        }
+        else
+        {
+            LogResolve(TEXT("Terrain (placeholder)"));
+        }
+        break;
+    }
+
     case ECoMSpellEffect::Divination:
     default:
         LogResolve(TEXT("Misc"));

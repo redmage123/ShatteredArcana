@@ -599,6 +599,20 @@ void CoMSpellDatabase::InitializeDatabase()
 		RegisterSpell(MoveTemp(S));
 	}
 	{
+		// Enchant Road: MoM-style global road enchantment. Every built road in
+		// the world (RoadLevel 1) is upgraded to an enchanted road (RoadLevel 2)
+		// granting 0.25x movement cost instead of 0.5x.
+		FCoMSpellInfo S;
+		S.SpellID = FName(TEXT("Nature_T2_Enchant_Road"));
+		S.DisplayName = FText::FromString(TEXT("Enchant Road"));
+		S.Realm = ECoMSpellRealm::Nature; S.Rarity = ECoMSpellRarity::Uncommon;
+		S.Scope = ECoMSpellScope::Overworld;
+		S.TargetType = ECoMSpellTarget::NoTarget; S.EffectType = ECoMSpellEffect::Terrain;
+		S.ResearchCost = 200; S.CastingCost = 50;
+		S.bInstant = true;
+		RegisterSpell(MoveTemp(S));
+	}
+	{
 		FCoMSpellInfo S;
 		S.SpellID = FName(TEXT("Nature_T3_Summon_Earth_Elemental"));
 		S.DisplayName = FText::FromString(TEXT("Summon Earth Elemental"));
