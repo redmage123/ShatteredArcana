@@ -717,6 +717,29 @@ void CoMUnitDatabase::InitializeDatabase()
 		RegisterUnit(MoveTemp(U));
 	}
 
+	// ── Engineers (race-gated road builders, MoM-style) ───────────────────────
+	// Only a few races can train engineers (matches MoM lore — settled,
+	// industrious civilisations). Light combat stats, the point is their
+	// BuildRoad capability via bEngineer.
+	auto AddEngineer = [&](const TCHAR* SpecId, const TCHAR* Name, const TCHAR* RaceTag)
+	{
+		FCoMUnitSpecInfo U;
+		U.SpecID = FName(SpecId);
+		U.DisplayName = FText::FromString(Name);
+		U.RaceTag = RaceTag;
+		U.HitPoints = 4; U.MeleeAttack = 2; U.Defense = 3; U.Resistance = 5;
+		U.Movement = 2; U.Figures = 4;
+		U.ProductionCost = 60; U.UpkeepGold = 1; U.UpkeepFood = 1;
+		U.bEngineer = true;
+		U.CategoryTag = TEXT("Engineer");
+		U.RequiredBuildingTag = TEXT(""); // recruitable from any city of the right race
+		RegisterUnit(MoveTemp(U));
+	};
+	AddEngineer(TEXT("Dwarves_Engineer"),   TEXT("Dwarven Engineers"),     TEXT("Race.Dwarves"));
+	AddEngineer(TEXT("HighMen_Engineer"),   TEXT("High Men Engineers"),    TEXT("Race.HighMen"));
+	AddEngineer(TEXT("Beastmen_Engineer"),  TEXT("Beastmen Engineers"),    TEXT("Race.Beastmen"));
+	AddEngineer(TEXT("Lizardmen_Engineer"), TEXT("Lizardmen Engineers"),   TEXT("Race.Lizardmen"));
+
 	// ── Summoned creatures (conjured by Summon spells, not recruited) ─────────
 	// Single powerful figures with mana upkeep and no food cost. Mapped from
 	// summon spells by realm + rarity in UCoMMagicSubsystem::ResolveSpell.

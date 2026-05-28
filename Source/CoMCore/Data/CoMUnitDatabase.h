@@ -38,6 +38,7 @@ struct COMCORE_API FCoMUnitSpecInfo
 	bool bNonCorporeal = false;
 	bool bHero = false;
 	bool bSettler = false;
+	bool bEngineer = false;
 
 	// Unit tier / category tag
 	FString CategoryTag; // "Infantry", "Cavalry", "Ranged", "Settler", "Hero"

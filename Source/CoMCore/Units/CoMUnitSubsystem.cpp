@@ -64,8 +64,9 @@ int32 UCoMUnitSubsystem::SpawnUnitByName(FName SpecID, ECoMPlane Plane, ECoMMapL
 	Unit.CurrentHP = DBSpec.HitPoints;
 	Unit.MaxHP     = DBSpec.HitPoints;
 	Unit.bFlying   = DBSpec.bFlying;
-	Unit.bIsHero   = DBSpec.bHero;
-	Unit.bIsSettler= DBSpec.bSettler;
+	Unit.bIsHero    = DBSpec.bHero;
+	Unit.bIsSettler = DBSpec.bSettler;
+	Unit.bIsEngineer= DBSpec.bEngineer;
 
 	return UnitID;
 }
@@ -101,8 +102,9 @@ int32 UCoMUnitSubsystem::SpawnUnit(int32 SpecID, ECoMPlane Plane, ECoMMapLayer L
 		Unit.CurrentHP = DBSpec.HitPoints;
 		Unit.MaxHP     = DBSpec.HitPoints;
 		Unit.bFlying   = DBSpec.bFlying;
-		Unit.bIsHero   = DBSpec.bHero;
+		Unit.bIsHero    = DBSpec.bHero;
 		Unit.bIsSettler = DBSpec.bSettler;
+		Unit.bIsEngineer= DBSpec.bEngineer;
 	}
 	else
 	{
@@ -366,6 +368,43 @@ int32 UCoMUnitSubsystem::FoundCityWithSettler(int32 ArmyId, int32 SettlerUnitId)
 		OwnerWizard, NewCityId, Position.X, Position.Y, static_cast<int32>(Plane));
 
 	return NewCityId;
+}
+
+bool UCoMUnitSubsystem::BuildRoadAtArmy(int32 ArmyId)
+{
+	FCoMArmyGroup* Army = AllArmies.Find(ArmyId);
+	if (!Army || Army->UnitIDs.Num() == 0) { return false; }
+
+	// Need at least one engineer in the army.
+	bool bHasEngineer = false;
+	for (int32 UID : Army->UnitIDs)
+	{
+		const FCoMUnitInstance* U = AllUnits.Find(UID);
+		if (U && U->bIsEngineer) { bHasEngineer = true; break; }
+	}
+	if (!bHasEngineer) { return false; }
+
+	// Lazy-resolve the world map (initialise order isn't guaranteed).
+	if (!WorldMapSubsystem)
+	{
+		if (UGameInstance* GIL = GetGameInstance())
+		{
+			WorldMapSubsystem = GIL->GetSubsystem<UCoMWorldMapSubsystem>();
+		}
+	}
+	if (!WorldMapSubsystem) { return false; }
+
+	FCoMTileData* Tile = WorldMapSubsystem->GetTileMutable(
+		Army->Plane, Army->Layer, Army->Position.X, Army->Position.Y);
+	if (!Tile) { return false; }
+
+	// Idempotent: don't downgrade an enchanted road (level 2+).
+	if (Tile->RoadLevel >= 1) { return false; }
+	Tile->RoadLevel = 1;
+
+	UE_LOG(LogTemp, Log, TEXT("[Road] Wizard %d built a road at (%d,%d)"),
+		Army->OwnerWizardIndex, Army->Position.X, Army->Position.Y);
+	return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -760,14 +799,21 @@ FFixed64 UCoMUnitSubsystem::ComputeMoveCost(const FCoMArmyGroup& Army, ECoMPlane
 	FFixed64 BaseCost = FFixed64(1);
 
 	// Query terrain cost from world map tile data.
+	int32 RoadLevel = 0;
 	if (WorldMapSubsystem)
 	{
 		const FCoMTileData* TileData = WorldMapSubsystem->GetTileAtPos(Plane, Layer, Tile);
 		if (TileData)
 		{
 			BaseCost = TileData->MoveCostModifier;
+			RoadLevel = TileData->RoadLevel;
 		}
 	}
+
+	// Roads cut movement cost (built road = 0.5x, enchanted road = 0.25x).
+	// Flying armies already get their own discount and don't benefit.
+	if (RoadLevel >= 2)      { BaseCost = BaseCost * FFixed64::Quarter(); }
+	else if (RoadLevel >= 1) { BaseCost = BaseCost * FFixed64::Half(); }
 
 	// Flying armies pay half terrain cost.
 	if (IsArmyFullyFlying(Army))

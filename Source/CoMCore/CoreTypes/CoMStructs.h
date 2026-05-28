@@ -466,6 +466,7 @@ struct COMCORE_API FCoMUnitInstance
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool              bIsHero           = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool              bFlying           = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool              bIsSettler        = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool              bIsEngineer       = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMovementType  MovementType      = ECoMMovementType::Walking;
 
 	// COM-056a: plane-restricted units (Three Planes expansion).

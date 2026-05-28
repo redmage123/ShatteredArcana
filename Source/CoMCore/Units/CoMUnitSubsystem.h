@@ -70,6 +70,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Units")
 	int32 FoundCityWithSettler(int32 ArmyId, int32 SettlerUnitId);
 
+	/** If the army contains an engineer, build a road (RoadLevel = 1) on the
+	 *  current tile (idempotent — won't lower an existing higher level).
+	 *  Returns true if a road was upgraded/built. */
+	UFUNCTION(BlueprintCallable, Category = "Units")
+	bool BuildRoadAtArmy(int32 ArmyId);
+
 	// --- Movement ---
 
 	/**
