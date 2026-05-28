@@ -68,6 +68,7 @@ private:
 	UPROPERTY() TObjectPtr<UTextBlock> UnitNameText;
 	UPROPERTY() TObjectPtr<UTextBlock> RaceText;
 	UPROPERTY() TObjectPtr<UBorder> PortraitBorder;
+	UPROPERTY() TObjectPtr<class UImage> PortraitImage;
 
 	// Stat value text blocks
 	UPROPERTY() TObjectPtr<UTextBlock> AttackValueText;

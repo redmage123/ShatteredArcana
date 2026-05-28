@@ -4,6 +4,8 @@
 #include "CoMUnitCardWidget.h"
 
 #include "Components/Border.h"
+#include "Components/Image.h"
+#include "Engine/Texture2D.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Components/HorizontalBox.h"
@@ -125,7 +127,7 @@ void UCoMUnitCardWidget::SetUnit(int32 UnitId)
 			Unit->RaceTag.IsValid() ? Unit->RaceTag.ToString() : TEXT("Unknown Race")));
 	}
 
-	// Portrait colour based on race hash
+	// Portrait colour based on race hash (fallback backdrop).
 	if (PortraitBorder)
 	{
 		const uint32 Hash = GetTypeHash(Unit->RaceTag.GetTagName());
@@ -135,6 +137,22 @@ void UCoMUnitCardWidget::SetUnit(int32 UnitId)
 			0.15f + FMath::Frac(Hash * 0.00419f) * 0.3f,
 			1.0f);
 		PortraitBorder->SetBrushColor(RaceColor);
+	}
+
+	// Portrait art by SpecID, if one has been authored (/Game/UI/Units/<SpecID>).
+	if (PortraitImage)
+	{
+		const FString SpecStr = Unit->SpecID.ToString();
+		const FString TexPath = FString::Printf(TEXT("/Game/UI/Units/%s.%s"), *SpecStr, *SpecStr);
+		if (UTexture2D* Tex = LoadObject<UTexture2D>(nullptr, *TexPath))
+		{
+			PortraitImage->SetBrushFromTexture(Tex);
+			PortraitImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+		}
+		else
+		{
+			PortraitImage->SetVisibility(ESlateVisibility::Collapsed);
+		}
 	}
 
 	// Stats — from the unit instance (HP, Level, XP) and spec data would normally
@@ -347,6 +365,12 @@ void UCoMUnitCardWidget::BuildCardLayout()
 		PortraitBorder->SetBrushColor(UC::PortraitDefault);
 		PortraitBorder->SetPadding(FMargin(0.0f));
 		PortraitSize->AddChild(PortraitBorder);
+
+		// Portrait art (filled in per-unit if a texture exists; otherwise the
+		// coloured border shows through).
+		PortraitImage = WidgetTree->ConstructWidget<UImage>();
+		PortraitImage->SetVisibility(ESlateVisibility::Collapsed);
+		PortraitBorder->SetContent(PortraitImage);
 
 		UVerticalBoxSlot* SlotRef = ContentBox->AddChildToVerticalBox(PortraitSize);
 		if (SlotRef) { SlotRef->SetHorizontalAlignment(HAlign_Center); SlotRef->SetPadding(FMargin(0, 2, 0, 4)); }
