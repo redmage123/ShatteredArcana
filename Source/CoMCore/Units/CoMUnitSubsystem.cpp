@@ -10,6 +10,7 @@
 #include "CoMCore/Data/CoMUnitDatabase.h"
 #include "CoMCore/CoreTypes/CoMConstants.h"
 #include "CoMCore/Economy/CoMCitySubsystem.h"
+#include "CoMCore/Economy/CoMResourceSubsystem.h"
 #include "CoMCore/Audio/CoMAudioSubsystem.h"
 #include "CoMCore/World/CoMFogOfWarSubsystem.h"
 #include "Engine/AssetManager.h"
@@ -405,6 +406,41 @@ bool UCoMUnitSubsystem::BuildRoadAtArmy(int32 ArmyId)
 	UE_LOG(LogTemp, Log, TEXT("[Road] Wizard %d built a road at (%d,%d)"),
 		Army->OwnerWizardIndex, Army->Position.X, Army->Position.Y);
 	return true;
+}
+
+bool UCoMUnitSubsystem::BuildMineAtArmy(int32 ArmyId)
+{
+	FCoMArmyGroup* Army = AllArmies.Find(ArmyId);
+	if (!Army || Army->UnitIDs.Num() == 0) { return false; }
+
+	bool bHasEngineer = false;
+	for (int32 UID : Army->UnitIDs)
+	{
+		const FCoMUnitInstance* U = AllUnits.Find(UID);
+		if (U && U->bIsEngineer) { bHasEngineer = true; break; }
+	}
+	if (!bHasEngineer) { return false; }
+
+	if (!WorldMapSubsystem)
+	{
+		if (UGameInstance* GIL = GetGameInstance())
+		{
+			WorldMapSubsystem = GIL->GetSubsystem<UCoMWorldMapSubsystem>();
+		}
+	}
+	if (!WorldMapSubsystem) { return false; }
+
+	const FCoMTileData* Tile = WorldMapSubsystem->GetTileAtPos(
+		Army->Plane, Army->Layer, Army->Position);
+	if (!Tile || Tile->Resource == ECoMResource::None) { return false; }
+
+	UGameInstance* GI = GetGameInstance();
+	UCoMResourceSubsystem* Res = GI ? GI->GetSubsystem<UCoMResourceSubsystem>() : nullptr;
+	if (!Res) { return false; }
+
+	const int32 MineID = Res->BuildMineForWizard(
+		Army->OwnerWizardIndex, Army->Plane, Army->Position, Tile->Resource);
+	return MineID >= 0;
 }
 
 // ---------------------------------------------------------------------------

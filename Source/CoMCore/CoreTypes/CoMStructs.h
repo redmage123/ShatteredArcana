@@ -738,6 +738,8 @@ struct COMCORE_API FCoMMineData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMMapLayer     Layer           = ECoMMapLayer::Surface;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMResource     ResourceType    = ECoMResource::Iron;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32            OwnerCityID     = -1;
+	/** Wizard owner for outpost/engineer-built mines that aren't tied to any city. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32            OwnerWizardIndex = -1;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32            MineLevel       = 1; // 1–3
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32            WorkersAssigned = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) bool             bExhausted      = false;

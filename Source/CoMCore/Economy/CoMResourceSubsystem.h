@@ -46,6 +46,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|Resources")
 	int32 BuildMine(int32 CityID, ECoMPlane Plane, FIntPoint Position, ECoMResource TileResource = ECoMResource::Iron);
 
+	/** Engineer-built outpost mine: owned by a wizard directly with no parent
+	 *  city, so it can sit on a resource tile far outside any city's working
+	 *  radius. Returns the new MineID, or -1 on failure. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Resources")
+	int32 BuildMineForWizard(int32 WizardId, ECoMPlane Plane, FIntPoint Position, ECoMResource TileResource = ECoMResource::Iron);
+
 	/** Advance mine construction, extract resources, check depletion. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Resources")
 	void ProcessMineTurn();

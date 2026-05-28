@@ -92,6 +92,43 @@ int32 UCoMResourceSubsystem::BuildMine(int32 CityID, ECoMPlane Plane, FIntPoint 
 	return MineID;
 }
 
+int32 UCoMResourceSubsystem::BuildMineForWizard(int32 WizardId, ECoMPlane Plane,
+	FIntPoint Position, ECoMResource TileResource)
+{
+	// Refuse if the tile already has a mine.
+	for (const auto& Pair : AllMines)
+	{
+		if (Pair.Value.Plane == Plane && Pair.Value.Position == Position)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Resource] Tile (%d,%d) already has a mine"),
+				Position.X, Position.Y);
+			return -1;
+		}
+	}
+
+	const int32 MineID = AllocateMineID();
+
+	FCoMMineData Mine;
+	Mine.MineID            = MineID;
+	Mine.Position          = Position;
+	Mine.Plane             = Plane;
+	Mine.Layer             = ECoMMapLayer::Surface;
+	Mine.ResourceType      = TileResource;
+	Mine.OwnerCityID       = -1;       // outpost mine — no parent city
+	Mine.OwnerWizardIndex  = WizardId; // owned directly by the wizard
+	Mine.MineLevel         = 0;
+	Mine.WorkersAssigned   = 0;
+	Mine.bExhausted        = false;
+	Mine.TurnsUntilBuilt   = MINE_BUILD_TURNS;
+
+	AllMines.Add(MineID, Mine);
+
+	UE_LOG(LogTemp, Log, TEXT("[Resource] Outpost mine %d built at (%d,%d) for wizard %d"),
+		MineID, Position.X, Position.Y, WizardId);
+
+	return MineID;
+}
+
 void UCoMResourceSubsystem::ProcessMineTurn()
 {
 	TArray<int32> MineIDs;

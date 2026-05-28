@@ -76,6 +76,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Units")
 	bool BuildRoadAtArmy(int32 ArmyId);
 
+	/** If the army contains an engineer and the current tile has a resource and
+	 *  no existing mine, build an outpost mine owned by the army's wizard (no
+	 *  parent city, so it works far outside any city's working radius). */
+	UFUNCTION(BlueprintCallable, Category = "Units")
+	bool BuildMineAtArmy(int32 ArmyId);
+
 	// --- Movement ---
 
 	/**
