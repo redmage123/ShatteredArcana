@@ -59,6 +59,10 @@ public:
 	/** Return mine data by ID, or nullptr if not found. */
 	const FCoMMineData* GetMine(int32 MineID) const;
 
+	/** True if any mine sits at the given tile. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Resources")
+	bool HasMineAt(ECoMPlane Plane, FIntPoint Position) const;
+
 	/** All mines owned by the given city. */
 
 	/**

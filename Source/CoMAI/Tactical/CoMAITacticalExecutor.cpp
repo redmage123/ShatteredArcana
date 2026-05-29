@@ -9,6 +9,7 @@
 #include "CoMCore/Economy/CoMCitySubsystem.h"
 #include "CoMCore/Units/CoMUnitSubsystem.h"
 #include "CoMCore/Combat/CoMSiegeSubsystem.h"
+#include "CoMCore/Economy/CoMResourceSubsystem.h"
 #include "CoMCore/Diplomacy/CoMDiplomacySubsystem.h"
 #include "CoMCore/Magic/CoMMagicSubsystem.h"
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
@@ -257,18 +258,49 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 
 			// --- Engineer: drop a road on the current tile each turn an
 			// engineer is here, and opportunistically build an outpost mine if
-			// we happen to be standing on a resource. Both BuildRoad and
-			// BuildMine are idempotent (no-op if the tile already has one), so
-			// it's cheap to call every turn and infrastructure emerges along
-			// the army's travel path naturally.
+			// we happen to be standing on a resource. If no mine got built
+			// here, detour the army toward the nearest unmined resource within
+			// a small radius — without this engineers almost never sit on
+			// resources organically and BuildMine never fires.
+			bool bIsEngineerArmy = false;
 			for (int32 UID : Army->UnitIDs)
 			{
 				const FCoMUnitInstance* U = UnitSub->GetUnit(UID);
-				if (U && U->bIsEngineer)
+				if (U && U->bIsEngineer) { bIsEngineerArmy = true; break; }
+			}
+			if (bIsEngineerArmy)
+			{
+				UnitSub->BuildRoadAtArmy(Army->ArmyGroupID);
+				const bool bMined = UnitSub->BuildMineAtArmy(Army->ArmyGroupID);
+				if (!bMined)
 				{
-					UnitSub->BuildRoadAtArmy(Army->ArmyGroupID);
-					UnitSub->BuildMineAtArmy(Army->ArmyGroupID);
-					break;
+					UCoMResourceSubsystem* ResSub = GI->GetSubsystem<UCoMResourceSubsystem>();
+					if (MapSub && ResSub)
+					{
+						const int32 ScanR = 14;
+						FIntPoint BestRes(-1, -1);
+						int32 BestResDist = INT_MAX;
+						for (int32 dy = -ScanR; dy <= ScanR; ++dy)
+						{
+							for (int32 dx = -ScanR; dx <= ScanR; ++dx)
+							{
+								if (FMath::Abs(dx) + FMath::Abs(dy) > ScanR) continue;
+								const int32 X = ((Army->Position.X + dx) % CoM::MAP_WIDTH + CoM::MAP_WIDTH) % CoM::MAP_WIDTH;
+								const int32 Y = Army->Position.Y + dy;
+								if (Y < 0 || Y >= CoM::MAP_HEIGHT) continue;
+								const FCoMTileData* T = MapSub->GetTile(Army->Plane, Army->Layer, X, Y);
+								if (!T || T->Resource == ECoMResource::None) continue;
+								if (ResSub->HasMineAt(Army->Plane, FIntPoint(X, Y))) continue;
+								const int32 D = FMath::Abs(dx) + FMath::Abs(dy);
+								if (D < BestResDist) { BestResDist = D; BestRes = FIntPoint(X, Y); }
+							}
+						}
+						if (BestRes.X >= 0)
+						{
+							UnitSub->MoveArmy(Army->ArmyGroupID, BestRes, /*bAllowUnexplored*/ true);
+							continue; // head to the resource; skip siege/attack this turn
+						}
+					}
 				}
 			}
 

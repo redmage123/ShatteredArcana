@@ -189,6 +189,16 @@ const FCoMMineData* UCoMResourceSubsystem::GetMine(int32 MineID) const
 	return AllMines.Find(MineID);
 }
 
+bool UCoMResourceSubsystem::HasMineAt(ECoMPlane Plane, FIntPoint Position) const
+{
+	for (const auto& Pair : AllMines)
+	{
+		const FCoMMineData& M = Pair.Value;
+		if (M.Plane == Plane && M.Position == Position) { return true; }
+	}
+	return false;
+}
+
 TArray<int32> UCoMResourceSubsystem::GetMinesForCity(int32 CityID) const
 {
 	TArray<int32> Result;
