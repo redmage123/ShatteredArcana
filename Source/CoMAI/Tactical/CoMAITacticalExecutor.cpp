@@ -256,15 +256,18 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 			if (Army->bInCombat) continue; // Already engaged
 
 			// --- Engineer: drop a road on the current tile each turn an
-			// engineer is here. BuildRoadAtArmy is idempotent (won't downgrade
-			// an enchanted road), so this is a cheap call every turn and roads
-			// emerge along the army's travel path naturally.
+			// engineer is here, and opportunistically build an outpost mine if
+			// we happen to be standing on a resource. Both BuildRoad and
+			// BuildMine are idempotent (no-op if the tile already has one), so
+			// it's cheap to call every turn and infrastructure emerges along
+			// the army's travel path naturally.
 			for (int32 UID : Army->UnitIDs)
 			{
 				const FCoMUnitInstance* U = UnitSub->GetUnit(UID);
 				if (U && U->bIsEngineer)
 				{
 					UnitSub->BuildRoadAtArmy(Army->ArmyGroupID);
+					UnitSub->BuildMineAtArmy(Army->ArmyGroupID);
 					break;
 				}
 			}
