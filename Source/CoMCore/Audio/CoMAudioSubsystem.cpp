@@ -68,12 +68,25 @@ void UCoMAudioSubsystem::PlayMusic(FName TrackID)
 	}
 
 	USoundBase** Found = MusicTracks.Find(TrackID);
+	if (!Found)
+	{
+		// Dynamic-load fallback: try the canonical path, cache the result
+		// (positive or negative) so we only attempt once and don't spam.
+		const FString AssetPath = FString::Printf(
+			TEXT("/Game/Audio/Music/%s.%s"), *TrackID.ToString(), *TrackID.ToString());
+		USoundBase* Loaded = LoadObject<USoundBase>(nullptr, *AssetPath);
+		MusicTracks.Add(TrackID, Loaded);
+		if (!Loaded)
+		{
+			UE_LOG(LogCoMAudio, Warning,
+				TEXT("PlayMusic: Track '%s' not authored at %s"), *TrackID.ToString(), *AssetPath);
+			return;
+		}
+		Found = MusicTracks.Find(TrackID);
+	}
 	if (!Found || !*Found)
 	{
-		UE_LOG(LogCoMAudio, Warning,
-			TEXT("PlayMusic: Track '%s' not found in MusicTracks map."),
-			*TrackID.ToString());
-		return;
+		return; // Negative-cached previously.
 	}
 
 	CurrentMusicTrackID = TrackID;
@@ -106,13 +119,22 @@ void UCoMAudioSubsystem::StopAllMusic()
 void UCoMAudioSubsystem::PlaySFX(FName SoundID, FVector Location)
 {
 	USoundBase** Found = SFXSounds.Find(SoundID);
-	if (!Found || !*Found)
+	if (!Found)
 	{
-		UE_LOG(LogCoMAudio, Warning,
-			TEXT("PlaySFX: Sound '%s' not found in SFXSounds map."),
-			*SoundID.ToString());
-		return;
+		// Dynamic-load fallback at canonical /Game/Audio/SFX/<ID>.
+		const FString AssetPath = FString::Printf(
+			TEXT("/Game/Audio/SFX/%s.%s"), *SoundID.ToString(), *SoundID.ToString());
+		USoundBase* Loaded = LoadObject<USoundBase>(nullptr, *AssetPath);
+		SFXSounds.Add(SoundID, Loaded);
+		if (!Loaded)
+		{
+			UE_LOG(LogCoMAudio, Warning,
+				TEXT("PlaySFX: Sound '%s' not authored at %s"), *SoundID.ToString(), *AssetPath);
+			return;
+		}
+		Found = SFXSounds.Find(SoundID);
 	}
+	if (!Found || !*Found) { return; }
 
 	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
 	if (!World)
@@ -137,13 +159,22 @@ void UCoMAudioSubsystem::PlaySFX(FName SoundID, FVector Location)
 void UCoMAudioSubsystem::PlayUISound(FName SoundID)
 {
 	USoundBase** Found = SFXSounds.Find(SoundID);
-	if (!Found || !*Found)
+	if (!Found)
 	{
-		UE_LOG(LogCoMAudio, Warning,
-			TEXT("PlayUISound: Sound '%s' not found in SFXSounds map."),
-			*SoundID.ToString());
-		return;
+		// Dynamic-load fallback at canonical /Game/Audio/SFX/UI/<ID>.
+		const FString AssetPath = FString::Printf(
+			TEXT("/Game/Audio/SFX/UI/%s.%s"), *SoundID.ToString(), *SoundID.ToString());
+		USoundBase* Loaded = LoadObject<USoundBase>(nullptr, *AssetPath);
+		SFXSounds.Add(SoundID, Loaded);
+		if (!Loaded)
+		{
+			UE_LOG(LogCoMAudio, Warning,
+				TEXT("PlayUISound: Sound '%s' not authored at %s"), *SoundID.ToString(), *AssetPath);
+			return;
+		}
+		Found = SFXSounds.Find(SoundID);
 	}
+	if (!Found || !*Found) { return; }
 
 	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
 	if (!World)
@@ -282,19 +313,31 @@ void UCoMAudioSubsystem::SetCombatIntensity(int32 Level)
 		return;
 	}
 
-	// Map intensity 1-3 to combat music tracks
+	// Map intensity 1-3 to combat music tracks. Dynamic-load fallback at
+	// canonical /Game/Audio/Music/Combat/Combat_Intensity_<N>, cached so we
+	// only attempt once per level and don't spam.
 	USoundBase** Found = CombatMusicTracks.Find(Level);
+	if (!Found)
+	{
+		const FString AssetPath = FString::Printf(
+			TEXT("/Game/Audio/Music/Combat/Combat_Intensity_%d.Combat_Intensity_%d"), Level, Level);
+		USoundBase* Loaded = LoadObject<USoundBase>(nullptr, *AssetPath);
+		CombatMusicTracks.Add(Level, Loaded);
+		if (!Loaded)
+		{
+			UE_LOG(LogCoMAudio, Warning,
+				TEXT("SetCombatIntensity: No combat music for intensity %d (looked at %s)"),
+				Level, *AssetPath);
+			return;
+		}
+		Found = CombatMusicTracks.Find(Level);
+	}
 	if (Found && *Found)
 	{
 		FName CombatTrackName = FName(*FString::Printf(TEXT("Combat_Intensity_%d"), Level));
 		CurrentMusicTrackID = CombatTrackName;
 		CrossfadeMusic(*Found);
 		OnMusicChanged.Broadcast(CombatTrackName);
-	}
-	else
-	{
-		UE_LOG(LogCoMAudio, Warning,
-			TEXT("SetCombatIntensity: No combat music for intensity %d."), Level);
 	}
 }
 
