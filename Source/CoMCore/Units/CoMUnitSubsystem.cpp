@@ -979,3 +979,44 @@ void UCoMUnitSubsystem::ImportAll(const TArray<FCoMUnitInstance>& InUnits, const
 	UE_LOG(LogTemp, Log, TEXT("[UnitSubsystem] ImportAll: %d units, %d armies imported."),
 	       AllUnits.Num(), AllArmies.Num());
 }
+
+// =============================================================================
+// Console commands — let a human player trigger engineer abilities at the
+// tilde console without needing a dedicated HUD button yet.
+//   com.engineer_build_road <armyId>
+//   com.engineer_build_mine <armyId>
+// =============================================================================
+
+static FAutoConsoleCommandWithWorldAndArgs GEngineerRoadCmd(
+	TEXT("com.engineer_build_road"),
+	TEXT("If the army has an engineer, build a road on its current tile. Arg: <armyId>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda(
+		[](const TArray<FString>& Args, UWorld* World)
+		{
+			if (!World || Args.Num() < 1) { return; }
+			UGameInstance* GI = World->GetGameInstance();
+			if (!GI) { return; }
+			UCoMUnitSubsystem* Units = GI->GetSubsystem<UCoMUnitSubsystem>();
+			if (!Units) { return; }
+			const int32 ArmyId = FCString::Atoi(*Args[0]);
+			const bool bOK = Units->BuildRoadAtArmy(ArmyId);
+			UE_LOG(LogTemp, Display, TEXT("[Cmd] engineer_build_road army=%d -> %s"),
+				ArmyId, bOK ? TEXT("OK") : TEXT("no-engineer/no-tile/already-built"));
+		}));
+
+static FAutoConsoleCommandWithWorldAndArgs GEngineerMineCmd(
+	TEXT("com.engineer_build_mine"),
+	TEXT("If the army has an engineer and the tile has a resource, build an outpost mine. Arg: <armyId>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda(
+		[](const TArray<FString>& Args, UWorld* World)
+		{
+			if (!World || Args.Num() < 1) { return; }
+			UGameInstance* GI = World->GetGameInstance();
+			if (!GI) { return; }
+			UCoMUnitSubsystem* Units = GI->GetSubsystem<UCoMUnitSubsystem>();
+			if (!Units) { return; }
+			const int32 ArmyId = FCString::Atoi(*Args[0]);
+			const bool bOK = Units->BuildMineAtArmy(ArmyId);
+			UE_LOG(LogTemp, Display, TEXT("[Cmd] engineer_build_mine army=%d -> %s"),
+				ArmyId, bOK ? TEXT("OK") : TEXT("no-engineer/no-resource/already-mined"));
+		}));
