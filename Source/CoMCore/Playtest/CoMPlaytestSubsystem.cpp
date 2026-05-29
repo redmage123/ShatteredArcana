@@ -317,6 +317,21 @@ void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
 			const int32 SettlerID = Units->SpawnUnitByName(FName(TEXT("Settler")),
 				ECoMPlane::Aurelith, ECoMMapLayer::Surface, ArmyPos, W);
 			if (SettlerID > 0) Units->AddUnitToArmy(SettlerID, ArmyID);
+
+			// Engineer-capable races start with an engineer so the playtest
+			// exercises road building (engineers drop roads as they travel).
+			FName EngineerSpec = NAME_None;
+			const FGameplayTag Race = Races[W % Races.Num()];
+			if      (Race == CoMTags::Race::HighMen)   { EngineerSpec = TEXT("HighMen_Engineer"); }
+			else if (Race == CoMTags::Race::Dwarves)   { EngineerSpec = TEXT("Dwarves_Engineer"); }
+			else if (Race == CoMTags::Race::Beastmen)  { EngineerSpec = TEXT("Beastmen_Engineer"); }
+			else if (Race == CoMTags::Race::Lizardmen) { EngineerSpec = TEXT("Lizardmen_Engineer"); }
+			if (!EngineerSpec.IsNone())
+			{
+				const int32 EngID = Units->SpawnUnitByName(EngineerSpec,
+					ECoMPlane::Aurelith, ECoMMapLayer::Surface, ArmyPos, W);
+				if (EngID > 0) Units->AddUnitToArmy(EngID, ArmyID);
+			}
 		}
 	}
 
@@ -381,6 +396,13 @@ void UCoMPlaytestSubsystem::BootstrapGame(int32 Seed)
 			// Also seed a dispel so the global-enchantment counterplay (AI strips
 			// rival enchantments) is exercised in the playtest.
 			State.KnownSpells.AddUnique(FName(TEXT("Arcane_T2_Dispel_Magic")));
+
+			// Nature wizards know Enchant Road so they cast it once roads exist,
+			// upgrading every built road to an enchanted road (0.25x move cost).
+			if (State.PrimaryRealm == ECoMSpellRealm::Nature)
+			{
+				State.KnownSpells.AddUnique(FName(TEXT("Nature_T2_Enchant_Road")));
+			}
 		}
 	}
 

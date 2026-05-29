@@ -255,6 +255,20 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 			if (!Army || Army->UnitIDs.Num() == 0) continue;
 			if (Army->bInCombat) continue; // Already engaged
 
+			// --- Engineer: drop a road on the current tile each turn an
+			// engineer is here. BuildRoadAtArmy is idempotent (won't downgrade
+			// an enchanted road), so this is a cheap call every turn and roads
+			// emerge along the army's travel path naturally.
+			for (int32 UID : Army->UnitIDs)
+			{
+				const FCoMUnitInstance* U = UnitSub->GetUnit(UID);
+				if (U && U->bIsEngineer)
+				{
+					UnitSub->BuildRoadAtArmy(Army->ArmyGroupID);
+					break;
+				}
+			}
+
 			// --- Settler handling: move toward best founding location or found city ---
 			const int32 SettlerId = FindSettlerInArmy(Army, UnitSub);
 			if (SettlerId >= 0)
@@ -759,7 +773,7 @@ void UCoMAITacticalExecutor::ManageMagic(int32 WizardId, const FCoMAIStrategy& S
 	};
 
 	// Bucket known spells by FCoMSpellInfo::EffectType for quick selection.
-	TArray<FName> DamageSpells, BuffSpells, SummonSpells, HealSpells, GlobalSpells, DispelSpells, OtherSpells;
+	TArray<FName> DamageSpells, BuffSpells, SummonSpells, HealSpells, GlobalSpells, DispelSpells, TerrainSpells, OtherSpells;
 	for (const FName& SId : MagicState.KnownSpells)
 	{
 		const FCoMSpellInfo Info = CoMSpellDatabase::GetSpellInfo(SId);
@@ -771,7 +785,36 @@ void UCoMAITacticalExecutor::ManageMagic(int32 WizardId, const FCoMAIStrategy& S
 		case ECoMSpellEffect::Summon:           SummonSpells.Add(SId);  break;
 		case ECoMSpellEffect::GlobalEnchantment:GlobalSpells.Add(SId);  break;
 		case ECoMSpellEffect::Dispel:           DispelSpells.Add(SId);  break;
+		case ECoMSpellEffect::Terrain:          TerrainSpells.Add(SId); break;
 		default:                                OtherSpells.Add(SId);   break;
+		}
+	}
+
+	// 0a) Infrastructure: cast Enchant Road if a built road exists to upgrade.
+	// Goes before dispel so it actually gets a turn; the world-scan gate makes
+	// it self-throttling (won't recast once everything is enchanted).
+	if (TerrainSpells.Num() > 0)
+	{
+		UCoMWorldMapSubsystem* MapSub2 = GI->GetSubsystem<UCoMWorldMapSubsystem>();
+		for (const FName& SId : TerrainSpells)
+		{
+			const FCoMSpellInfo TInfo = CoMSpellDatabase::GetSpellInfo(SId);
+			if (TInfo.TargetType != ECoMSpellTarget::NoTarget) continue;
+			if (SId == FName(TEXT("Nature_T2_Enchant_Road")) && MapSub2)
+			{
+				bool bAnyPlainRoad = false;
+				for (int32 Y = 0; Y < CoM::MAP_HEIGHT && !bAnyPlainRoad; ++Y)
+				{
+					for (int32 X = 0; X < CoM::MAP_WIDTH && !bAnyPlainRoad; ++X)
+					{
+						const FCoMTileData* T = MapSub2->GetTile(
+							ECoMPlane::Aurelith, ECoMMapLayer::Surface, X, Y);
+						if (T && T->RoadLevel == 1) { bAnyPlainRoad = true; }
+					}
+				}
+				if (!bAnyPlainRoad) continue;
+			}
+			if (TryCast(SId, ECoMSpellScope::Global, FIntPoint(-1, -1), -1, -1, -1)) return;
 		}
 	}
 
