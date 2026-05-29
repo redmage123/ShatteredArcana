@@ -240,7 +240,10 @@ void UCoMSpellVFXSubsystem::RegisterRealmEffects(
 	{
 		const FName& eName = EffectNames[Idx];
 		const FString SheetPath = BasePath + eName.ToString() + TEXT("_sheet");
-		const FName FullID = FName(*(RealmFolder + TEXT("_") + eName.ToString()));
+		// IDs use a dot separator to match the lookup keys formed in
+		// CoMMagicSubsystem (e.g. "life.shield", "chaos.fireball"). The old
+		// underscore form ("life_shield") never matched -> every cast warned.
+		const FName FullID = FName(*(RealmFolder + TEXT(".") + eName.ToString()));
 
 		const bool bProj  = IsProjectile.IsValidIndex(Idx) ? IsProjectile[Idx] : false;
 		const bool bArea  = IsArea.IsValidIndex(Idx)       ? IsArea[Idx]       : false;

@@ -1001,7 +1001,7 @@ void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
                 /*Arcane*/  { TEXT("magic_missile"),TEXT("ward"),   TEXT("enchant"),      TEXT("detect") },
                 /*Binding*/ { TEXT("chains"),    TEXT("contract"),  TEXT("soul_trap"),    TEXT("dominate") },
                 /*Spirit*/  { TEXT("astral_bolt"),TEXT("dream"),    TEXT("possession"),   TEXT("ghost_touch") },
-                /*Glamour*/ { TEXT("astral_bolt"),TEXT("dream"),    TEXT("possession"),   TEXT("ghost_touch") },
+                /*Glamour*/ { TEXT("illusion"),   TEXT("charm"),    TEXT("true_sight"),   TEXT("time_stop") },
             };
             int32 RealmIdx = static_cast<int32>(Info.Realm);
             if (RealmIdx < 0 || RealmIdx > 8) RealmIdx = 5; // arcane fallback
