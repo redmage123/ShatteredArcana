@@ -112,18 +112,34 @@ void ACoMTileChunkActor::BuildChunkTexture(UCoMWorldMapSubsystem* MapSub,
 			// Get terrain type from world map (handles WrapX internally)
 			const FCoMTileData* TileData = MapSub->GetTile(Plane, Layer, WorldX, WorldY);
 			ECoMTerrain TerrainType = TileData ? TileData->Terrain : ECoMTerrain::Ocean;
+			const int32 RoadLevel    = TileData ? TileData->RoadLevel : 0;
 
 			// Determine terrain base colour
 			FColor TileColor = GetTerrainColor(TerrainType);
 
+			// Road overlay colour (tan dirt road / gilded enchanted road),
+			// fog-applied alongside the terrain so it doesn't reveal unexplored
+			// tiles.
+			FColor RoadColor = (RoadLevel >= 2)
+				? FColor(220, 180,  60, 255)   // enchanted road — gold
+				: FColor(150, 110,  60, 255);  // built road — tan dirt
+
 			// Apply fog of war
+			bool bExplored = true;
+			bool bVisible  = true;
 			if (FogSub)
 			{
 				const FIntPoint TilePos(WorldX, WorldY);
-				const bool bExplored = FogSub->IsTileExplored(WizardIndex, Plane, TilePos, Layer);
-				const bool bVisible  = FogSub->IsTileVisible(WizardIndex, Plane, TilePos, Layer);
+				bExplored = FogSub->IsTileExplored(WizardIndex, Plane, TilePos, Layer);
+				bVisible  = FogSub->IsTileVisible(WizardIndex, Plane, TilePos, Layer);
 				TileColor = ApplyFogOfWar(TileColor, bExplored, bVisible);
+				RoadColor = ApplyFogOfWar(RoadColor, bExplored, bVisible);
 			}
+
+			// Road strip is a centred horizontal+vertical band (~10% of tile);
+			// adjacent road tiles join into a continuous network visually.
+			constexpr int32 RoadHalfWidth = TILE_PIXEL_SIZE / 16; // 8px each side -> 16px band
+			const int32 CenterPixel = TILE_PIXEL_SIZE / 2;
 
 			// Fill the 128x128 pixel block for this tile
 			const int32 PixelStartX = LocalX * TILE_PIXEL_SIZE;
@@ -134,9 +150,17 @@ void ACoMTileChunkActor::BuildChunkTexture(UCoMWorldMapSubsystem* MapSub,
 				const int32 RowOffset = (PixelStartY + PY) * TexSize + PixelStartX;
 				for (int32 PX = 0; PX < TILE_PIXEL_SIZE; ++PX)
 				{
-					// Add subtle grid lines at tile edges (1px dark border)
-					if (PX == 0 || PY == 0)
+					const bool bRoadPixel = (RoadLevel >= 1) &&
+						(FMath::Abs(PX - CenterPixel) < RoadHalfWidth ||
+						 FMath::Abs(PY - CenterPixel) < RoadHalfWidth);
+
+					if (bRoadPixel)
 					{
+						Pixels[RowOffset + PX] = RoadColor;
+					}
+					else if (PX == 0 || PY == 0)
+					{
+						// Subtle grid lines at tile edges (1px dark border)
 						FColor GridColor;
 						GridColor.R = static_cast<uint8>(TileColor.R * 0.7f);
 						GridColor.G = static_cast<uint8>(TileColor.G * 0.7f);
