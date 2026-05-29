@@ -3,6 +3,9 @@
 
 #include "Overworld/CoMTileChunkActor.h"
 #include "CoMCore/World/CoMWorldMapSubsystem.h"
+#include "CoMCore/Economy/CoMResourceSubsystem.h"
+#include "Engine/GameInstance.h"
+#include "Engine/World.h"
 #include "CoMCore/World/CoMFogOfWarSubsystem.h"
 #include "CoMCore/CoreTypes/CoMStructs.h"
 #include "Components/StaticMeshComponent.h"
@@ -101,6 +104,17 @@ void ACoMTileChunkActor::BuildChunkTexture(UCoMWorldMapSubsystem* MapSub,
 
 	FColor* Pixels = static_cast<FColor*>(RawData);
 
+	// Mines: resource subsystem is optional. We look it up once and query
+	// HasMineAt per tile (the AllMines map is small so this is cheap).
+	UCoMResourceSubsystem* ResSub = nullptr;
+	if (UWorld* W = GetWorld())
+	{
+		if (UGameInstance* GI = W->GetGameInstance())
+		{
+			ResSub = GI->GetSubsystem<UCoMResourceSubsystem>();
+		}
+	}
+
 	// Iterate each tile in the chunk
 	for (int32 LocalY = 0; LocalY < ChunkSize; ++LocalY)
 	{
@@ -141,6 +155,16 @@ void ACoMTileChunkActor::BuildChunkTexture(UCoMWorldMapSubsystem* MapSub,
 			constexpr int32 RoadHalfWidth = TILE_PIXEL_SIZE / 16; // 8px each side -> 16px band
 			const int32 CenterPixel = TILE_PIXEL_SIZE / 2;
 
+			// Mine marker: small centred square (12px = ~9% of tile) drawn in a
+			// copper tone, fog-applied. Overlays the road cross if both exist.
+			const bool bHasMine = ResSub && ResSub->HasMineAt(Plane, FIntPoint(WorldX, WorldY));
+			FColor MineColor    = FColor(210, 130, 50, 255); // operational copper
+			if (FogSub)
+			{
+				MineColor = ApplyFogOfWar(MineColor, bExplored, bVisible);
+			}
+			constexpr int32 MineHalfWidth = 6; // 12px square
+
 			// Fill the 128x128 pixel block for this tile
 			const int32 PixelStartX = LocalX * TILE_PIXEL_SIZE;
 			const int32 PixelStartY = LocalY * TILE_PIXEL_SIZE;
@@ -153,8 +177,15 @@ void ACoMTileChunkActor::BuildChunkTexture(UCoMWorldMapSubsystem* MapSub,
 					const bool bRoadPixel = (RoadLevel >= 1) &&
 						(FMath::Abs(PX - CenterPixel) < RoadHalfWidth ||
 						 FMath::Abs(PY - CenterPixel) < RoadHalfWidth);
+					const bool bMinePixel = bHasMine &&
+						(FMath::Abs(PX - CenterPixel) < MineHalfWidth &&
+						 FMath::Abs(PY - CenterPixel) < MineHalfWidth);
 
-					if (bRoadPixel)
+					if (bMinePixel)
+					{
+						Pixels[RowOffset + PX] = MineColor;
+					}
+					else if (bRoadPixel)
 					{
 						Pixels[RowOffset + PX] = RoadColor;
 					}
