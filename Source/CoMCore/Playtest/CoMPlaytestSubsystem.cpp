@@ -182,6 +182,33 @@ void UCoMPlaytestSubsystem::RunOneGame(int32 GameIndex, int32 Seed, int32 MaxTur
 
 	CaptureGameResult(OutResult, TurnsPlayed);
 
+	// Score-fallback victory: if no organic win fired by the turn cap, declare
+	// the highest-scoring wizard the winner. Mirrors how Civ-style 4X games
+	// resolve at a time limit so every playtest produces a meaningful winner
+	// instead of a turn-cap draw. Score weights cities (the dominant metric),
+	// then units, heroes, items, spells researched, and sites cleared.
+	if (!OutResult.bReachedVictory && Victory)
+	{
+		int32 BestScore  = -1;
+		int32 BestWizard = -1;
+		for (const FCoMPlaytestWizardResult& WR : OutResult.Wizards)
+		{
+			if (!WR.bAlive) { continue; }
+			const int32 Score = WR.Cities * 1000
+				+ WR.Units * 10 + WR.Heroes * 50
+				+ WR.ItemsForged * 25 + WR.SpellsKnown * 5
+				+ WR.SitesCleared * 30 + WR.Mana / 10;
+			if (Score > BestScore) { BestScore = Score; BestWizard = WR.WizardIndex; }
+		}
+		if (BestWizard >= 0)
+		{
+			Victory->DeclareVictory(BestWizard, ECoMVictoryType::Domination);
+			OutResult.bReachedVictory  = true;
+			OutResult.WinnerWizardId   = BestWizard;
+			OutResult.WinningCondition = static_cast<uint8>(ECoMVictoryType::Domination);
+		}
+	}
+
 	// Snapshot the timings before teardown so we have a clean per-game view.
 	for (const auto& Pair : CoMTurnTimings::Elapsed)
 	{
