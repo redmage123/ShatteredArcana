@@ -26,6 +26,9 @@
 #include "CoMCore/Framework/CoMGameInstance.h"
 #include "CoMCore/TacticalCombat/CoMTacticalCombatSubsystem.h"
 #include "CoMCore/TacticalCombat/TacticalTypes.h"
+#include "CoMCore/Units/CoMUnitSubsystem.h"
+#include "CoMCore/Audio/CoMAudioSubsystem.h"
+#include "Engine/Texture2D.h"
 
 // =============================================================================
 // Colour palette
@@ -207,6 +210,7 @@ void UCoMTacticalCombatWidget::OnDefendClicked()
 	if (Curr < 0) return;
 	TacSub->Defend(Curr);
 	TacSub->EndUnitTurn();
+	PlaySFXByName(FName(TEXT("shield_block")));
 	RefreshFromSubsystem();
 	DrainAIUntilPlayerOrEnd();
 }
@@ -307,28 +311,82 @@ void UCoMTacticalCombatWidget::RefreshFromSubsystem()
 		GridCells[i]->SetBrushColor(bAlt ? PC.Ground : PC.GroundAlt);
 	}
 
-	// Plot every alive unit. Friendly = gold, enemy = red.
+	// Highlight the active actor's tile underneath the token.
+	const int32 CurrIdxEarly = Sub->GetCurrentUnitIndex();
+	if (CurrIdxEarly >= 0 && Sub->GetUnits().IsValidIndex(CurrIdxEarly))
+	{
+		const FCoMTacticalUnit& U0 = Sub->GetUnits()[CurrIdxEarly];
+		const int32 HIdx = EngineToCellIdx(U0.GridPosition, GridSize);
+		if (GridCells.IsValidIndex(HIdx) && GridCells[HIdx])
+		{
+			GridCells[HIdx]->SetBrushColor(PC.Highlight);
+		}
+	}
+
+	// Create / update unit tokens (portrait sprite per unit). Tokens live
+	// on GridCanvas as siblings of the cells and tween toward target
+	// positions each tick. Dying tokens stay around with a fade timer.
+	TSet<int32> SeenIds;
+	UCoMUnitSubsystem* UnitSub = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UCoMUnitSubsystem>() : nullptr;
 	for (const FCoMTacticalUnit& U : Sub->GetUnits())
 	{
 		if (!U.IsAlive()) continue;
-		const int32 Idx = EngineToCellIdx(U.GridPosition, GridSize);
-		if (!GridCells.IsValidIndex(Idx) || !GridCells[Idx]) continue;
+		SeenIds.Add(U.UnitInstanceId);
+		TObjectPtr<UImage>& Tok = UnitTokens.FindOrAdd(U.UnitInstanceId);
+		if (!Tok)
+		{
+			Tok = WidgetTree->ConstructWidget<UImage>();
+			if (GridCanvas)
+			{
+				UCanvasPanelSlot* TSlot = GridCanvas->AddChildToCanvas(Tok);
+				if (TSlot)
+				{
+					TSlot->SetSize(FVector2D(CellSize, CellSize));
+					TSlot->SetZOrder(10);
+					TSlot->SetPosition(FVector2D(
+						U.GridPosition.X * CellSize, U.GridPosition.Y * CellSize));
+				}
+			}
+			// Resolve and apply the unit portrait if we have one.
+			if (UnitSub)
+			{
+				if (const FCoMUnitInstance* Inst = UnitSub->GetUnit(U.UnitInstanceId))
+				{
+					const FString Path = FString::Printf(
+						TEXT("/Game/UI/Units/%s.%s"),
+						*Inst->SpecID.ToString(), *Inst->SpecID.ToString());
+					if (UTexture2D* Tex = LoadObject<UTexture2D>(nullptr, *Path))
+					{
+						Tok->SetBrushFromTexture(Tex);
+					}
+				}
+			}
+		}
 		const bool bFriendly = (U.OwnerWizardId == PlayerWizardIdx);
-		GridCells[Idx]->SetBrushColor(bFriendly
-			? FLinearColor(0.85f, 0.70f, 0.20f, 1.0f)
-			: FLinearColor(0.80f, 0.15f, 0.15f, 1.0f));
+		Tok->SetColorAndOpacity(bFriendly
+			? FLinearColor(1.0f, 0.92f, 0.55f, 1.0f)
+			: FLinearColor(1.0f, 0.55f, 0.55f, 1.0f));
+		TokenTargetPos.FindOrAdd(U.UnitInstanceId) =
+			FVector2D(U.GridPosition.X * CellSize, U.GridPosition.Y * CellSize);
+	}
+	// Tokens for units that vanished from the engine (corpses past their
+	// fade window) get removed; deaths are scheduled separately by
+	// OnLiveUnitKilled which seeds a fade timer.
+	for (auto It = UnitTokens.CreateIterator(); It; ++It)
+	{
+		if (!SeenIds.Contains(It->Key) && !TokenFadeTimer.Contains(It->Key))
+		{
+			if (It->Value) { It->Value->RemoveFromParent(); }
+			TokenTargetPos.Remove(It->Key);
+			It.RemoveCurrent();
+		}
 	}
 
-	// Highlight the current unit.
 	const int32 Curr = Sub->GetCurrentUnitIndex();
 	if (Curr >= 0 && Sub->GetUnits().IsValidIndex(Curr))
 	{
 		const FCoMTacticalUnit& U = Sub->GetUnits()[Curr];
-		const int32 Idx = EngineToCellIdx(U.GridPosition, GridSize);
-		if (GridCells.IsValidIndex(Idx) && GridCells[Idx])
-		{
-			GridCells[Idx]->SetBrushColor(PC.Highlight);
-		}
 		// Stats panel
 		if (SelectedUnitNameText)
 		{
@@ -379,9 +437,51 @@ void UCoMTacticalCombatWidget::DrainAIUntilPlayerOrEnd()
 // Subsystem delegate handlers — keep the UI in sync without polling.
 void UCoMTacticalCombatWidget::OnLiveBattleStarted(int32 /*InTurnCount*/)   { RefreshFromSubsystem(); }
 void UCoMTacticalCombatWidget::OnLiveUnitTurnStarted(int32 /*UnitIndex*/)  { RefreshFromSubsystem(); }
-void UCoMTacticalCombatWidget::OnLiveUnitMoved(int32, FIntPoint)           { RefreshFromSubsystem(); }
-void UCoMTacticalCombatWidget::OnLiveUnitDamaged(int32, int32)             { RefreshFromSubsystem(); }
-void UCoMTacticalCombatWidget::OnLiveUnitKilled(int32)                     { RefreshFromSubsystem(); }
+
+void UCoMTacticalCombatWidget::OnLiveUnitMoved(int32 UnitIndex, FIntPoint /*NewPos*/)
+{
+	if (TacSub.IsValid() && TacSub->GetUnits().IsValidIndex(UnitIndex))
+	{
+		PlayMoveSFX(TacSub->GetUnits()[UnitIndex].UnitInstanceId);
+	}
+	RefreshFromSubsystem();
+}
+
+void UCoMTacticalCombatWidget::OnLiveUnitDamaged(int32 UnitIndex, int32 Damage)
+{
+	if (TacSub.IsValid() && TacSub->GetUnits().IsValidIndex(UnitIndex))
+	{
+		const FCoMTacticalUnit& U = TacSub->GetUnits()[UnitIndex];
+		const FVector2D Pos(U.GridPosition.X * CellSize + CellSize * 0.4f,
+		                    U.GridPosition.Y * CellSize - 4.0f);
+		SpawnFloatText(FString::Printf(TEXT("-%d"), Damage), Pos,
+			FLinearColor(1.0f, 0.35f, 0.35f, 1.0f));
+		// Pick the SFX based on who was attacking. We don't have that here, so
+		// default to sword_clash; ranged hits get arrow_thud heuristically by
+		// checking if the current actor has a ranged stat.
+		FName Sfx = FName(TEXT("sword_clash"));
+		const int32 Actor = TacSub->GetCurrentUnitIndex();
+		if (TacSub->GetUnits().IsValidIndex(Actor)
+			&& TacSub->GetUnits()[Actor].RangedAttack > TacSub->GetUnits()[Actor].MeleeAttack)
+		{
+			Sfx = FName(TEXT("arrow_thud"));
+		}
+		PlaySFXByName(Sfx);
+	}
+	RefreshFromSubsystem();
+}
+
+void UCoMTacticalCombatWidget::OnLiveUnitKilled(int32 UnitIndex)
+{
+	if (TacSub.IsValid() && TacSub->GetUnits().IsValidIndex(UnitIndex))
+	{
+		const FCoMTacticalUnit& U = TacSub->GetUnits()[UnitIndex];
+		// Schedule a 0.6s fade-out for the dying token before cleanup.
+		TokenFadeTimer.Add(U.UnitInstanceId, 0.6f);
+	}
+	PlaySFXByName(FName(TEXT("death_grunt")));
+	RefreshFromSubsystem();
+}
 void UCoMTacticalCombatWidget::OnLiveBattleEnded(ECoMCombatResult Result)
 {
 	UE_LOG(LogTemp, Log, TEXT("TacticalCombat: battle ended with result %d"), (int32)Result);
@@ -1094,6 +1194,121 @@ void UCoMTacticalCombatWidget::ApplyPlaneTheme(ECoMPlane Plane)
 	UE_LOG(LogTemp, Log, TEXT("[TacticalCombat] Applied plane theme: %s"), *PC.PlaneName);
 }
 
+// =============================================================================
+// Tween + animation tick
+// =============================================================================
+
+void UCoMTacticalCombatWidget::NativeTick(const FGeometry& MyGeometry, float DeltaTime)
+{
+	Super::NativeTick(MyGeometry, DeltaTime);
+
+	// Movement tween for each live token toward its target canvas pixel.
+	for (auto& Kvp : UnitTokens)
+	{
+		UImage* Tok = Kvp.Value;
+		if (!Tok) continue;
+		UCanvasPanelSlot* CS = Cast<UCanvasPanelSlot>(Tok->Slot);
+		if (!CS) continue;
+		const FVector2D* Tgt = TokenTargetPos.Find(Kvp.Key);
+		if (!Tgt) continue;
+		const FVector2D Cur = CS->GetPosition();
+		const FVector2D New = FMath::Vector2DInterpTo(Cur, *Tgt, DeltaTime, /*Speed*/ 12.0f);
+		CS->SetPosition(New);
+	}
+
+	// Death fade — tick down each timer; remove token when it reaches 0.
+	for (auto It = TokenFadeTimer.CreateIterator(); It; ++It)
+	{
+		It->Value -= DeltaTime;
+		if (UImage* Tok = UnitTokens.FindRef(It->Key))
+		{
+			const float Alpha = FMath::Clamp(It->Value / 0.6f, 0.0f, 1.0f);
+			Tok->SetRenderOpacity(Alpha);
+		}
+		if (It->Value <= 0.0f)
+		{
+			if (UImage* Tok = UnitTokens.FindRef(It->Key))
+			{
+				Tok->RemoveFromParent();
+			}
+			UnitTokens.Remove(It->Key);
+			TokenTargetPos.Remove(It->Key);
+			It.RemoveCurrent();
+		}
+	}
+
+	// Floating damage numbers — drift up, fade, then remove.
+	for (int32 i = FloatTexts.Num() - 1; i >= 0; --i)
+	{
+		FFloatingNumber& F = FloatTexts[i];
+		F.Time += DeltaTime;
+		const float t = FMath::Clamp(F.Time / F.Duration, 0.0f, 1.0f);
+		if (!F.Text.IsValid() || t >= 1.0f)
+		{
+			if (F.Text.IsValid()) F.Text->RemoveFromParent();
+			FloatTexts.RemoveAt(i);
+			continue;
+		}
+		if (UCanvasPanelSlot* FS = Cast<UCanvasPanelSlot>(F.Text->Slot))
+		{
+			FS->SetPosition(FVector2D(F.Start.X, F.Start.Y - 36.0f * t));
+		}
+		F.Text->SetRenderOpacity(1.0f - t);
+	}
+}
+
+void UCoMTacticalCombatWidget::SpawnFloatText(const FString& Text,
+	FVector2D CanvasPos, FLinearColor Tint)
+{
+	if (!GridCanvas || !WidgetTree) return;
+	UTextBlock* T = WidgetTree->ConstructWidget<UTextBlock>();
+	T->SetText(FText::FromString(Text));
+	T->SetColorAndOpacity(FSlateColor(Tint));
+	{ FSlateFontInfo F = T->GetFont(); F.Size = 16; T->SetFont(F); }
+	if (UCanvasPanelSlot* FS = GridCanvas->AddChildToCanvas(T))
+	{
+		FS->SetSize(FVector2D(40, 20));
+		FS->SetZOrder(20);
+		FS->SetPosition(CanvasPos);
+	}
+	FFloatingNumber FN;
+	FN.Text = T;
+	FN.Start = CanvasPos;
+	FloatTexts.Add(FN);
+}
+
+void UCoMTacticalCombatWidget::PlaySFXByName(FName SoundID)
+{
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMAudioSubsystem* A = GI->GetSubsystem<UCoMAudioSubsystem>())
+		{
+			A->PlayUISound(SoundID); // dynamic-loads /Game/Audio/SFX/UI/<id>
+		}
+	}
+}
+
+void UCoMTacticalCombatWidget::PlayMoveSFX(int32 UnitInstanceId)
+{
+	if (!GetGameInstance()) return;
+	UCoMUnitSubsystem* US = GetGameInstance()->GetSubsystem<UCoMUnitSubsystem>();
+	if (!US) return;
+	const FCoMUnitInstance* Inst = US->GetUnit(UnitInstanceId);
+	if (!Inst) return;
+
+	// Pick the sound by mobility type. Flying takes priority; cavalry next;
+	// everything else uses the marching footsteps loop.
+	FName Sfx(TEXT("footsteps_march"));
+	if (Inst->bFlying || Inst->MovementType == ECoMMovementType::Flying)
+	{
+		Sfx = FName(TEXT("wing_flap"));
+	}
+	else if (Inst->SpecID.ToString().Contains(TEXT("Cavalry")))
+	{
+		Sfx = FName(TEXT("horse_gallop"));
+	}
+	PlaySFXByName(Sfx);
+}
 
 // =============================================================================
 // Console: open the widget on a synthetic 2-army battle for smoke testing.

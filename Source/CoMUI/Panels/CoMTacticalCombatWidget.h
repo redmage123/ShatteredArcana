@@ -144,6 +144,38 @@ private:
 	 *  the battle ends. Called after every player action. */
 	void DrainAIUntilPlayerOrEnd();
 
+	virtual void NativeTick(const FGeometry& MyGeometry, float DeltaTime) override;
+
+	/** Unit-portrait tokens overlaid on the grid, keyed by UnitInstanceId.
+	 *  Created on first refresh, destroyed on death (after a fade). */
+	UPROPERTY()
+	TMap<int32, TObjectPtr<UImage>> UnitTokens;
+
+	/** Per-token destination position the tween interpolates toward. */
+	TMap<int32, FVector2D> TokenTargetPos;
+
+	/** Per-token fade timer remaining (death animation). When > 0 the
+	 *  token is fading out; on hitting 0 it is removed from the canvas. */
+	TMap<int32, float> TokenFadeTimer;
+
+	/** Floating "-N" damage numbers that drift up and fade out. */
+	struct FFloatingNumber
+	{
+		TWeakObjectPtr<UTextBlock> Text;
+		FVector2D Start = FVector2D::ZeroVector;
+		float Time     = 0.0f;
+		float Duration = 1.2f;
+	};
+	TArray<FFloatingNumber> FloatTexts;
+
+	/** Spawn a floating damage / heal number at the given canvas pixel coord. */
+	void SpawnFloatText(const FString& Text, FVector2D CanvasPos, FLinearColor Tint);
+
+	/** Play a movement SFX appropriate to the unit type. */
+	void PlayMoveSFX(int32 UnitInstanceId);
+	/** Play melee / ranged / death / shield SFX cues. */
+	void PlaySFXByName(FName SoundID);
+
 	/** Subsystem delegate handlers. */
 	UFUNCTION() void OnLiveBattleStarted(int32 InTurnCount);
 	UFUNCTION() void OnLiveUnitTurnStarted(int32 UnitIndex);
