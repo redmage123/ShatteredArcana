@@ -62,6 +62,13 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCombatResolved, const FCoMCombatR
 /** Fired when a player battle is detected and needs a pre-battle choice (auto-resolve vs tactical). */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPreBattleChoice, int32, AttackerArmyID, int32, DefenderArmyID);
 
+/** Fired when the player picks Fight in the pre-battle popup and the UI
+ *  should open the tactical-combat widget in-place. Lets us skip the
+ *  separate-level transition path that the original design assumed. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnTacticalBattleRequested,
+	int32, AttackerArmyID, int32, DefenderArmyID,
+	int32, AttackerWizard, int32, DefenderWizard);
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Internal: snapshot of a unit for combat simulation
 // ═══════════════════════════════════════════════════════════════════════════
@@ -135,6 +142,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|Combat")
 	void SetHumanPlayerWizardIndex(int32 WizardIndex) { HumanPlayerWizardIndex = WizardIndex; }
 
+	/** Return the cached human-player wizard index, or -1 if not set. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Combat")
+	int32 GetHumanPlayerWizardIndex() const { return HumanPlayerWizardIndex; }
+
 	/** Name of the tactical combat map level to open for player battles. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|Combat")
 	FName TacticalCombatMapName = FName(TEXT("TacticalCombatMap"));
@@ -177,6 +188,10 @@ public:
 	/** Fired when a player-involved battle needs a pre-battle choice. */
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Combat")
 	FOnPreBattleChoice OnPreBattleChoice;
+
+	/** Fired when StartTacticalBattle wants the UI to open the widget. */
+	UPROPERTY(BlueprintAssignable, Category = "CoM|Combat")
+	FOnTacticalBattleRequested OnTacticalBattleRequested;
 
 	static FFixed64 GetHeroTierAttackBonus(ECoMHeroTier Tier);
 private:

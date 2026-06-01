@@ -505,10 +505,20 @@ void UCoMCombatSubsystem::StartTacticalBattle(
 	// Return map: the currently loaded level.
 	Ctx.ReturnMapName = FName(*GI->GetWorld()->GetMapName());
 
-	// Open the tactical combat map.
-	UE_LOG(LogTemp, Log, TEXT("Transitioning to tactical combat: %s (Atk wizard %d vs Def wizard %d)"),
-	       *TacticalCombatMapName.ToString(), AttackerWizard, DefenderWizard);
+	// If a UI listener is bound (the usual path now), open the widget in
+	// place over the overworld. Otherwise fall back to the legacy
+	// separate-level transition (kept for the future tactical-map design).
+	if (OnTacticalBattleRequested.IsBound())
+	{
+		UE_LOG(LogTemp, Log, TEXT("Tactical battle (in-place): Atk wizard %d vs Def wizard %d"),
+		       AttackerWizard, DefenderWizard);
+		OnTacticalBattleRequested.Broadcast(AttackerArmyID, DefenderArmyID,
+		                                    AttackerWizard, DefenderWizard);
+		return;
+	}
 
+	UE_LOG(LogTemp, Log, TEXT("Transitioning to tactical combat map: %s (Atk wizard %d vs Def wizard %d)"),
+	       *TacticalCombatMapName.ToString(), AttackerWizard, DefenderWizard);
 	UGameplayStatics::OpenLevel(GI->GetWorld(), TacticalCombatMapName);
 }
 

@@ -232,6 +232,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HidePreBattlePopup();
 
+	/** Open the tactical-combat widget in-place for the given encounter.
+	 *  Bound to CoMCombatSubsystem::OnTacticalBattleRequested so the
+	 *  pre-battle popup -> Fight path lands here instead of OpenLevel. */
+	UFUNCTION()
+	void OnTacticalBattleRequested(int32 AttackerArmyID, int32 DefenderArmyID,
+		int32 AttackerWizard, int32 DefenderWizard);
+
 	// -- Unit Card -------------------------------------------------------------
 
 	/** Show the trading-card style unit detail popup. */
@@ -379,6 +386,9 @@ public:
 	TSubclassOf<class UCoMCivilopediaWidget> CivilopediaWidgetClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<class UCoMTacticalCombatWidget> TacticalCombatWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<UCoMDiplomacyWidget> DiplomacyWidgetClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
@@ -469,6 +479,9 @@ private:
 
 	UPROPERTY()
 	class UCoMCivilopediaWidget* CivilopediaInstance = nullptr;
+
+	UPROPERTY()
+	class UCoMTacticalCombatWidget* TacticalCombatInstance = nullptr;
 
 	UPROPERTY()
 	UCoMDiplomacyWidget* DiplomacyInstance = nullptr;

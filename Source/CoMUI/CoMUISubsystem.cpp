@@ -10,6 +10,9 @@
 #include "Panels/CoMSpellBookWidget.h"
 #include "Panels/CoMEnchantmentPanelWidget.h"
 #include "Panels/CoMCivilopediaWidget.h"
+#include "Panels/CoMTacticalCombatWidget.h"
+#include "CoMCore/Units/CoMUnitSubsystem.h"
+#include "CoMCore/Framework/CoMGameInstance.h"
 #include "Panels/CoMDiplomacyWidget.h"
 #include "Panels/CoMArmyPanelWidget.h"
 #include "Panels/CoMCreditsWidget.h"
@@ -50,6 +53,7 @@ void UCoMUISubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	if (!SpellBookWidgetClass)     { SpellBookWidgetClass     = UCoMSpellBookWidget::StaticClass(); }
 	if (!EnchantmentPanelWidgetClass) { EnchantmentPanelWidgetClass = UCoMEnchantmentPanelWidget::StaticClass(); }
 	if (!CivilopediaWidgetClass)      { CivilopediaWidgetClass      = UCoMCivilopediaWidget::StaticClass(); }
+	if (!TacticalCombatWidgetClass)   { TacticalCombatWidgetClass   = UCoMTacticalCombatWidget::StaticClass(); }
 	if (!DiplomacyWidgetClass)     { DiplomacyWidgetClass     = UCoMDiplomacyWidget::StaticClass(); }
 	if (!ArmyPanelWidgetClass)     { ArmyPanelWidgetClass     = UCoMArmyPanelWidget::StaticClass(); }
 	if (!SettingsWidgetClass)      { SettingsWidgetClass       = UCoMSettingsWidget::StaticClass(); }
@@ -203,6 +207,7 @@ void UCoMUISubsystem::ShowHUD()
 		if (UCoMCombatSubsystem* CombatSub = GI->GetSubsystem<UCoMCombatSubsystem>())
 		{
 			CombatSub->OnPreBattleChoice.AddDynamic(this, &UCoMUISubsystem::ShowPreBattlePopup);
+			CombatSub->OnTacticalBattleRequested.AddDynamic(this, &UCoMUISubsystem::OnTacticalBattleRequested);
 		}
 	}
 
@@ -344,6 +349,42 @@ void UCoMUISubsystem::ShowCivilopedia()
 void UCoMUISubsystem::HideCivilopedia()
 {
 	RemoveWidget(CivilopediaInstance);
+}
+
+void UCoMUISubsystem::OnTacticalBattleRequested(int32 AttackerArmyID, int32 DefenderArmyID,
+	int32 AttackerWizard, int32 DefenderWizard)
+{
+	// Build the combat context from the army positions and hand it to
+	// the tactical widget, which will drive InitializeBattle and play out
+	// the battle in-place over the overworld HUD.
+	UGameInstance* GI = GetGameInstance();
+	if (!GI) return;
+	UCoMUnitSubsystem* US = GI->GetSubsystem<UCoMUnitSubsystem>();
+	if (!US) return;
+
+	FCoMCombatContext Ctx;
+	Ctx.ParticipatingArmyGroupIDs.Add(AttackerArmyID);
+	Ctx.ParticipatingArmyGroupIDs.Add(DefenderArmyID);
+	Ctx.AttackerWizardIndex = AttackerWizard;
+	Ctx.DefenderWizardIndex = DefenderWizard;
+	Ctx.ReturnMapName = FName(TEXT("Overworld"));
+	if (const FCoMArmyGroup* A = US->GetArmy(AttackerArmyID))
+	{
+		Ctx.OriginTile  = A->Position;
+		Ctx.OriginPlane = A->Plane;
+	}
+
+	UCoMTacticalCombatWidget* W = CreateAndShowWidget<UCoMTacticalCombatWidget>(
+		TacticalCombatWidgetClass, TacticalCombatInstance, 90);
+	if (W)
+	{
+		// The human player is whichever side they're on. ResolveAllEncounters
+		// only fires this path when bPlayerInvolved is true, so the player
+		// owns at least one of the two wizards.
+		UCoMCombatSubsystem* CS = GI->GetSubsystem<UCoMCombatSubsystem>();
+		const int32 PlayerWiz = CS ? CS->GetHumanPlayerWizardIndex() : 0;
+		W->StartLiveBattle(Ctx, PlayerWiz);
+	}
 }
 
 // =============================================================================
