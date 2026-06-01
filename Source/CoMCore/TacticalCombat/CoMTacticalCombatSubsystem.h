@@ -9,6 +9,8 @@
 #include "CoMCore/Turn/CoMDeterministicRandom.h"
 #include "CoMTacticalCombatSubsystem.generated.h"
 
+struct FCoMCombatResult;
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Delegates
 // ═══════════════════════════════════════════════════════════════════════════
@@ -64,6 +66,15 @@ public:
 	/** Initialize a new tactical battle from the CombatContext. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|TacticalCombat")
 	void InitializeBattle(const FCoMCombatContext& Context);
+
+	/**
+	 * Run a tactical battle headlessly to completion and return the result.
+	 * Both sides act via DecideAIAction/ExecuteAITurn. Used by the playtest
+	 * harness and AI-vs-AI overworld auto-resolve so every battle has real
+	 * tactical fidelity instead of stat-comparison roulette.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "CoM|TacticalCombat")
+	struct FCoMCombatResult RunHeadlessBattle(const FCoMCombatContext& Context, int32 MaxRounds = 30);
 
 	/** Generate the tactical grid based on overworld terrain. */
 	void GenerateGrid(ECoMTerrain OverworldTerrain, bool bIsSiege);
@@ -182,6 +193,9 @@ public:
 	/** Execute the AI decision for a unit (calls DecideAIAction + performs it). */
 	UFUNCTION(BlueprintCallable, Category = "CoM|TacticalCombat")
 	void ExecuteAITurn(int32 UnitIndex);
+
+	/** Threat-aware AI target selection. Prefers killable, high-damage, low-HP units. */
+	int32 PickBestTarget(const TArray<int32>& Candidates) const;
 
 	// ─── Resolution ──────────────────────────────────────────────────────────
 

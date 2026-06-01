@@ -5,6 +5,7 @@
 #include "CoMCore/Data/CoMUnitDatabase.h"
 #include "CoMCore/Framework/CoMGameInstance.h"
 #include "CoMCore/Items/CoMItemSubsystem.h"
+#include "CoMCore/TacticalCombat/CoMTacticalCombatSubsystem.h"
 #include "CoMCore/Turn/CoMTurnSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -320,11 +321,64 @@ TArray<FIntPoint> UCoMCombatSubsystem::DetectEncounters() const
 {
 	TArray<FIntPoint> Encounters;
 
-	// TODO: Query UCoMArmySubsystem for all army positions, group by tile,
-	// then check ownership (different wizards = hostile). Each pair of
-	// hostile armies on the same tile produces a TPair stored as FIntPoint
-	// (X = AttackerArmyID, Y = DefenderArmyID). Lower-ID army is attacker
-	// by convention.
+	UCoMUnitSubsystem* UnitSub = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UCoMUnitSubsystem>()
+		: nullptr;
+	if (!UnitSub) return Encounters;
+
+	// Bucket armies by (Plane, Layer, Position) so we only compare within
+	// the same tile. Different wizards on the same tile = hostile encounter.
+	// Encoded as int64: (PlaneByte << 56) | (LayerByte << 48) | (X << 24) | Y.
+	struct FArmyRef
+	{
+		int32 ArmyID    = -1;
+		int32 WizardIdx = -1;
+		int32 UnitCount = 0;
+	};
+	TMap<int64, TArray<FArmyRef>> Buckets;
+
+	int32 TotalArmies = 0;
+	for (const auto& Pair : UnitSub->GetAllArmies())
+	{
+		++TotalArmies;
+		const FCoMArmyGroup& Army = Pair.Value;
+		// Skip empty stacks (e.g. mid-disband or just-spawned settlers).
+		if (Army.UnitIDs.Num() == 0) continue;
+		const int64 Key =
+			(static_cast<int64>(static_cast<uint8>(Army.Plane)) << 56) |
+			(static_cast<int64>(static_cast<uint8>(Army.Layer)) << 48) |
+			(static_cast<int64>(Army.Position.X & 0xFFFFFF) << 24) |
+			(static_cast<int64>(Army.Position.Y & 0xFFFFFF));
+		FArmyRef Ref;
+		Ref.ArmyID    = Pair.Key;
+		Ref.WizardIdx = Army.OwnerWizardIndex;
+		Ref.UnitCount = Army.UnitIDs.Num();
+		Buckets.FindOrAdd(Key).Add(Ref);
+	}
+
+	// Emit one encounter per hostile pair sharing a tile. Lower-ArmyID is
+	// the attacker by convention (matches the StartTacticalBattle expectation).
+	int32 SharedTiles = 0;
+	for (const auto& KV : Buckets)
+	{
+		const TArray<FArmyRef>& Bucket = KV.Value;
+		if (Bucket.Num() < 2) continue;
+		++SharedTiles;
+		for (int32 i = 0; i < Bucket.Num(); ++i)
+		{
+			for (int32 j = i + 1; j < Bucket.Num(); ++j)
+			{
+				if (Bucket[i].WizardIdx == Bucket[j].WizardIdx) continue;
+				const int32 A = FMath::Min(Bucket[i].ArmyID, Bucket[j].ArmyID);
+				const int32 B = FMath::Max(Bucket[i].ArmyID, Bucket[j].ArmyID);
+				Encounters.Add(FIntPoint(A, B));
+			}
+		}
+	}
+
+	UE_LOG(LogTemp, Verbose,
+		TEXT("DetectEncounters: armies=%d, shared-tiles=%d, encounters=%d"),
+		TotalArmies, SharedTiles, Encounters.Num());
 
 	return Encounters;
 }
@@ -378,8 +432,43 @@ void UCoMCombatSubsystem::ResolveAllEncounters(int32 CurrentTurn)
 			return;
 		}
 
-		// AI-vs-AI: auto-resolve.
-		FCoMCombatResult Result = ResolveAutoCombat(AttackerArmyID, DefenderArmyID, CurrentTurn);
+		// AI-vs-AI: try the tactical headless sim first (proper grid combat
+		// driven by the tactical AI). Falls back to round-robin auto-combat
+		// if the tactical subsystem isn't available or returns no winner.
+		FCoMCombatResult Result;
+		bool bResolved = false;
+		if (UCoMTacticalCombatSubsystem* Tac =
+			GetGameInstance()->GetSubsystem<UCoMTacticalCombatSubsystem>())
+		{
+			FCoMCombatContext Ctx;
+			Ctx.ParticipatingArmyGroupIDs.Add(AttackerArmyID);
+			Ctx.ParticipatingArmyGroupIDs.Add(DefenderArmyID);
+			Ctx.AttackerWizardIndex = AttackerWizard;
+			Ctx.DefenderWizardIndex = DefenderWizard;
+			// Headless sim needs a non-empty ReturnMapName for IsValid(). We
+			// never actually open the tactical map in this branch, so any
+			// sentinel works — use the currently-loaded map name.
+			Ctx.ReturnMapName = FName(TEXT("HeadlessSim"));
+			if (UCoMUnitSubsystem* UnitSub2 = GetGameInstance()->GetSubsystem<UCoMUnitSubsystem>())
+			{
+				if (const FCoMArmyGroup* Atk = UnitSub2->GetArmy(AttackerArmyID))
+				{
+					Ctx.OriginTile = Atk->Position;
+					Ctx.OriginPlane = Atk->Plane;
+				}
+			}
+			if (Ctx.IsValid())
+			{
+				Result = Tac->RunHeadlessBattle(Ctx, /*MaxRounds=*/30);
+				bResolved = (Result.WinnerWizardID != INDEX_NONE)
+					|| Result.AttackerCasualties.Num() > 0
+					|| Result.DefenderCasualties.Num() > 0;
+			}
+		}
+		if (!bResolved)
+		{
+			Result = ResolveAutoCombat(AttackerArmyID, DefenderArmyID, CurrentTurn);
+		}
 		OnCombatResolved.Broadcast(Result);
 	}
 }

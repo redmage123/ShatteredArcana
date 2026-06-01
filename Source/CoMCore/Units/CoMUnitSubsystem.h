@@ -135,6 +135,10 @@ public:
 	TArray<const FCoMArmyGroup*> GetArmiesAtPosition(ECoMPlane Plane, ECoMMapLayer Layer, FIntPoint Position) const;
 	TArray<const FCoMArmyGroup*> GetArmiesForWizard(int32 WizardIndex) const;
 
+	/** Read-only iteration over every army group. Used by CoMCombatSubsystem
+	 *  to detect hostile-army-on-tile encounters across the whole world. */
+	const TMap<int32, FCoMArmyGroup>& GetAllArmies() const { return AllArmies; }
+
 	// ── Save/Load Export/Import ───────────────────────────────────────────
 
 	/** Export all units and armies for save serialization. */

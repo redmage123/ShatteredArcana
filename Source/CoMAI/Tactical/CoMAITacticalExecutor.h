@@ -50,6 +50,9 @@ private:
 	/** Set build queues for all cities owned by WizardId. */
 	void ManageCities(int32 WizardId, const FCoMAIStrategy& Strategy);
 
+	/** Recruit race-appropriate combat units when below the target army count. */
+	void ConsiderUnitRecruitment(int32 WizardId, const FCoMAIStrategy& Strategy);
+
 	/** Choose a building ID for a city based on priority. Returns -1 if none needed. */
 	int32 ChooseBuildingForCity(const FCoMCityData& City, const FCoMAIStrategy& Strategy) const;
 

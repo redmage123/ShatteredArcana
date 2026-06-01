@@ -139,6 +139,100 @@ void UCoMAITacticalExecutor::ManageCities(int32 WizardId, const FCoMAIStrategy& 
 
 	// Consider producing settlers for expansion.
 	ConsiderSettlerProduction(WizardId, Strategy, CitySub);
+
+	// Consider producing combat units. Without this the AI builds only
+	// buildings and settlers -> 1 army per wizard forever -> no encounters
+	// ever fire -> every game ends by score fallback at the turn cap.
+	ConsiderUnitRecruitment(WizardId, Strategy);
+}
+
+void UCoMAITacticalExecutor::ConsiderUnitRecruitment(
+	int32 WizardId, const FCoMAIStrategy& Strategy)
+{
+	UGameInstance* GI = ResolveGameInstance();
+	if (!GI) return;
+
+	UCoMCitySubsystem* CitySub = GI->GetSubsystem<UCoMCitySubsystem>();
+	UCoMUnitSubsystem* UnitSub = GI->GetSubsystem<UCoMUnitSubsystem>();
+	if (!CitySub || !UnitSub) return;
+
+	TArray<const FCoMCityData*> Cities = CitySub->GetCitiesForWizard(WizardId);
+	if (Cities.Num() == 0) return;
+
+	// Count combat armies (≥1 non-settler, non-engineer unit) we already field.
+	int32 CombatArmies = 0;
+	for (const FCoMArmyGroup* A : UnitSub->GetArmiesForWizard(WizardId))
+	{
+		if (!A) continue;
+		bool bHasCombat = false;
+		for (int32 UID : A->UnitIDs)
+		{
+			const FCoMUnitInstance* U = UnitSub->GetUnit(UID);
+			if (U && !U->bIsSettler && !U->bIsEngineer && !U->bIsHero)
+			{
+				bHasCombat = true; break;
+			}
+		}
+		if (bHasCombat) ++CombatArmies;
+	}
+
+	// Target army count scales with city count so big empires push pressure.
+	const int32 DesiredArmies = FMath::Clamp(Cities.Num(), 2, 8);
+	if (CombatArmies >= DesiredArmies) return;
+
+	// Pick the highest-pop city with room and recruit one race-appropriate
+	// combat unit there. Cycle through Infantry/Cavalry/Ranged so stacks aren't
+	// monolithic.
+	const FCoMCityData* BestCity = nullptr;
+	int32 BestPop = 0;
+	for (const FCoMCityData* C : Cities)
+	{
+		if (!C) continue;
+		if (C->Population > BestPop)
+		{
+			BestPop = C->Population;
+			BestCity = C;
+		}
+	}
+	if (!BestCity || BestPop < 2) return;
+
+	// Map race tag -> the racial prefix used in CoMUnitDatabase (HighMen,
+	// Dwarves, Orcs, …). The City stores a GameplayTag like "Race.HighMen".
+	FString RaceName = BestCity->PrimaryRaceTag.ToString();
+	int32 DotIdx;
+	if (RaceName.FindLastChar('.', DotIdx))
+	{
+		RaceName = RaceName.RightChop(DotIdx + 1);
+	}
+	if (RaceName.IsEmpty()) RaceName = TEXT("HighMen");
+
+	// Rotate kind by army count so a wizard with 2 armies has Infantry+Cavalry,
+	// 3 adds Ranged, etc. Cheap diversity heuristic.
+	const TCHAR* Kinds[] = { TEXT("Infantry"), TEXT("Cavalry"), TEXT("Ranged") };
+	const TCHAR* Kind = Kinds[CombatArmies % 3];
+	const FName SpecID(*(RaceName + TEXT("_") + Kind));
+
+	// Spawn directly (SpawnRecruitedUnit is private). Mirror its logic:
+	// spawn the unit, then add it to the city's garrison army or create one.
+	const int32 SpawnedID = UnitSub->SpawnUnitByName(
+		SpecID, BestCity->Plane, BestCity->Layer, BestCity->Position,
+		BestCity->OwnerWizardIndex);
+	if (SpawnedID >= 0)
+	{
+		if (BestCity->GarrisonArmyID >= 0)
+		{
+			UnitSub->AddUnitToArmy(SpawnedID, BestCity->GarrisonArmyID);
+		}
+		else
+		{
+			const int32 NewArmyId = UnitSub->CreateArmy(
+				BestCity->OwnerWizardIndex, BestCity->Plane,
+				BestCity->Layer, BestCity->Position);
+			UnitSub->AddUnitToArmy(SpawnedID, NewArmyId);
+		}
+		UE_LOG(LogTemp, Log, TEXT("CoMAI: Wizard %d recruited %s at city %d"),
+		       WizardId, *SpecID.ToString(), BestCity->CityID);
+	}
 }
 
 int32 UCoMAITacticalExecutor::ChooseBuildingForCity(
@@ -377,6 +471,40 @@ void UCoMAITacticalExecutor::ManageArmies(int32 WizardId, const FCoMAIStrategy& 
 				else
 				{
 					GarrisonCountdown.Remove(Army->ArmyGroupID);
+				}
+
+				// --- Engage: if there's a hostile army within move range and we
+				// outpower it, step onto its tile to force tactical combat.
+				// Without this every conquest is via siege-and-starve and the
+				// tactical-combat engine never gets exercised in playtests.
+				if (OurPower > 0.0f)
+				{
+					const FCoMArmyGroup* BestEnemyArmy = nullptr;
+					int32 BestEnemyDist = INT_MAX;
+					for (const auto& Pair : UnitSub->GetAllArmies())
+					{
+						const FCoMArmyGroup& E = Pair.Value;
+						if (E.OwnerWizardIndex == WizardId) continue;
+						if (E.OwnerWizardIndex < 0) continue;
+						if (E.UnitIDs.Num() == 0) continue;
+						if (E.Plane != Army->Plane || E.Layer != Army->Layer) continue;
+						const int32 D = WrappedDistance(Army->Position, E.Position);
+						if (D == 0) continue; // already on same tile
+						if (D > 6) continue;  // only chase nearby threats
+						const float EnemyPower = ComputeArmyPower(&E, UnitSub);
+						// Only attack if we're notably stronger so we don't suicide.
+						if (EnemyPower * 1.25f > OurPower) continue;
+						if (D < BestEnemyDist) { BestEnemyDist = D; BestEnemyArmy = &E; }
+					}
+					if (BestEnemyArmy)
+					{
+						UnitSub->MoveArmy(Army->ArmyGroupID, BestEnemyArmy->Position, /*bAllowUnexplored*/ true);
+						UE_LOG(LogTemp, Log,
+							TEXT("CoMAI: Wizard %d army %d engaging enemy army at (%d,%d)"),
+							WizardId, Army->ArmyGroupID,
+							BestEnemyArmy->Position.X, BestEnemyArmy->Position.Y);
+						continue;
+					}
 				}
 
 				// --- Siege mode: seek and besiege the nearest enemy city ---

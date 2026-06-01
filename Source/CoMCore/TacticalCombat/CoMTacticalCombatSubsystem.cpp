@@ -2,7 +2,9 @@
 // CoMTacticalCombatSubsystem.cpp -- Grid-based tactical battle implementation
 
 #include "CoMTacticalCombatSubsystem.h"
+#include "CoMCore/Combat/CoMCombatSubsystem.h"
 #include "CoMCore/Units/CoMUnitSubsystem.h"
+#include "CoMCore/Data/CoMUnitDatabase.h"
 #include "CoMCore/Framework/CoMGameInstance.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTacticalCombat, Log, All);
@@ -102,6 +104,79 @@ void UCoMTacticalCombatSubsystem::InitializeBattle(const FCoMCombatContext& Cont
 		CurrentUnitIndex = InitiativeOrder[0];
 		BeginUnitTurn(CurrentUnitIndex);
 	}
+}
+
+FCoMCombatResult UCoMTacticalCombatSubsystem::RunHeadlessBattle(
+	const FCoMCombatContext& Context, int32 MaxRounds)
+{
+	FCoMCombatResult Out;
+	Out.bAutoResolved = true;
+	Out.WinnerWizardID = INDEX_NONE;
+
+	InitializeBattle(Context);
+	if (!bBattleActive || Units.Num() == 0)
+	{
+		return Out;
+	}
+
+	// Snapshot starting HP per unit so we can compute casualties at the end.
+	TMap<int32, int32> StartingHP;
+	for (const FCoMTacticalUnit& U : Units)
+	{
+		StartingHP.Add(U.UnitInstanceId, U.CurrentHP);
+	}
+
+	// Drive both sides via the AI. Hard cap on total unit-turn steps so a
+	// pathological case (everyone defending) can't burn the playtest.
+	const int32 MaxSteps = MaxRounds * FMath::Max(1, Units.Num());
+	int32 Steps = 0;
+	while (bBattleActive && Steps++ < MaxSteps)
+	{
+		if (!Units.IsValidIndex(CurrentUnitIndex)) break;
+		ExecuteAITurn(CurrentUnitIndex);
+		EndUnitTurn();
+	}
+
+	// Compose result from end-state.
+	int32 AttackerKills = 0;
+	int32 DefenderKills = 0;
+	for (const FCoMTacticalUnit& U : Units)
+	{
+		const bool bAlive = U.IsAlive();
+		if (!bAlive)
+		{
+			if (U.bIsAttacker) Out.AttackerCasualties.Add(U.UnitInstanceId);
+			else               Out.DefenderCasualties.Add(U.UnitInstanceId);
+		}
+	}
+	AttackerKills = Out.DefenderCasualties.Num();
+	DefenderKills = Out.AttackerCasualties.Num();
+
+	// Winner = whichever side still has living units; both sides empty = draw.
+	bool bAttackerStanding = false, bDefenderStanding = false;
+	for (const FCoMTacticalUnit& U : Units)
+	{
+		if (!U.IsAlive()) continue;
+		if (U.bIsAttacker) bAttackerStanding = true;
+		else               bDefenderStanding = true;
+	}
+	if (bAttackerStanding && !bDefenderStanding)
+		Out.WinnerWizardID = Context.AttackerWizardIndex;
+	else if (bDefenderStanding && !bAttackerStanding)
+		Out.WinnerWizardID = Context.DefenderWizardIndex;
+	// else: mutual elimination or both sides standing at timeout -> INDEX_NONE.
+
+	Out.CombatRounds = TurnCount;
+	for (const FCoMTacticalUnit& U : Units)
+	{
+		if (!U.IsAlive()) continue;
+		Out.XPGained.Add(U.UnitInstanceId,
+			(U.bIsAttacker ? AttackerKills : DefenderKills) * 2);
+	}
+
+	// Tear down state so the subsystem is reusable.
+	bBattleActive = false;
+	return Out;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -254,33 +329,39 @@ void UCoMTacticalCombatSubsystem::PlaceUnits(
 		const FCoMUnitInstance* Inst = UnitSub->GetUnit(UnitID);
 		if (Inst)
 		{
+			// Pull stats from the spec database so a Phantom Warrior, Angel,
+			// Halfling slinger, and Dwarven hammerguard all fight as themselves
+			// rather than as the legacy 3/3/3 placeholder.
+			const FCoMUnitSpecInfo& Spec = CoMUnitDatabase::GetUnitSpec(Inst->SpecID);
 			TacUnit.CurrentHP        = Inst->CurrentHP;
 			TacUnit.MaxHP            = Inst->MaxHP;
-			TacUnit.MeleeAttack      = 3;  // TODO: resolve from UCoMUnitSpecDataAsset
-			TacUnit.RangedAttack     = 0;
-			TacUnit.Defense          = 3;
-			TacUnit.MovementPoints   = 2;
-			TacUnit.MovementRemaining = 2;
-			TacUnit.Initiative       = 5;
+			TacUnit.MeleeAttack      = Spec.MeleeAttack;
+			TacUnit.RangedAttack     = Spec.RangedAttack;
+			TacUnit.Defense          = Spec.Defense;
+			TacUnit.MovementPoints   = Spec.Movement > 0 ? Spec.Movement : 2;
+			TacUnit.MovementRemaining = TacUnit.MovementPoints;
+			// Initiative scales with movement so faster units act first; light a
+			// floor at 3 so 1-MP units still get a turn slot.
+			TacUnit.Initiative       = FMath::Max(3, Spec.Movement + 3);
 			TacUnit.bIsHero          = Inst->bIsHero;
 			TacUnit.MovementType     = Inst->MovementType;
 
-			// Flying units get more movement.
-			if (Inst->MovementType == ECoMMovementType::Flying)
+			// Flying units get bonus movement and a small initiative edge.
+			if (Inst->MovementType == ECoMMovementType::Flying || Inst->bFlying)
 			{
-				TacUnit.MovementPoints    = 4;
-				TacUnit.MovementRemaining = 4;
+				TacUnit.MovementPoints    += 2;
+				TacUnit.MovementRemaining = TacUnit.MovementPoints;
 				TacUnit.Initiative       += 2;
 			}
 
-			// Heroes get stat boosts.
+			// Heroes get stat boosts on top of their spec.
 			if (Inst->bIsHero)
 			{
 				TacUnit.MeleeAttack  += 2;
 				TacUnit.Defense      += 1;
 				TacUnit.Initiative   += 3;
 				TacUnit.MovementPoints    += 1;
-				TacUnit.MovementRemaining += 1;
+				TacUnit.MovementRemaining = TacUnit.MovementPoints;
 			}
 		}
 		else
@@ -1268,6 +1349,31 @@ void UCoMTacticalCombatSubsystem::FinalizeBattle()
 // AI Combat Decision
 // ═══════════════════════════════════════════════════════════════════════════
 
+int32 UCoMTacticalCombatSubsystem::PickBestTarget(const TArray<int32>& Candidates) const
+{
+	// Score = killability + threat + low-HP weight. A target we can one-shot
+	// (HP <= our expected damage) is strongly preferred. Heroes and ranged
+	// units count as higher threat. Lower current HP also boosts the score
+	// since finishing wounded enemies removes their attacks from the next round.
+	int32 BestIdx = Candidates[0];
+	int32 BestScore = TNumericLimits<int32>::Min();
+	for (int32 Idx : Candidates)
+	{
+		if (!Units.IsValidIndex(Idx)) continue;
+		const FCoMTacticalUnit& T = Units[Idx];
+		if (!T.IsAlive()) continue;
+		int32 Score = 0;
+		Score += (T.MaxHP - T.CurrentHP) * 2;       // wound preference
+		Score += FMath::Max(T.MeleeAttack, T.RangedAttack) * 3; // threat
+		Score -= T.Defense;                          // softer first
+		if (T.bIsHero)             Score += 30;     // priority kill
+		if (T.RangedAttack >= 4)   Score += 10;     // shut down archers
+		if (T.CurrentHP <= 2)      Score += 20;     // finisher
+		if (Score > BestScore) { BestScore = Score; BestIdx = Idx; }
+	}
+	return BestIdx;
+}
+
 ECoMTacticalAction UCoMTacticalCombatSubsystem::DecideAIAction(int32 UnitIndex)
 {
 	if (!Units.IsValidIndex(UnitIndex)) return ECoMTacticalAction::Defend;
@@ -1275,35 +1381,46 @@ ECoMTacticalAction UCoMTacticalCombatSubsystem::DecideAIAction(int32 UnitIndex)
 	const FCoMTacticalUnit& Unit = Units[UnitIndex];
 	if (!Unit.IsAlive()) return ECoMTacticalAction::Defend;
 
-	// Priority 1: If adjacent to an enemy, melee attack.
-	TArray<int32> MeleeTargets = GetValidMeleeTargets(UnitIndex);
-	if (MeleeTargets.Num() > 0)
-	{
-		return ECoMTacticalAction::MeleeAttack;
-	}
+	const bool bIsRangedUnit = (Unit.RangedAttack > 0);
 
-	// Priority 2: If ranged and enemy in range, ranged attack.
-	if (Unit.RangedAttack > 0)
+	// Ranged-unit logic: shoot if anything's in arc, never voluntarily melee.
+	// (Ranged units with melee stat will still defend themselves when pinned;
+	// see priority 4.) This kiting behaviour is what makes archer stacks
+	// feel meaningfully different from melee stacks in tactical combat.
+	if (bIsRangedUnit)
 	{
 		TArray<int32> RangedTargets = GetValidRangedTargets(UnitIndex);
 		if (RangedTargets.Num() > 0)
 		{
 			return ECoMTacticalAction::RangedAttack;
 		}
-	}
-
-	// Priority 3: Move toward the nearest enemy.
-	TArray<FIntPoint> ValidMoves = GetValidMoves(UnitIndex);
-	if (ValidMoves.Num() > 0)
-	{
-		const int32 NearestEnemy = FindNearestEnemy(UnitIndex);
-		if (NearestEnemy >= 0)
+		// No targets in range — kite toward the best shot rather than charge.
+		TArray<FIntPoint> ValidMoves = GetValidMoves(UnitIndex);
+		if (ValidMoves.Num() > 0 && FindNearestEnemy(UnitIndex) >= 0)
 		{
 			return ECoMTacticalAction::Move;
 		}
+		// Pinned with no movement: melee what we can reach.
+		if (GetValidMeleeTargets(UnitIndex).Num() > 0)
+		{
+			return ECoMTacticalAction::MeleeAttack;
+		}
+		return ECoMTacticalAction::Defend;
 	}
 
-	// Priority 4: Defend.
+	// Melee priority chain.
+	if (GetValidMeleeTargets(UnitIndex).Num() > 0)
+	{
+		return ECoMTacticalAction::MeleeAttack;
+	}
+
+	// Move toward the nearest enemy if anyone's still alive.
+	TArray<FIntPoint> ValidMoves = GetValidMoves(UnitIndex);
+	if (ValidMoves.Num() > 0 && FindNearestEnemy(UnitIndex) >= 0)
+	{
+		return ECoMTacticalAction::Move;
+	}
+
 	return ECoMTacticalAction::Defend;
 }
 
@@ -1320,18 +1437,7 @@ void UCoMTacticalCombatSubsystem::ExecuteAITurn(int32 UnitIndex)
 		TArray<int32> Targets = GetValidMeleeTargets(UnitIndex);
 		if (Targets.Num() > 0)
 		{
-			// Pick the weakest target (lowest HP).
-			int32 BestTarget = Targets[0];
-			int32 LowestHP = Units[Targets[0]].CurrentHP;
-			for (int32 T : Targets)
-			{
-				if (Units[T].CurrentHP < LowestHP)
-				{
-					LowestHP = Units[T].CurrentHP;
-					BestTarget = T;
-				}
-			}
-			MeleeAttack(UnitIndex, BestTarget);
+			MeleeAttack(UnitIndex, PickBestTarget(Targets));
 		}
 		break;
 	}
@@ -1341,18 +1447,7 @@ void UCoMTacticalCombatSubsystem::ExecuteAITurn(int32 UnitIndex)
 		TArray<int32> Targets = GetValidRangedTargets(UnitIndex);
 		if (Targets.Num() > 0)
 		{
-			// Pick the weakest target.
-			int32 BestTarget = Targets[0];
-			int32 LowestHP = Units[Targets[0]].CurrentHP;
-			for (int32 T : Targets)
-			{
-				if (Units[T].CurrentHP < LowestHP)
-				{
-					LowestHP = Units[T].CurrentHP;
-					BestTarget = T;
-				}
-			}
-			RangedAttack(UnitIndex, BestTarget);
+			RangedAttack(UnitIndex, PickBestTarget(Targets));
 		}
 		break;
 	}
