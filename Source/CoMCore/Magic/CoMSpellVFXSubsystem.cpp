@@ -329,4 +329,33 @@ void UCoMSpellVFXSubsystem::RegisterAllDefaultEffects()
 		RegisterEffect(MakeEffect(FName("death_effect"),  ECoMSpellRealm::None, BasePath + TEXT("death_effect_sheet"),  8, 0.08f,1.0f, false, false, false, true ));
 		RegisterEffect(MakeEffect(FName("summon_portal"), ECoMSpellRealm::None, BasePath + TEXT("summon_portal_sheet"), 8, 0.1f, 1.5f, false, true,  false, false));
 	}
+
+	// ── Iconic per-spell overrides (registered as "iconic.<slug>") ───────────
+	// These get a dedicated keyframe + 8-frame burst sheet so the most-cast
+	// spells don't all look like the realm-default missile or shield. The
+	// SpellID -> "iconic.<slug>" mapping lives in CoMMagicSubsystem; this
+	// block only owns the asset registration.
+	{
+		const FString BasePath = TEXT("/Game/Textures/SpellVFX/iconic/");
+		auto Iconic = [this, &BasePath](const TCHAR* Slug, ECoMSpellRealm Realm,
+		                                 bool bProj, bool bArea, bool bBuff)
+		{
+			const FName ID(*(FString(TEXT("iconic.")) + Slug));
+			RegisterEffect(MakeEffect(ID, Realm,
+				BasePath + Slug + TEXT("_sheet"),
+				8, 0.1f, 1.2f, bProj, bArea, bBuff, false));
+		};
+		Iconic(TEXT("spell_of_mastery"), ECoMSpellRealm::Arcane,  false, true,  false);
+		Iconic(TEXT("just_cause"),       ECoMSpellRealm::Life,    false, false, true);
+		Iconic(TEXT("eternal_night"),    ECoMSpellRealm::Death,   false, true,  false);
+		Iconic(TEXT("armageddon"),       ECoMSpellRealm::Chaos,   false, true,  false);
+		Iconic(TEXT("call_the_void"),    ECoMSpellRealm::Chaos,   false, true,  false);
+		Iconic(TEXT("gaia_force"),       ECoMSpellRealm::Nature,  false, true,  true);
+		Iconic(TEXT("heavenly_light"),   ECoMSpellRealm::Life,    false, false, true);
+		Iconic(TEXT("wall_of_fire"),     ECoMSpellRealm::Chaos,   false, false, true);
+		Iconic(TEXT("suppress_magic"),   ECoMSpellRealm::Arcane,  false, true,  false);
+		Iconic(TEXT("flying_fortress"),  ECoMSpellRealm::Sorcery, false, false, true);
+		Iconic(TEXT("volcano"),          ECoMSpellRealm::Chaos,   false, true,  false);
+		Iconic(TEXT("great_tree"),       ECoMSpellRealm::Nature,  false, true,  true);
+	}
 }

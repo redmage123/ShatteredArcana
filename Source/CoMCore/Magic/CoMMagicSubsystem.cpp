@@ -1018,7 +1018,36 @@ void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
             default:                         Slot = 0; break;
             }
 
-            const FName VFXID(*FString::Printf(TEXT("%s.%s"), RealmTag, PerRealmName[RealmIdx][Slot]));
+            // Iconic spells get a bespoke sheet that takes precedence over the
+            // per-realm/effect-slot fallback. Keeps Spell of Mastery from
+            // looking like Magic Missile, Armageddon from looking like Fireball,
+            // etc. Sheets registered in CoMSpellVFXSubsystem under "iconic.*".
+            static const TMap<FName, FName> IconicVFX = {
+                { FName("Sorcery_T4_Spell_Of_Mastery"), FName("iconic.spell_of_mastery") },
+                { FName("Spell_of_Mastery"),            FName("iconic.spell_of_mastery") },
+                { FName("Just_Cause"),                  FName("iconic.just_cause") },
+                { FName("Eternal_Night"),               FName("iconic.eternal_night") },
+                { FName("Armageddon_Clock"),            FName("iconic.armageddon") },
+                { FName("Chaos_T4_Call_The_Void"),      FName("iconic.call_the_void") },
+                { FName("Gaia_Force"),                  FName("iconic.gaia_force") },
+                { FName("Gaias_Blessing"),              FName("iconic.gaia_force") },
+                { FName("Heavenly_Light"),              FName("iconic.heavenly_light") },
+                { FName("Wall_of_Fire"),                FName("iconic.wall_of_fire") },
+                { FName("Suppress_Magic"),              FName("iconic.suppress_magic") },
+                { FName("Flying_Fortress"),             FName("iconic.flying_fortress") },
+                { FName("Volcano"),                     FName("iconic.volcano") },
+                { FName("Great_Tree"),                  FName("iconic.great_tree") },
+            };
+
+            FName VFXID;
+            if (const FName* IconicID = IconicVFX.Find(Info.SpellID))
+            {
+                VFXID = *IconicID;
+            }
+            else
+            {
+                VFXID = FName(*FString::Printf(TEXT("%s.%s"), RealmTag, PerRealmName[RealmIdx][Slot]));
+            }
             VFX->PlayEffect(VFXID, World, World);
         }
 
