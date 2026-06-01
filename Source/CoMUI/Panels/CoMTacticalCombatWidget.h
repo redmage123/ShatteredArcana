@@ -47,6 +47,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|Combat")
 	void HighlightMovementRange(int32 UnitId);
 
+	/** Start a tactical battle using the given context. Initialises the
+	 *  tactical subsystem, binds its delegates, and refreshes UI from live
+	 *  engine state. The widget then drives the player's chosen unit and
+	 *  auto-runs AI turns. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Combat")
+	void StartLiveBattle(const struct FCoMCombatContext& Context, int32 PlayerWizardIndex);
+
+	/** Pull current state from the tactical subsystem and re-render. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Combat")
+	void RefreshFromSubsystem();
+
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 
@@ -121,6 +132,25 @@ private:
 	int32 SelectedY = -1;
 	int32 CurrentRound = 1;
 	ECoMPlane CurrentPlane = ECoMPlane::Aurelith;
+
+	/** Wizard index controlled by the human; AI auto-runs for others. */
+	int32 PlayerWizardIdx = -1;
+
+	/** Cached tactical subsystem pointer (resolved from GameInstance). */
+	UPROPERTY()
+	TWeakObjectPtr<class UCoMTacticalCombatSubsystem> TacSub;
+
+	/** Drive any pending AI-controlled units until the next player turn or
+	 *  the battle ends. Called after every player action. */
+	void DrainAIUntilPlayerOrEnd();
+
+	/** Subsystem delegate handlers. */
+	UFUNCTION() void OnLiveBattleStarted(int32 InTurnCount);
+	UFUNCTION() void OnLiveUnitTurnStarted(int32 UnitIndex);
+	UFUNCTION() void OnLiveUnitMoved(int32 UnitIndex, FIntPoint NewPosition);
+	UFUNCTION() void OnLiveUnitDamaged(int32 UnitIndex, int32 Damage);
+	UFUNCTION() void OnLiveUnitKilled(int32 UnitIndex);
+	UFUNCTION() void OnLiveBattleEnded(ECoMCombatResult Result);
 
 	static constexpr int32 GridSize = 20;
 	static constexpr float CellSize = 30.0f;

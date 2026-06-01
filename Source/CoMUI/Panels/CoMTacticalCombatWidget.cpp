@@ -23,6 +23,9 @@
 #include "Engine/GameInstance.h"
 
 #include "CoMUI/CoMUISubsystem.h"
+#include "CoMCore/Framework/CoMGameInstance.h"
+#include "CoMCore/TacticalCombat/CoMTacticalCombatSubsystem.h"
+#include "CoMCore/TacticalCombat/TacticalTypes.h"
 
 // =============================================================================
 // Colour palette
@@ -160,44 +163,241 @@ void UCoMTacticalCombatWidget::OnCloseClicked()
 	}
 }
 
+// Helper: convert engine-grid coords (0..GRID_W-1, 0..GRID_H-1) to widget cell index.
+static int32 EngineToCellIdx(FIntPoint P, int32 GridSizeW)
+{
+	const int32 X = FMath::Clamp(P.X, 0, GridSizeW - 1);
+	const int32 Y = FMath::Clamp(P.Y, 0, GridSizeW - 1);
+	return Y * GridSizeW + X;
+}
+
 void UCoMTacticalCombatWidget::OnMoveClicked()
 {
-	UE_LOG(LogTemp, Log, TEXT("TacticalCombat: Move action"));
+	if (!TacSub.IsValid()) return;
+	if (SelectedX < 0 || SelectedY < 0) return;
+	const int32 Curr = TacSub->GetCurrentUnitIndex();
+	if (Curr < 0) return;
+	TacSub->MoveUnit(Curr, FIntPoint(SelectedX, SelectedY));
+	RefreshFromSubsystem();
 }
 
 void UCoMTacticalCombatWidget::OnAttackClicked()
 {
-	UE_LOG(LogTemp, Log, TEXT("TacticalCombat: Attack action"));
+	// Greedy: attack the nearest valid target. Melee preferred over ranged
+	// when both are available, so the player keeps initiative on the same
+	// turn slot. If there's a selected tile with an enemy, prefer that.
+	if (!TacSub.IsValid()) return;
+	const int32 Curr = TacSub->GetCurrentUnitIndex();
+	if (Curr < 0) return;
+	TArray<int32> Melee = TacSub->GetValidMeleeTargets(Curr);
+	TArray<int32> Ranged = TacSub->GetValidRangedTargets(Curr);
+	const TArray<int32>& Pick = Melee.Num() > 0 ? Melee : Ranged;
+	if (Pick.Num() == 0) return;
+	const int32 Target = TacSub->PickBestTarget(Pick);
+	if (Melee.Num() > 0) TacSub->MeleeAttack(Curr, Target);
+	else                 TacSub->RangedAttack(Curr, Target);
+	RefreshFromSubsystem();
+	DrainAIUntilPlayerOrEnd();
 }
 
 void UCoMTacticalCombatWidget::OnDefendClicked()
 {
-	UE_LOG(LogTemp, Log, TEXT("TacticalCombat: Defend action"));
+	if (!TacSub.IsValid()) return;
+	const int32 Curr = TacSub->GetCurrentUnitIndex();
+	if (Curr < 0) return;
+	TacSub->Defend(Curr);
+	TacSub->EndUnitTurn();
+	RefreshFromSubsystem();
+	DrainAIUntilPlayerOrEnd();
 }
 
 void UCoMTacticalCombatWidget::OnCastSpellClicked()
 {
-	UE_LOG(LogTemp, Log, TEXT("TacticalCombat: Cast Spell action"));
+	// Combat-spell casting from heroes is a separate vertical slice; for now
+	// log + treat as Wait so the turn doesn't hang.
+	UE_LOG(LogTemp, Log, TEXT("TacticalCombat: cast-spell stub (no spell selected)"));
+	OnWaitClicked();
 }
 
 void UCoMTacticalCombatWidget::OnWaitClicked()
 {
-	UE_LOG(LogTemp, Log, TEXT("TacticalCombat: Wait action"));
+	if (!TacSub.IsValid()) return;
+	const int32 Curr = TacSub->GetCurrentUnitIndex();
+	if (Curr < 0) return;
+	TacSub->Wait(Curr);
+	RefreshFromSubsystem();
+	DrainAIUntilPlayerOrEnd();
 }
 
 void UCoMTacticalCombatWidget::OnFleeClicked()
 {
-	UE_LOG(LogTemp, Log, TEXT("TacticalCombat: Flee action"));
+	if (!TacSub.IsValid()) return;
+	const int32 Curr = TacSub->GetCurrentUnitIndex();
+	if (Curr < 0) return;
+	TacSub->AttemptFlee(Curr);
+	RefreshFromSubsystem();
+	DrainAIUntilPlayerOrEnd();
 }
 
 void UCoMTacticalCombatWidget::OnAutoResolveClicked()
 {
-	UE_LOG(LogTemp, Log, TEXT("TacticalCombat: Auto-Resolve"));
+	// Surrender player control: drain every remaining unit through AI.
+	PlayerWizardIdx = -1;
+	DrainAIUntilPlayerOrEnd();
 }
 
 void UCoMTacticalCombatWidget::OnRetreatClicked()
 {
-	UE_LOG(LogTemp, Log, TEXT("TacticalCombat: Retreat"));
+	// Retreat = flee + end widget. Same as Flee under the current model.
+	OnFleeClicked();
+}
+
+// ─── Live wiring to the subsystem ────────────────────────────────────────────
+
+void UCoMTacticalCombatWidget::StartLiveBattle(const FCoMCombatContext& Context, int32 InPlayerWizardIndex)
+{
+	PlayerWizardIdx = InPlayerWizardIndex;
+	UGameInstance* GI = GetGameInstance();
+	if (!GI) return;
+	UCoMTacticalCombatSubsystem* Sub = GI->GetSubsystem<UCoMTacticalCombatSubsystem>();
+	if (!Sub) return;
+	TacSub = Sub;
+
+	// Subscribe (idempotent: clear first to avoid duplicate binds on re-entry).
+	Sub->OnBattleStarted.RemoveAll(this);
+	Sub->OnUnitTurnStarted.RemoveAll(this);
+	Sub->OnUnitMoved.RemoveAll(this);
+	Sub->OnUnitDamaged.RemoveAll(this);
+	Sub->OnUnitKilled.RemoveAll(this);
+	Sub->OnBattleEnded.RemoveAll(this);
+	Sub->OnBattleStarted.AddDynamic(this, &UCoMTacticalCombatWidget::OnLiveBattleStarted);
+	Sub->OnUnitTurnStarted.AddDynamic(this, &UCoMTacticalCombatWidget::OnLiveUnitTurnStarted);
+	Sub->OnUnitMoved.AddDynamic(this, &UCoMTacticalCombatWidget::OnLiveUnitMoved);
+	Sub->OnUnitDamaged.AddDynamic(this, &UCoMTacticalCombatWidget::OnLiveUnitDamaged);
+	Sub->OnUnitKilled.AddDynamic(this, &UCoMTacticalCombatWidget::OnLiveUnitKilled);
+	Sub->OnBattleEnded.AddDynamic(this, &UCoMTacticalCombatWidget::OnLiveBattleEnded);
+
+	Sub->InitializeBattle(Context);
+	CurrentPlane = Context.OriginPlane;
+	ApplyPlaneTheme(CurrentPlane);
+	RefreshFromSubsystem();
+	DrainAIUntilPlayerOrEnd();
+}
+
+void UCoMTacticalCombatWidget::RefreshFromSubsystem()
+{
+	if (!TacSub.IsValid()) return;
+	UCoMTacticalCombatSubsystem* Sub = TacSub.Get();
+
+	// Round counter.
+	CurrentRound = Sub->GetTurnCount();
+	if (RoundCounterText)
+	{
+		RoundCounterText->SetText(FText::FromString(
+			FString::Printf(TEXT("Round: %d"), CurrentRound)));
+	}
+
+	// Reset grid colours, then paint unit tokens on top.
+	const FPlaneColors PC = GetPlaneColors(CurrentPlane);
+	for (int32 i = 0; i < GridCells.Num(); ++i)
+	{
+		if (!GridCells[i]) continue;
+		const int32 GX = i % GridSize, GY = i / GridSize;
+		const bool bAlt = ((GX + GY) % 2) == 0;
+		GridCells[i]->SetBrushColor(bAlt ? PC.Ground : PC.GroundAlt);
+	}
+
+	// Plot every alive unit. Friendly = gold, enemy = red.
+	for (const FCoMTacticalUnit& U : Sub->GetUnits())
+	{
+		if (!U.IsAlive()) continue;
+		const int32 Idx = EngineToCellIdx(U.GridPosition, GridSize);
+		if (!GridCells.IsValidIndex(Idx) || !GridCells[Idx]) continue;
+		const bool bFriendly = (U.OwnerWizardId == PlayerWizardIdx);
+		GridCells[Idx]->SetBrushColor(bFriendly
+			? FLinearColor(0.85f, 0.70f, 0.20f, 1.0f)
+			: FLinearColor(0.80f, 0.15f, 0.15f, 1.0f));
+	}
+
+	// Highlight the current unit.
+	const int32 Curr = Sub->GetCurrentUnitIndex();
+	if (Curr >= 0 && Sub->GetUnits().IsValidIndex(Curr))
+	{
+		const FCoMTacticalUnit& U = Sub->GetUnits()[Curr];
+		const int32 Idx = EngineToCellIdx(U.GridPosition, GridSize);
+		if (GridCells.IsValidIndex(Idx) && GridCells[Idx])
+		{
+			GridCells[Idx]->SetBrushColor(PC.Highlight);
+		}
+		// Stats panel
+		if (SelectedUnitNameText)
+		{
+			SelectedUnitNameText->SetText(FText::FromString(
+				FString::Printf(TEXT("Unit #%d (wiz %d)"), U.UnitInstanceId, U.OwnerWizardId)));
+		}
+		if (SelectedUnitStatsText)
+		{
+			SelectedUnitStatsText->SetText(FText::FromString(FString::Printf(
+				TEXT("HP %d/%d  M%d R%d D%d  MP %d/%d"),
+				U.CurrentHP, U.MaxHP,
+				U.MeleeAttack, U.RangedAttack, U.Defense,
+				U.MovementRemaining, U.MovementPoints)));
+		}
+		if (SelectedUnitHPBar)
+		{
+			SelectedUnitHPBar->SetPercent(U.MaxHP > 0 ? (float)U.CurrentHP / U.MaxHP : 0.f);
+		}
+		if (TurnIndicatorText)
+		{
+			const bool bPlayerTurn = (U.OwnerWizardId == PlayerWizardIdx);
+			TurnIndicatorText->SetText(FText::FromString(
+				bPlayerTurn ? TEXT("Your turn") : TEXT("Enemy turn")));
+		}
+	}
+}
+
+void UCoMTacticalCombatWidget::DrainAIUntilPlayerOrEnd()
+{
+	if (!TacSub.IsValid()) return;
+	UCoMTacticalCombatSubsystem* Sub = TacSub.Get();
+
+	// Hard cap to avoid infinite loops if the AI gets stuck (defensive).
+	int32 Steps = 0;
+	while (Sub->IsBattleActive() && Steps++ < 512)
+	{
+		const int32 Curr = Sub->GetCurrentUnitIndex();
+		if (Curr < 0) break;
+		const FCoMTacticalUnit& U = Sub->GetUnits()[Curr];
+		const bool bAIControlled = (U.OwnerWizardId != PlayerWizardIdx);
+		if (!bAIControlled) break; // hand back to the player
+		Sub->ExecuteAITurn(Curr);
+		Sub->EndUnitTurn();
+	}
+	RefreshFromSubsystem();
+}
+
+// Subsystem delegate handlers — keep the UI in sync without polling.
+void UCoMTacticalCombatWidget::OnLiveBattleStarted(int32 /*InTurnCount*/)   { RefreshFromSubsystem(); }
+void UCoMTacticalCombatWidget::OnLiveUnitTurnStarted(int32 /*UnitIndex*/)  { RefreshFromSubsystem(); }
+void UCoMTacticalCombatWidget::OnLiveUnitMoved(int32, FIntPoint)           { RefreshFromSubsystem(); }
+void UCoMTacticalCombatWidget::OnLiveUnitDamaged(int32, int32)             { RefreshFromSubsystem(); }
+void UCoMTacticalCombatWidget::OnLiveUnitKilled(int32)                     { RefreshFromSubsystem(); }
+void UCoMTacticalCombatWidget::OnLiveBattleEnded(ECoMCombatResult Result)
+{
+	UE_LOG(LogTemp, Log, TEXT("TacticalCombat: battle ended with result %d"), (int32)Result);
+	RefreshFromSubsystem();
+	// Auto-close after a short delay so the player sees the final state.
+	if (UWorld* W = GetWorld())
+	{
+		FTimerHandle H;
+		W->GetTimerManager().SetTimer(H, [WP = TWeakObjectPtr<UCoMTacticalCombatWidget>(this)]()
+		{
+			if (UCoMTacticalCombatWidget* Self = WP.Get())
+			{
+				Self->RemoveFromParent();
+			}
+		}, 2.5f, false);
+	}
 }
 
 // =============================================================================
@@ -893,3 +1093,54 @@ void UCoMTacticalCombatWidget::ApplyPlaneTheme(ECoMPlane Plane)
 
 	UE_LOG(LogTemp, Log, TEXT("[TacticalCombat] Applied plane theme: %s"), *PC.PlaneName);
 }
+
+
+// =============================================================================
+// Console: open the widget on a synthetic 2-army battle for smoke testing.
+//   com.test_tactical_ui
+// Plays as wizard 0 vs wizard 1. Useful for verifying buttons + delegates
+// without needing the overworld pre-battle popup wired up.
+// =============================================================================
+#include "CoMCore/Units/CoMUnitSubsystem.h"
+
+static FAutoConsoleCommandWithWorldAndArgs GTestTacticalUICmd(
+	TEXT("com.test_tactical_ui"),
+	TEXT("Open the tactical battle widget on a synthetic encounter for testing."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda(
+		[](const TArray<FString>& Args, UWorld* World)
+		{
+			if (!World) return;
+			UGameInstance* GI = World->GetGameInstance();
+			if (!GI) return;
+			UCoMUnitSubsystem* US = GI->GetSubsystem<UCoMUnitSubsystem>();
+			if (!US) return;
+			// Look up the first two armies in the world, treat the lower
+			// ArmyID as attacker. If there are not two, bail.
+			TArray<int32> ArmyIDs;
+			for (const auto& P : US->GetAllArmies()) { ArmyIDs.Add(P.Key); }
+			if (ArmyIDs.Num() < 2)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("com.test_tactical_ui: need >= 2 armies in world (have %d)"), ArmyIDs.Num());
+				return;
+			}
+			ArmyIDs.Sort();
+			const FCoMArmyGroup* A = US->GetArmy(ArmyIDs[0]);
+			const FCoMArmyGroup* B = US->GetArmy(ArmyIDs[1]);
+			if (!A || !B) return;
+			FCoMCombatContext Ctx;
+			Ctx.ParticipatingArmyGroupIDs.Add(ArmyIDs[0]);
+			Ctx.ParticipatingArmyGroupIDs.Add(ArmyIDs[1]);
+			Ctx.AttackerWizardIndex = A->OwnerWizardIndex;
+			Ctx.DefenderWizardIndex = B->OwnerWizardIndex;
+			Ctx.OriginTile  = A->Position;
+			Ctx.OriginPlane = A->Plane;
+			Ctx.ReturnMapName = FName(TEXT("InteractiveTest"));
+
+			UCoMTacticalCombatWidget* W = CreateWidget<UCoMTacticalCombatWidget>(
+				World, UCoMTacticalCombatWidget::StaticClass());
+			if (W)
+			{
+				W->AddToViewport(120);
+				W->StartLiveBattle(Ctx, A->OwnerWizardIndex);
+			}
+		}));
