@@ -23,6 +23,7 @@
 #include "Engine/Texture2D.h"
 #include "Kismet/GameplayStatics.h"
 #include "CoMCore/Turn/CoMTurnSubsystem.h"
+#include "CoMCore/Audio/CoMAudioSubsystem.h"
 #include "CoMCore/Magic/CoMMagicSubsystem.h"
 #include "CoMCore/Data/CoMGlobalEnchantmentData.h"
 
@@ -413,6 +414,18 @@ void UCoMHUDWidget::InitializeMinimap(int32 WizardId, ECoMPlane StartingPlane)
 	else
 	{
 		UE_LOG(LogTemp, Error, TEXT("UCoMHUDWidget::InitializeMinimap -- Failed to create UCoMMinimapWidget."));
+	}
+
+	// Kick the plane-themed music for the player's starting plane. The
+	// MoM-style overworld lives in one plane at a time; track changes
+	// when the player traverses a ley portal (PlayPlaneMusic is idempotent
+	// and crossfades when the track ID actually changes).
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UCoMAudioSubsystem* Audio = GI->GetSubsystem<UCoMAudioSubsystem>())
+		{
+			Audio->PlayPlaneMusic(StartingPlane);
+		}
 	}
 }
 

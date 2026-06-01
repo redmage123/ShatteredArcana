@@ -71,6 +71,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|Audio")
 	void PlayMusic(FName TrackID);
 
+	/** Play the plane-themed overworld music for the given plane.
+	 *  Maps ECoMPlane -> /Game/Audio/Music/plane_<name>. No-ops if the
+	 *  asset isn't authored yet. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Audio")
+	void PlayPlaneMusic(ECoMPlane Plane);
+
 	/** Fade out and stop all music. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|Audio")
 	void StopAllMusic();

@@ -246,6 +246,28 @@ void UCoMAudioSubsystem::PlaySpellSFX(ECoMSpellRealm Realm, bool bImpact, FVecto
 // Ambient
 // ─────────────────────────────────────────────────────────────────────────────
 
+void UCoMAudioSubsystem::PlayPlaneMusic(ECoMPlane Plane)
+{
+	// Map plane enum -> short tag, matching the import script
+	// (plane_aurelith, plane_noctharion, ...). PlayMusic does the actual
+	// load + crossfade; if the asset is missing it logs and no-ops.
+	const TCHAR* Tag = TEXT("");
+	switch (Plane)
+	{
+	case ECoMPlane::Aurelith:   Tag = TEXT("aurelith");   break;
+	case ECoMPlane::Noctharion: Tag = TEXT("noctharion"); break;
+	case ECoMPlane::Verdantis:  Tag = TEXT("verdantis");  break;
+	case ECoMPlane::Infernyx:   Tag = TEXT("infernyx");   break;
+	case ECoMPlane::Aethermist: Tag = TEXT("aethermist"); break;
+	case ECoMPlane::Abyssal:    Tag = TEXT("abyssal");    break;
+	case ECoMPlane::Ethereal:   Tag = TEXT("ethereal");   break;
+	case ECoMPlane::Feywild:    Tag = TEXT("feywild");    break;
+	default:                    return;
+	}
+	const FName TrackID(*FString::Printf(TEXT("plane_%s"), Tag));
+	PlayMusic(TrackID);
+}
+
 void UCoMAudioSubsystem::SetAmbientPreset(ECoMPlane Plane)
 {
 	if (Plane == CurrentAmbientPlane)
