@@ -145,6 +145,7 @@ void UCoMHUDWidget::BuildLayout()
 	AddSideButton(TEXT("Armies"), TEXT("ArmyManagerButton"), ArmyManagerButton);
 	AddSideButton(TEXT("Diplomacy"), TEXT("DiplomacyButton"), DiplomacyButton);
 	AddSideButton(TEXT("Enchantments"), TEXT("EnchantmentsButton"), EnchantmentsButton);
+	AddSideButton(TEXT("Civilopedia"),  TEXT("CivilopediaButton"),  CivilopediaButton);
 
 	// Speed buttons.
 	UHorizontalBox* SpeedRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("SpeedRow"));
@@ -225,6 +226,11 @@ void UCoMHUDWidget::NativeConstruct()
 	{
 		DiplomacyButton->OnClicked.AddDynamic(this, &UCoMHUDWidget::OnDiplomacyClicked);
 	}
+	if (CivilopediaButton)
+	{
+		CivilopediaButton->OnClicked.AddDynamic(this, &UCoMHUDWidget::OnCivilopediaClicked);
+	}
+
 	if (EnchantmentsButton)
 	{
 		EnchantmentsButton->OnClicked.AddDynamic(this, &UCoMHUDWidget::OnEnchantmentsClicked);
@@ -382,6 +388,11 @@ void UCoMHUDWidget::OnDiplomacyClicked()
 void UCoMHUDWidget::OnEnchantmentsClicked()
 {
 	OnEnchantmentsRequested.Broadcast();
+}
+
+void UCoMHUDWidget::OnCivilopediaClicked()
+{
+	OnCivilopediaRequested.Broadcast();
 }
 
 void UCoMHUDWidget::InitializeMinimap(int32 WizardId, ECoMPlane StartingPlane)

@@ -94,6 +94,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void ShowEnchantments(int32 ViewerWizardId);
 
+	/** Create and show the searchable Civilopedia encyclopedia. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void ShowCivilopedia();
+
+	/** Hide the Civilopedia. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
+	void HideCivilopedia();
+
 	/** Close the spell book. */
 	UFUNCTION(BlueprintCallable, Category = "CoM|UI")
 	void HideSpellBook();
@@ -348,6 +356,7 @@ public:
 	UFUNCTION() void OnSpellBookFromHUD();
 	UFUNCTION() void OnDiplomacyFromHUD();
 	UFUNCTION() void OnEnchantmentsFromHUD();
+	UFUNCTION() void OnCivilopediaFromHUD();
 
 	// -- Widget Class Configuration --------------------------------------------
 
@@ -365,6 +374,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<class UCoMEnchantmentPanelWidget> EnchantmentPanelWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
+	TSubclassOf<class UCoMCivilopediaWidget> CivilopediaWidgetClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CoM|UI|Classes")
 	TSubclassOf<UCoMDiplomacyWidget> DiplomacyWidgetClass;
@@ -454,6 +466,9 @@ private:
 
 	UPROPERTY()
 	class UCoMEnchantmentPanelWidget* EnchantmentPanelInstance = nullptr;
+
+	UPROPERTY()
+	class UCoMCivilopediaWidget* CivilopediaInstance = nullptr;
 
 	UPROPERTY()
 	UCoMDiplomacyWidget* DiplomacyInstance = nullptr;

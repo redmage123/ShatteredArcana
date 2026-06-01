@@ -23,6 +23,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCityListRequested);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnArmyManagerRequested);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDiplomacyRequested);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEnchantmentsRequested);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCivilopediaRequested);
 
 /**
  * UCoMHUDWidget
@@ -118,6 +119,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "CoM|HUD")
 	FOnEnchantmentsRequested OnEnchantmentsRequested;
 
+	UPROPERTY(BlueprintAssignable, Category = "CoM|HUD")
+	FOnCivilopediaRequested OnCivilopediaRequested;
+
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 
@@ -144,6 +148,9 @@ protected:
 
 	UFUNCTION()
 	void OnEnchantmentsClicked();
+
+	UFUNCTION()
+	void OnCivilopediaClicked();
 
 	UFUNCTION()
 	void OnSpeed1xClicked();
@@ -188,6 +195,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> EnchantmentsButton;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> CivilopediaButton;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UScrollBox> NotificationScrollBox;

@@ -9,6 +9,7 @@
 #include "Panels/CoMCityScreenWidget.h"
 #include "Panels/CoMSpellBookWidget.h"
 #include "Panels/CoMEnchantmentPanelWidget.h"
+#include "Panels/CoMCivilopediaWidget.h"
 #include "Panels/CoMDiplomacyWidget.h"
 #include "Panels/CoMArmyPanelWidget.h"
 #include "Panels/CoMCreditsWidget.h"
@@ -48,6 +49,7 @@ void UCoMUISubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	if (!CityScreenWidgetClass)    { CityScreenWidgetClass    = UCoMCityScreenWidget::StaticClass(); }
 	if (!SpellBookWidgetClass)     { SpellBookWidgetClass     = UCoMSpellBookWidget::StaticClass(); }
 	if (!EnchantmentPanelWidgetClass) { EnchantmentPanelWidgetClass = UCoMEnchantmentPanelWidget::StaticClass(); }
+	if (!CivilopediaWidgetClass)      { CivilopediaWidgetClass      = UCoMCivilopediaWidget::StaticClass(); }
 	if (!DiplomacyWidgetClass)     { DiplomacyWidgetClass     = UCoMDiplomacyWidget::StaticClass(); }
 	if (!ArmyPanelWidgetClass)     { ArmyPanelWidgetClass     = UCoMArmyPanelWidget::StaticClass(); }
 	if (!SettingsWidgetClass)      { SettingsWidgetClass       = UCoMSettingsWidget::StaticClass(); }
@@ -181,6 +183,7 @@ void UCoMUISubsystem::ShowHUD()
 		HUDWidgetInstance->OnSpellBookRequested.AddDynamic(this, &UCoMUISubsystem::OnSpellBookFromHUD);
 		HUDWidgetInstance->OnDiplomacyRequested.AddDynamic(this, &UCoMUISubsystem::OnDiplomacyFromHUD);
 		HUDWidgetInstance->OnEnchantmentsRequested.AddDynamic(this, &UCoMUISubsystem::OnEnchantmentsFromHUD);
+		HUDWidgetInstance->OnCivilopediaRequested.AddDynamic(this, &UCoMUISubsystem::OnCivilopediaFromHUD);
 	}
 
 	// Create the turn notification overlay (lives on top of HUD).
@@ -330,6 +333,17 @@ void UCoMUISubsystem::ShowEnchantments(int32 ViewerWizardId)
 	{
 		Widget->Configure(ViewerWizardId);
 	}
+}
+
+void UCoMUISubsystem::ShowCivilopedia()
+{
+	CreateAndShowWidget<UCoMCivilopediaWidget>(
+		CivilopediaWidgetClass, CivilopediaInstance, 11);
+}
+
+void UCoMUISubsystem::HideCivilopedia()
+{
+	RemoveWidget(CivilopediaInstance);
 }
 
 // =============================================================================
@@ -940,3 +954,4 @@ void UCoMUISubsystem::OnEndTurnFromHUD()
 void UCoMUISubsystem::OnSpellBookFromHUD()    { ShowSpellBook(0); }
 void UCoMUISubsystem::OnDiplomacyFromHUD()     { ShowDiplomacy(0); }
 void UCoMUISubsystem::OnEnchantmentsFromHUD()  { ShowEnchantments(0); }
+void UCoMUISubsystem::OnCivilopediaFromHUD()   { ShowCivilopedia(); }
