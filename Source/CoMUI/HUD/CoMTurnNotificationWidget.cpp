@@ -14,6 +14,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "CoMCore/Turn/CoMTurnSubsystem.h"
 #include "CoMCore/Events/CoMWorldEventSubsystem.h"
+#include "CoMCore/Diplomacy/CoMDiplomacySubsystem.h"
+#include "CoMCore/Espionage/CoMEspionageSubsystem.h"
 #include "CoMCore/TacticalCombat/CoMTacticalCombatSubsystem.h"
 #include "CoMCore/World/CoMSiteEncounterSubsystem.h"
 #include "CoMCore/Items/CoMItemSubsystem.h"
@@ -476,6 +478,20 @@ void UCoMTurnNotificationWidget::BindToSubsystems()
 	{
 		Items->OnItemForged.AddDynamic(this, &UCoMTurnNotificationWidget::HandleItemForged);
 	}
+
+	// Diplomacy: war declared / treaty resolved / gift sent.
+	if (UCoMDiplomacySubsystem* Dip = GI->GetSubsystem<UCoMDiplomacySubsystem>())
+	{
+		Dip->OnWarDeclared.AddDynamic(this,    &UCoMTurnNotificationWidget::HandleWarDeclared);
+		Dip->OnTreatyResolved.AddDynamic(this, &UCoMTurnNotificationWidget::HandleTreatyResolved);
+		Dip->OnGiftSent.AddDynamic(this,       &UCoMTurnNotificationWidget::HandleGiftSent);
+	}
+
+	// Espionage: mission resolved.
+	if (UCoMEspionageSubsystem* Esp = GI->GetSubsystem<UCoMEspionageSubsystem>())
+	{
+		Esp->OnMissionResolved.AddDynamic(this, &UCoMTurnNotificationWidget::HandleMissionResolved);
+	}
 }
 
 void UCoMTurnNotificationWidget::UnbindFromSubsystems()
@@ -593,6 +609,160 @@ void UCoMTurnNotificationWidget::HandleItemForged(int32 InstanceID)
 		Inst.OwnerWizardIndex, *Inst.DisplayName.ToString(), Inst.TotalManaCost);
 	QueueNotification(TEXT("Rival Forged Item"), Body, ECoMNotificationPriority::Normal);
 	AddNotificationMessage(Body, WhiteColor(), ECoMNotificationPriority::Normal);
+}
+
+// =============================================================================
+// Diplomacy + espionage toasts
+// =============================================================================
+
+namespace
+{
+	const TCHAR* WizName(int32 Idx)
+	{
+		switch (Idx)
+		{
+		case 0:  return TEXT("Merlin");
+		case 1:  return TEXT("Nekros");
+		case 2:  return TEXT("Pyraxis");
+		case 3:  return TEXT("Gaia");
+		case 4:  return TEXT("Rjak");
+		case 5:  return TEXT("Ariel");
+		case 6:  return TEXT("Tlaloc");
+		case 7:  return TEXT("Sss'ra");
+		case 8:  return TEXT("Kali");
+		case 9:  return TEXT("Lo Pan");
+		case 10: return TEXT("Horus");
+		case 11: return TEXT("Freya");
+		case 12: return TEXT("Tauron");
+		case 13: return TEXT("Oberon");
+		default: return TEXT("A rival");
+		}
+	}
+
+	const TCHAR* TreatyShort(uint8 T)
+	{
+		switch (static_cast<ECoMTreatyType>(T))
+		{
+		case ECoMTreatyType::MilitaryAlliance: return TEXT("Alliance");
+		case ECoMTreatyType::DefensivePact:    return TEXT("Defensive Pact");
+		case ECoMTreatyType::NonAggression:    return TEXT("Non-Aggression Pact");
+		case ECoMTreatyType::TradeAgreement:   return TEXT("Trade Agreement");
+		case ECoMTreatyType::OpenBorders:      return TEXT("Open Borders");
+		case ECoMTreatyType::WizardsPact:      return TEXT("Wizard's Pact");
+		default:                                return TEXT("Treaty");
+		}
+	}
+}
+
+void UCoMTurnNotificationWidget::HandleWarDeclared(int32 AttackerWizard, int32 DefenderWizard)
+{
+	const bool bAgainstUs = (DefenderWizard == LocalPlayerWizardIdx);
+	const bool bByUs      = (AttackerWizard == LocalPlayerWizardIdx);
+	if (!bAgainstUs && !bByUs) return; // rival-on-rival, keep the HUD quiet
+
+	const FString Title = bAgainstUs ? TEXT("War Declared!") : TEXT("War Declared");
+	const FString Body = bAgainstUs
+		? FString::Printf(TEXT("%s declares war on you!"), WizName(AttackerWizard))
+		: FString::Printf(TEXT("You declare war on %s."), WizName(DefenderWizard));
+	const ECoMNotificationPriority Pri = bAgainstUs
+		? ECoMNotificationPriority::Critical : ECoMNotificationPriority::Important;
+	QueueNotification(Title, Body, Pri);
+	AddNotificationMessage(Body, RedColor(), Pri);
+}
+
+void UCoMTurnNotificationWidget::HandleTreatyResolved(int32 ProposerWizard, int32 TargetWizard,
+	uint8 TreatyType, bool bAccepted)
+{
+	const bool bWeProposed = (ProposerWizard == LocalPlayerWizardIdx);
+	const bool bWeTargeted = (TargetWizard == LocalPlayerWizardIdx);
+	if (!bWeProposed && !bWeTargeted) return;
+
+	FString Title;
+	FString Body;
+	if (bWeProposed)
+	{
+		Title = bAccepted ? TEXT("Treaty Accepted") : TEXT("Treaty Rejected");
+		Body  = FString::Printf(TEXT("%s %s your %s offer."),
+			WizName(TargetWizard),
+			bAccepted ? TEXT("accepted") : TEXT("rejected"),
+			TreatyShort(TreatyType));
+	}
+	else
+	{
+		Title = TEXT("Treaty Settled");
+		Body  = FString::Printf(TEXT("You %s %s's %s proposal."),
+			bAccepted ? TEXT("accepted") : TEXT("rejected"),
+			WizName(ProposerWizard),
+			TreatyShort(TreatyType));
+	}
+	QueueNotification(Title, Body, ECoMNotificationPriority::Important);
+	AddNotificationMessage(Body, bAccepted ? GreenColor() : GoldColor(),
+		ECoMNotificationPriority::Important);
+}
+
+void UCoMTurnNotificationWidget::HandleGiftSent(int32 SenderWizard, int32 ReceiverWizard, int32 ManaValue)
+{
+	const bool bToUs   = (ReceiverWizard == LocalPlayerWizardIdx);
+	const bool bFromUs = (SenderWizard == LocalPlayerWizardIdx);
+	if (!bToUs && !bFromUs) return;
+	const FString Body = bToUs
+		? FString::Printf(TEXT("%s sent you a gift worth %d mana."), WizName(SenderWizard), ManaValue)
+		: FString::Printf(TEXT("You gifted %s %d mana."), WizName(ReceiverWizard), ManaValue);
+	QueueNotification(bToUs ? TEXT("Gift Received") : TEXT("Gift Sent"), Body,
+		ECoMNotificationPriority::Normal);
+	AddNotificationMessage(Body, GreenColor(), ECoMNotificationPriority::Normal);
+}
+
+void UCoMTurnNotificationWidget::HandleMissionResolved(int32 OwnerWizardId, const FCoMMissionResult& Result)
+{
+	const bool bOurs = (OwnerWizardId == LocalPlayerWizardIdx);
+	if (!bOurs) return; // rival-on-rival spy ops stay invisible (as in MoM)
+
+	const TCHAR* Verb = TEXT("act");
+	switch (Result.Mission)
+	{
+	case ECoMAgentMission::Spy:                Verb = TEXT("intel"); break;
+	case ECoMAgentMission::Sabotage:           Verb = TEXT("sabotage"); break;
+	case ECoMAgentMission::Assassinate:        Verb = TEXT("assassination"); break;
+	case ECoMAgentMission::Steal:              Verb = TEXT("theft"); break;
+	case ECoMAgentMission::Recruit:            Verb = TEXT("recruitment"); break;
+	case ECoMAgentMission::InfiltrateCity:     Verb = TEXT("infiltration"); break;
+	case ECoMAgentMission::CorruptOfficial:    Verb = TEXT("corruption"); break;
+	case ECoMAgentMission::PropagandaCampaign: Verb = TEXT("propaganda"); break;
+	default: break;
+	}
+	FString Title;
+	FString Body;
+	if (Result.bKilled)
+	{
+		Title = TEXT("Agent Killed");
+		Body  = FString::Printf(TEXT("Our %s agent was killed during the mission."), Verb);
+	}
+	else if (Result.bCaptured)
+	{
+		Title = TEXT("Agent Captured");
+		Body  = FString::Printf(TEXT("Our %s agent was captured by the enemy."), Verb);
+	}
+	else if (Result.bSuccess)
+	{
+		Title = TEXT("Mission Success");
+		Body  = Result.ResultDescription.IsEmpty()
+			? FString::Printf(TEXT("Our %s mission succeeded."), Verb)
+			: Result.ResultDescription;
+	}
+	else
+	{
+		Title = TEXT("Mission Failed");
+		Body  = Result.ResultDescription.IsEmpty()
+			? FString::Printf(TEXT("Our %s mission failed."), Verb)
+			: Result.ResultDescription;
+	}
+	const ECoMNotificationPriority Pri =
+		(Result.bKilled || Result.bCaptured)
+		? ECoMNotificationPriority::Critical
+		: ECoMNotificationPriority::Important;
+	QueueNotification(Title, Body, Pri);
+	AddNotificationMessage(Body, Result.bSuccess ? GreenColor() : RedColor(), Pri);
 }
 
 // =============================================================================

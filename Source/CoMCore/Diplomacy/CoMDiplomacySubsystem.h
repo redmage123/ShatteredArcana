@@ -279,6 +279,26 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Diplomacy")
     TArray<int32> GetVassals(int32 OverlordId) const;
 
+    // ── Notification Delegates ───────────────────────────────────────────────
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWarDeclared,
+        int32, AttackerWizard, int32, DefenderWizard);
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnTreatyResolved,
+        int32, ProposerWizard, int32, TargetWizard, uint8, TreatyType, bool, bAccepted);
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnGiftSent,
+        int32, SenderWizard, int32, ReceiverWizard, int32, ManaValue);
+
+    /** AI or player declared war. Diplomatic + battle-cue notification. */
+    UPROPERTY(BlueprintAssignable, Category = "Diplomacy")
+    FOnWarDeclared OnWarDeclared;
+
+    /** A treaty proposal was responded to (accepted or rejected). */
+    UPROPERTY(BlueprintAssignable, Category = "Diplomacy")
+    FOnTreatyResolved OnTreatyResolved;
+
+    /** A gift was sent from one wizard to another. */
+    UPROPERTY(BlueprintAssignable, Category = "Diplomacy")
+    FOnGiftSent OnGiftSent;
+
     // ── Save/Load Export/Import ───────────────────────────────────────────
 
     /** Export all diplomacy state for save serialization. */

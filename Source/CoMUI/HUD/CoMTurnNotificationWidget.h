@@ -198,6 +198,22 @@ private:
 	UFUNCTION()
 	void HandleItemForged(int32 InstanceID);
 
+	UFUNCTION()
+	void HandleWarDeclared(int32 AttackerWizard, int32 DefenderWizard);
+
+	UFUNCTION()
+	void HandleTreatyResolved(int32 ProposerWizard, int32 TargetWizard, uint8 TreatyType, bool bAccepted);
+
+	UFUNCTION()
+	void HandleGiftSent(int32 SenderWizard, int32 ReceiverWizard, int32 ManaValue);
+
+	UFUNCTION()
+	void HandleMissionResolved(int32 OwnerWizardId, const struct FCoMMissionResult& Result);
+
+	/** Wizard index the local player controls. Bound at runtime so toasts
+	 *  highlight events involving the player ("AI declares war on YOU"). */
+	int32 LocalPlayerWizardIdx = 0;
+
 	// -- Banner Animation State ------------------------------------------------
 
 	enum class EBannerState : uint8 { Hidden, FadingIn, Showing, FadingOut };

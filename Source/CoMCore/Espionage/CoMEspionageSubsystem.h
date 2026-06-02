@@ -237,6 +237,16 @@ public:
     /** Process all espionage activities for the turn. */
     void ProcessTurn(int32 CurrentTurn);
 
+    // ── Notification Delegates ───────────────────────────────────────────────
+    DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnMissionResolved,
+        int32, OwnerWizardId, const FCoMMissionResult&, Result);
+
+    /** Fires when a spy mission resolves (success or failure). The UI hooks
+     *  this to surface "Your spy stole Fire Bolt" / "Our spy was captured"
+     *  toasts on the player's HUD. */
+    UPROPERTY(BlueprintAssignable, Category = "Espionage")
+    FOnMissionResolved OnMissionResolved;
+
     // ── Save/Load Export/Import ─────────────────────────────────────────────
 
     /** Export all espionage state for save serialization. */

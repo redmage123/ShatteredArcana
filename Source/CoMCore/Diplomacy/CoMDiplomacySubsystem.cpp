@@ -169,6 +169,8 @@ bool UCoMDiplomacySubsystem::AcceptTreaty(int32 ProposalId)
                 }
             }
 
+            OnTreatyResolved.Broadcast(Prop.ProposerWizardId, Prop.TargetWizardId,
+                static_cast<uint8>(Prop.ProposedTreaty), true);
             return true;
         }
     }
@@ -187,6 +189,8 @@ void UCoMDiplomacySubsystem::RejectTreaty(int32 ProposalId)
             // Small reputation hit for rejection
             ModifyReputation(Prop.ProposerWizardId, Prop.TargetWizardId, -10,
                 TEXT("Treaty proposal rejected"));
+            OnTreatyResolved.Broadcast(Prop.ProposerWizardId, Prop.TargetWizardId,
+                static_cast<uint8>(Prop.ProposedTreaty), false);
             return;
         }
     }
@@ -274,6 +278,8 @@ void UCoMDiplomacySubsystem::DeclareWar(int32 AttackerId, int32 DefenderId)
 
     ModifyReputation(AttackerId, DefenderId, Penalty, TEXT("War declared"));
 
+    OnWarDeclared.Broadcast(AttackerId, DefenderId);
+
     // Allies of defender may join the war
     TArray<int32> DefenderAllies = GetAllies(DefenderId);
     for (int32 AllyId : DefenderAllies)
@@ -325,6 +331,8 @@ void UCoMDiplomacySubsystem::SendGift(int32 SenderId, int32 ReceiverId,
 
     if (SenderId == Rel.WizardA) Rel.GiftsGivenAtoB++;
     else Rel.GiftsGivenBtoA++;
+
+    OnGiftSent.Broadcast(SenderId, ReceiverId, GiftValue);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

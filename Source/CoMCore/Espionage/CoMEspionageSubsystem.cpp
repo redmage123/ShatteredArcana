@@ -302,8 +302,10 @@ void UCoMEspionageSubsystem::ProcessTurn(int32 CurrentTurn)
         if (Agent->MissionTurnsLeft <= 0)
         {
             // Mission complete — resolve
+            const int32 OwnerWizardId = Agent->OwnerWizardId;
             FCoMMissionResult Result = ResolveMission(*Agent, CurrentTurn);
             MissionHistory.Add(Result);
+            OnMissionResolved.Broadcast(OwnerWizardId, Result);
 
             // Keep history manageable
             if (MissionHistory.Num() > 200)
