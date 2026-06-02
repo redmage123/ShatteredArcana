@@ -113,6 +113,15 @@ private:
 	void RegisterDefaultAchievements();
 	void EvaluateAchievements();
 
+	/** Subscribe to combat / site / item delegates so the lifetime
+	 *  counters fill in from real gameplay events. Deferred to BeginPlay
+	 *  because the other subsystems may not have Initialize-ordered yet. */
+	void BindToSubsystems();
+
+	UFUNCTION() void HandleCombatResolved(const struct FCoMCombatResult& Result);
+	UFUNCTION() void HandleSiteCleared(int32 SiteID, int32 WizardIndex, int32 GoldReward, int32 ManaReward);
+	UFUNCTION() void HandleItemForged(int32 InstanceID);
+
 	UPROPERTY()
 	FCoMCareerStats Stats;
 

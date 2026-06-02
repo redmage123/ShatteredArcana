@@ -10,6 +10,11 @@
 #include "Serialization/JsonWriter.h"
 #include "Engine/GameInstance.h"
 #include "Engine/Engine.h"
+#include "TimerManager.h"
+
+#include "CoMCore/Combat/CoMCombatSubsystem.h"
+#include "CoMCore/World/CoMSiteEncounterSubsystem.h"
+#include "CoMCore/Items/CoMItemSubsystem.h"
 
 namespace
 {
@@ -27,6 +32,42 @@ void UCoMStatsSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	RegisterDefaultAchievements();
 	EnsureArraySizes();
 	LoadFromDisk();
+	BindToSubsystems();
+}
+
+void UCoMStatsSubsystem::BindToSubsystems()
+{
+	UGameInstance* GI = GetGameInstance();
+	if (!GI) return;
+	if (UCoMCombatSubsystem* Cb = GI->GetSubsystem<UCoMCombatSubsystem>())
+	{
+		Cb->OnCombatResolved.AddDynamic(this, &UCoMStatsSubsystem::HandleCombatResolved);
+	}
+	if (UCoMSiteEncounterSubsystem* Sites = GI->GetSubsystem<UCoMSiteEncounterSubsystem>())
+	{
+		Sites->OnSiteCleared.AddDynamic(this, &UCoMStatsSubsystem::HandleSiteCleared);
+	}
+	if (UCoMItemSubsystem* Items = GI->GetSubsystem<UCoMItemSubsystem>())
+	{
+		Items->OnItemForged.AddDynamic(this, &UCoMStatsSubsystem::HandleItemForged);
+	}
+}
+
+void UCoMStatsSubsystem::HandleCombatResolved(const FCoMCombatResult& Result)
+{
+	Stats.BattlesFought++;
+	Stats.UnitsKilled += Result.AttackerCasualties.Num() + Result.DefenderCasualties.Num();
+}
+
+void UCoMStatsSubsystem::HandleSiteCleared(int32 /*SiteID*/, int32 /*WizardIndex*/,
+	int32 /*GoldReward*/, int32 /*ManaReward*/)
+{
+	Stats.SitesCleared++;
+}
+
+void UCoMStatsSubsystem::HandleItemForged(int32 /*InstanceID*/)
+{
+	Stats.ItemsForged++;
 }
 
 void UCoMStatsSubsystem::Deinitialize()
