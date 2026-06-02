@@ -10,6 +10,7 @@
 
 class UBorder;
 class UButton;
+class UEditableTextBox;
 class UScrollBox;
 class UTextBlock;
 class UVerticalBox;
@@ -25,6 +26,8 @@ public:
 	UPROPERTY() int32 InstanceID = 0;
 
 	UFUNCTION() void HandleClick();
+	UFUNCTION() void HandleDestroyClick();
+	UFUNCTION() void HandleRenameCommit(const FText& Text, ETextCommit::Type CommitType);
 };
 
 /**
@@ -51,6 +54,8 @@ public:
 
 	/** Called by row helper when clicked. */
 	void HandleItemClicked(int32 InstanceID);
+	void HandleDestroyClicked(int32 InstanceID);
+	void HandleRenameCommitted(int32 InstanceID, const FText& NewName);
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;

@@ -39,6 +39,8 @@ void UCoMItemForgeWidget::TogglePower(FName PowerID)
 	const int32 Idx = SelectedPowerIDs.IndexOfByKey(PowerID);
 	if (Idx == INDEX_NONE)
 	{
+		// Hard cap from the MaxEnchantments slider.
+		if (SelectedPowerIDs.Num() >= MaxEnchantments) return;
 		// Adding: only allow if the resulting set is still slot-valid.
 		if (UGameInstance* GI = GetGameInstance())
 		{
@@ -135,10 +137,48 @@ void UCoMItemForgeWidget::NativeConstruct()
 	if (SlotButtons[5]) SlotButtons[5]->OnClicked.AddDynamic(this, &UCoMItemForgeWidget::OnSlotRing);
 	if (SlotButtons[6]) SlotButtons[6]->OnClicked.AddDynamic(this, &UCoMItemForgeWidget::OnSlotAmulet);
 	if (SlotButtons[7]) SlotButtons[7]->OnClicked.AddDynamic(this, &UCoMItemForgeWidget::OnSlotRelic);
-	if (ForgeButton)    ForgeButton->OnClicked.AddDynamic(this,  &UCoMItemForgeWidget::OnForgeClicked);
-	if (CancelButton)   CancelButton->OnClicked.AddDynamic(this, &UCoMItemForgeWidget::OnCancelClicked);
+	if (ForgeButton)     ForgeButton->OnClicked.AddDynamic(this,  &UCoMItemForgeWidget::OnForgeClicked);
+	if (CancelButton)    CancelButton->OnClicked.AddDynamic(this, &UCoMItemForgeWidget::OnCancelClicked);
+	if (MaxEnchMinusBtn) MaxEnchMinusBtn->OnClicked.AddDynamic(this, &UCoMItemForgeWidget::OnMaxEnchMinus);
+	if (MaxEnchPlusBtn)  MaxEnchPlusBtn->OnClicked.AddDynamic(this,  &UCoMItemForgeWidget::OnMaxEnchPlus);
 
 	SelectSlot(SelectedSlot);
+}
+
+void UCoMItemForgeWidget::OnMaxEnchMinus()
+{
+	MaxEnchantments = FMath::Max(1, MaxEnchantments - 1);
+	while (SelectedPowerIDs.Num() > MaxEnchantments) { SelectedPowerIDs.Pop(); }
+	RebuildPowerList();
+	RebuildSummary();
+}
+
+void UCoMItemForgeWidget::OnMaxEnchPlus()
+{
+	MaxEnchantments = FMath::Min(8, MaxEnchantments + 1);
+	RebuildSummary();
+}
+
+int32 UCoMItemForgeWidget::GetMaxEnchSurcharge() const
+{
+	// Each enchantment slot above the default 4 costs +50 mana of capacity.
+	return FMath::Max(0, MaxEnchantments - 4) * 50;
+}
+
+FName UCoMItemForgeWidget::PickDefaultArtVariant(ECoMItemSlot InSlot) const
+{
+	switch (InSlot)
+	{
+		case ECoMItemSlot::Weapon:  return FName(TEXT("sword_01"));
+		case ECoMItemSlot::Offhand: return FName(TEXT("shield_01"));
+		case ECoMItemSlot::Armor:   return FName(TEXT("armor_plate"));
+		case ECoMItemSlot::Helm:    return FName(TEXT("helm_01"));
+		case ECoMItemSlot::Boots:   return FName(TEXT("boots_01"));
+		case ECoMItemSlot::Ring:    return FName(TEXT("ring_01"));
+		case ECoMItemSlot::Amulet:  return FName(TEXT("amulet_01"));
+		case ECoMItemSlot::Relic:   return FName(TEXT("orb_01"));
+		default:                    return FName(TEXT("sword_01"));
+	}
 }
 
 // =============================================================================
@@ -248,15 +288,20 @@ void UCoMItemForgeWidget::OnForgeClicked()
 		}
 	}
 	if (Picked.Num() == 0) return;
+	if (Picked.Num() > MaxEnchantments) return;
 
-	const int32 Cost = Items->ComputeForgeCost(Picked, bArtifactMode);
+	const int32 Cost = Items->ComputeForgeCost(Picked, bArtifactMode) + GetMaxEnchSurcharge();
 	if (Magic->GetCurrentMana(OwnerWizardIndex) < Cost) return;
 
 	const FText Display = (NameInput && !NameInput->GetText().IsEmpty())
 		? NameInput->GetText()
 		: (bArtifactMode ? LOCTEXT("ArtifactDefault", "Forged Artifact") : LOCTEXT("ItemDefault", "Forged Item"));
 
-	const int32 NewID = Items->ForgeItem(OwnerWizardIndex, SelectedSlot, NAME_None, Display, Picked, bArtifactMode);
+	const FName ArtVariant = PickDefaultArtVariant(SelectedSlot);
+	const int32 CastingSkill = Magic->GetWizardMagic(OwnerWizardIndex).CastingSkill;
+
+	const int32 NewID = Items->BeginForgeItem(OwnerWizardIndex, SelectedSlot, NAME_None, Display, Picked,
+		bArtifactMode, ArtVariant, CastingSkill, MaxEnchantments);
 	if (NewID == 0) return;
 
 	Magic->SpendManaForSpell(OwnerWizardIndex, ECoMSpellRealm::Arcane, Cost);
@@ -264,9 +309,7 @@ void UCoMItemForgeWidget::OnForgeClicked()
 	if (UCoMUISubsystem* UI = GI->GetSubsystem<UCoMUISubsystem>())
 	{
 		UI->HideAllPanels();
-		// Cinematic cast for forge actions: artifact tier gets the artifact
-		// banner, normal forging gets a generic enchant cinematic.
-		UI->ShowSpellCastCinematic(OwnerWizardIndex, ECoMSpellRealm::Arcane,
+		UI->ShowSpellCastCinematic(OwnerWizardIndex, Items->ComputeDominantRealm(Picked),
 			bArtifactMode ? TEXT("Create Artifact") : TEXT("Enchant Item"),
 			bArtifactMode);
 	}
@@ -378,13 +421,36 @@ void UCoMItemForgeWidget::RebuildSummary()
 		SelectedListScroll->AddChild(Line);
 	}
 
-	const int32 Cost = Items->ComputeForgeCost(Picked, bArtifactMode);
+	const int32 Cost     = Items->ComputeForgeCost(Picked, bArtifactMode) + GetMaxEnchSurcharge();
 	UCoMMagicSubsystem* Magic = GI->GetSubsystem<UCoMMagicSubsystem>();
-	const int32 Have = Magic ? Magic->GetCurrentMana(OwnerWizardIndex) : 0;
-	const bool bAfford = (Have >= Cost) && Picked.Num() > 0;
+	const int32 Have     = Magic ? Magic->GetCurrentMana(OwnerWizardIndex) : 0;
+	const int32 Skill    = Magic ? Magic->GetWizardMagic(OwnerWizardIndex).CastingSkill : 10;
+	const int32 Turns    = Items->ComputeForgeTime(Cost, Skill);
+	const ECoMSpellRealm Realm = Items->ComputeDominantRealm(Picked);
+	const bool  bAfford  = (Have >= Cost) && Picked.Num() > 0;
+
 	TotalCostText->SetText(FText::Format(LOCTEXT("TotalFmt", "Total: {0} mana   (You have {1})"),
 		FText::AsNumber(Cost), FText::AsNumber(Have)));
 	TotalCostText->SetColorAndOpacity(FSlateColor(bAfford ? ForgeColours::Green : ForgeColours::RedDim));
+
+	if (ForgeTimeText)
+	{
+		ForgeTimeText->SetText(FText::Format(LOCTEXT("ForgeTimeFmt", "Forge Time: {0} turn(s)   |   Cap: {1}/{2}"),
+			FText::AsNumber(Turns), FText::AsNumber(Picked.Num()), FText::AsNumber(MaxEnchantments)));
+	}
+	if (RealmText && Picked.Num() > 0)
+	{
+		RealmText->SetText(FText::Format(LOCTEXT("RealmFmt", "Dominant Realm: {0}"),
+			StaticEnum<ECoMSpellRealm>()->GetDisplayNameTextByValue((int64)Realm)));
+	}
+	else if (RealmText)
+	{
+		RealmText->SetText(LOCTEXT("RealmNone", "Dominant Realm: --"));
+	}
+	if (MaxEnchValueText)
+	{
+		MaxEnchValueText->SetText(FText::AsNumber(MaxEnchantments));
+	}
 
 	if (ForgeButton)
 	{
@@ -536,6 +602,54 @@ void UCoMItemForgeWidget::BuildLayout()
 			TotalCostText->SetColorAndOpacity(FSlateColor(ForgeColours::RedDim));
 			{ FSlateFontInfo F = TotalCostText->GetFont(); F.Size = 14; TotalCostText->SetFont(F); }
 			RightCol->AddChildToVerticalBox(TotalCostText);
+
+			ForgeTimeText = WidgetTree->ConstructWidget<UTextBlock>();
+			ForgeTimeText->SetText(LOCTEXT("ForgeTimeDefault", "Forge Time: 1 turn(s)"));
+			ForgeTimeText->SetColorAndOpacity(FSlateColor(ForgeColours::Silver));
+			{ FSlateFontInfo F = ForgeTimeText->GetFont(); F.Size = 12; ForgeTimeText->SetFont(F); }
+			RightCol->AddChildToVerticalBox(ForgeTimeText);
+
+			RealmText = WidgetTree->ConstructWidget<UTextBlock>();
+			RealmText->SetText(LOCTEXT("RealmDefault", "Dominant Realm: --"));
+			RealmText->SetColorAndOpacity(FSlateColor(ForgeColours::Gold));
+			{ FSlateFontInfo F = RealmText->GetFont(); F.Size = 12; RealmText->SetFont(F); }
+			RightCol->AddChildToVerticalBox(RealmText);
+
+			// Max-enchantments stepper -----------------------------------------
+			{
+				UHorizontalBox* EnchRow = WidgetTree->ConstructWidget<UHorizontalBox>();
+
+				UTextBlock* EnchLbl = WidgetTree->ConstructWidget<UTextBlock>();
+				EnchLbl->SetText(LOCTEXT("MaxEnchLbl", "Max Enchantments:"));
+				EnchLbl->SetColorAndOpacity(FSlateColor(ForgeColours::Silver));
+				{ FSlateFontInfo F = EnchLbl->GetFont(); F.Size = 12; EnchLbl->SetFont(F); }
+				UHorizontalBoxSlot* LS = EnchRow->AddChildToHorizontalBox(EnchLbl);
+				if (LS) { LS->SetVerticalAlignment(VAlign_Center); }
+
+				USizeBox* MinusSz = WidgetTree->ConstructWidget<USizeBox>();
+				MinusSz->SetWidthOverride(30.f); MinusSz->SetHeightOverride(26.f);
+				MaxEnchMinusBtn = MakeBtn(TEXT("-"), 28.f);
+				MinusSz->AddChild(MaxEnchMinusBtn);
+				UHorizontalBoxSlot* MS = EnchRow->AddChildToHorizontalBox(MinusSz);
+				if (MS) { MS->SetPadding(FMargin(8, 0, 4, 0)); MS->SetVerticalAlignment(VAlign_Center); }
+
+				MaxEnchValueText = WidgetTree->ConstructWidget<UTextBlock>();
+				MaxEnchValueText->SetText(FText::AsNumber(MaxEnchantments));
+				MaxEnchValueText->SetColorAndOpacity(FSlateColor(ForgeColours::Gold));
+				MaxEnchValueText->SetJustification(ETextJustify::Center);
+				{ FSlateFontInfo F = MaxEnchValueText->GetFont(); F.Size = 14; MaxEnchValueText->SetFont(F); }
+				UHorizontalBoxSlot* VS2 = EnchRow->AddChildToHorizontalBox(MaxEnchValueText);
+				if (VS2) { VS2->SetPadding(FMargin(4, 0)); VS2->SetVerticalAlignment(VAlign_Center); }
+
+				USizeBox* PlusSz = WidgetTree->ConstructWidget<USizeBox>();
+				PlusSz->SetWidthOverride(30.f); PlusSz->SetHeightOverride(26.f);
+				MaxEnchPlusBtn = MakeBtn(TEXT("+"), 28.f);
+				PlusSz->AddChild(MaxEnchPlusBtn);
+				UHorizontalBoxSlot* PS = EnchRow->AddChildToHorizontalBox(PlusSz);
+				if (PS) { PS->SetPadding(FMargin(4, 0)); PS->SetVerticalAlignment(VAlign_Center); }
+
+				RightCol->AddChildToVerticalBox(EnchRow);
+			}
 
 			UHorizontalBoxSlot* HS = TwoCol->AddChildToHorizontalBox(RightCol);
 			if (HS) { HS->SetSize(FSlateChildSize(ESlateSizeRule::Fill)); }

@@ -65,6 +65,8 @@ protected:
 
 	UFUNCTION() void OnForgeClicked();
 	UFUNCTION() void OnCancelClicked();
+	UFUNCTION() void OnMaxEnchMinus();
+	UFUNCTION() void OnMaxEnchPlus();
 
 public:
 	/** Called by UCoMForgePowerRow::HandleClick. Toggles the given power in/out of the selection. */
@@ -76,6 +78,10 @@ private:
 	void RebuildPowerList();
 	void RebuildSummary();
 	UButton* MakeBtn(const FString& Label, float Width = 110.f);
+	/** Pick a default art variant slug given the chosen slot. */
+	FName PickDefaultArtVariant(ECoMItemSlot InSlot) const;
+	/** Cost surcharge for raising MaxEnchantments above the default 4. */
+	int32 GetMaxEnchSurcharge() const;
 
 	/** Keep per-row helper objects alive while the widget is shown. */
 	UPROPERTY() TArray<TObjectPtr<UCoMForgePowerRow>> RowHelpers;
@@ -85,6 +91,7 @@ private:
 	bool  bArtifactMode    = false;
 	ECoMItemSlot SelectedSlot = ECoMItemSlot::Weapon;
 	TArray<FName> SelectedPowerIDs;
+	int32 MaxEnchantments = 4;
 
 	// Widgets -----------------------------------------------------------------
 	UPROPERTY() TObjectPtr<UBorder>           BackgroundBorder;
@@ -97,6 +104,12 @@ private:
 	UPROPERTY() TObjectPtr<UScrollBox>        PowerListScroll;
 	UPROPERTY() TObjectPtr<UScrollBox>        SelectedListScroll;
 	UPROPERTY() TObjectPtr<UTextBlock>        TotalCostText;
+	UPROPERTY() TObjectPtr<UTextBlock>        ForgeTimeText;
+	UPROPERTY() TObjectPtr<UTextBlock>        RealmText;
+
+	UPROPERTY() TObjectPtr<UButton>           MaxEnchMinusBtn;
+	UPROPERTY() TObjectPtr<UButton>           MaxEnchPlusBtn;
+	UPROPERTY() TObjectPtr<UTextBlock>        MaxEnchValueText;
 
 	UPROPERTY() TObjectPtr<UButton>           ForgeButton;
 	UPROPERTY() TObjectPtr<UButton>           CancelButton;
