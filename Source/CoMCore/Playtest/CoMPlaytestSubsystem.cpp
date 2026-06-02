@@ -27,6 +27,7 @@
 #include "CoMCore/Units/CoMDragonSubsystem.h"
 #include "CoMCore/CoreTypes/CoMGameplayTags.h"
 #include "CoMCore/Scenario/CoMScenarioDatabase.h"
+#include "CoMCore/Stats/CoMStatsSubsystem.h"
 
 #include "Engine/World.h"
 #include "HAL/FileManager.h"
@@ -208,6 +209,16 @@ void UCoMPlaytestSubsystem::RunOneGame(int32 GameIndex, int32 Seed, int32 MaxTur
 			OutResult.WinnerWizardId   = BestWizard;
 			OutResult.WinningCondition = static_cast<uint8>(ECoMVictoryType::Domination);
 		}
+	}
+
+	// Career stats hook. Slot 0 is the human-player convention for the
+	// playtest harness, so RecordGameEnd treats a wizard-0 win as a
+	// player victory and feeds the achievement evaluator.
+	if (UCoMStatsSubsystem* StatsSub = GI->GetSubsystem<UCoMStatsSubsystem>())
+	{
+		const ECoMVictoryType VT = static_cast<ECoMVictoryType>(OutResult.WinningCondition);
+		StatsSub->RecordGameEnd(OutResult.WinnerWizardId, /*PlayerSlot=*/ 0,
+		                         VT, TurnsPlayed);
 	}
 
 	// Snapshot the timings before teardown so we have a clean per-game view.
