@@ -66,6 +66,49 @@ public:
 	                const TArray<FCoMItemPower>& Powers,
 	                bool bArtifact);
 
+	/** Extended forge entry that lets the caller pick the art variant and
+	 *  the dominant realm, and start a multi-turn forging job rather than
+	 *  instant-creating the item. Returns the new InstanceID. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Items")
+	int32 BeginForgeItem(int32 OwnerWizardIndex,
+	                     ECoMItemSlot Slot,
+	                     FName TemplateID,
+	                     const FText& DisplayName,
+	                     const TArray<FCoMItemPower>& Powers,
+	                     bool bArtifact,
+	                     FName ArtVariant,
+	                     int32 WizardCastingSkill,
+	                     int32 MaxEnchantments);
+
+	/** Sum (Powers[i].ManaCost) + artifact surcharge. Mirrors ComputeForgeCost. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Items")
+	int32 ComputeTotalManaCost(const TArray<FCoMItemPower>& Powers, bool bArtifact) const
+	{ return ComputeForgeCost(Powers, bArtifact); }
+
+	/** Turns required to fully forge a job that costs ManaCost mana for a
+	 *  wizard with the given CastingSkill (mana/turn). Floor of 1 turn. */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Items")
+	int32 ComputeForgeTime(int32 ManaCost, int32 WizardCastingSkill) const;
+
+	/** Determine the dominant realm of a power list (the realm of the
+	 *  highest-mana-cost power, with ties broken by first-seen). */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "CoM|Items")
+	ECoMSpellRealm ComputeDominantRealm(const TArray<FCoMItemPower>& Powers) const;
+
+	/** Tick forging jobs for a given wizard: decrement each in-progress
+	 *  item's ForgeTurnsRemaining. Fires OnItemForged when one finishes. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Items")
+	void ProcessForgeTurn(int32 WizardIndex);
+
+	/** Destroy an item and refund 50% of its TotalManaCost to the owner.
+	 *  Returns the mana refunded (0 on failure). */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Items")
+	int32 DestroyItemForMana(int32 InstanceID);
+
+	/** Player rename: update the DisplayName on an existing instance. */
+	UFUNCTION(BlueprintCallable, Category = "CoM|Items")
+	bool RenameItem(int32 InstanceID, const FText& NewName);
+
 	// -- Vault / lookup -------------------------------------------------------
 
 	/** All items owned by a wizard (equipped or in vault). */

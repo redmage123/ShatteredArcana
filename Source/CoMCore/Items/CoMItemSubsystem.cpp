@@ -129,6 +129,109 @@ int32 UCoMItemSubsystem::ComputeForgeCost(const TArray<FCoMItemPower>& Powers, b
 	return Sum;
 }
 
+int32 UCoMItemSubsystem::ComputeForgeTime(int32 ManaCost, int32 WizardCastingSkill) const
+{
+	// Floor of 1 turn; otherwise (cost / skill) rounded up. A wizard with
+	// Casting Skill 25 forging a 200-mana item takes 8 turns.
+	const int32 Skill = FMath::Max(1, WizardCastingSkill);
+	return FMath::Max(1, FMath::DivideAndRoundUp(ManaCost, Skill));
+}
+
+ECoMSpellRealm UCoMItemSubsystem::ComputeDominantRealm(const TArray<FCoMItemPower>& Powers) const
+{
+	ECoMSpellRealm Best = ECoMSpellRealm::Arcane;
+	int32 BestCost = -1;
+	for (const FCoMItemPower& P : Powers)
+	{
+		if (P.ManaCost > BestCost)
+		{
+			BestCost = P.ManaCost;
+			Best = P.Realm;
+		}
+	}
+	return Best;
+}
+
+void UCoMItemSubsystem::ProcessForgeTurn(int32 WizardIndex)
+{
+	for (auto& Pair : AllItems)
+	{
+		FCoMItemInstance& I = Pair.Value;
+		if (I.OwnerWizardIndex != WizardIndex) continue;
+		if (I.ForgeTurnsRemaining <= 0)         continue;
+		I.ForgeTurnsRemaining--;
+		if (I.ForgeTurnsRemaining <= 0)
+		{
+			// Just finished -- fire the existing forged delegate so the
+			// HUD toast + stats subsystem both pick it up.
+			OnItemForged.Broadcast(I.InstanceID);
+		}
+	}
+}
+
+int32 UCoMItemSubsystem::DestroyItemForMana(int32 InstanceID)
+{
+	FCoMItemInstance* I = AllItems.Find(InstanceID);
+	if (!I) return 0;
+	const int32 Refund = FMath::Max(0, I->TotalManaCost / 2);
+	// Unequip first so the hero's slot map doesn't keep a dangling ref.
+	if (I->EquippedByHeroID != 0)
+	{
+		UnequipItem(I->EquippedByHeroID, I->Slot);
+	}
+	AllItems.Remove(InstanceID);
+	UE_LOG(LogTemp, Log, TEXT("[Items] Destroyed instance %d, refunded %d mana to wizard %d"),
+		InstanceID, Refund, I->OwnerWizardIndex);
+	return Refund;
+}
+
+bool UCoMItemSubsystem::RenameItem(int32 InstanceID, const FText& NewName)
+{
+	FCoMItemInstance* I = AllItems.Find(InstanceID);
+	if (!I || NewName.IsEmpty()) return false;
+	I->DisplayName = NewName;
+	return true;
+}
+
+int32 UCoMItemSubsystem::BeginForgeItem(int32 OwnerWizardIndex,
+                                        ECoMItemSlot Slot,
+                                        FName TemplateID,
+                                        const FText& DisplayName,
+                                        const TArray<FCoMItemPower>& Powers,
+                                        bool bArtifact,
+                                        FName ArtVariant,
+                                        int32 WizardCastingSkill,
+                                        int32 MaxEnchantments)
+{
+	if (!ArePowersValidForSlot(Slot, Powers)) return 0;
+	const int32 Cap = FMath::Clamp(MaxEnchantments, 1, 8);
+	if (Powers.Num() > Cap) return 0;
+
+	FCoMItemInstance Item;
+	Item.InstanceID          = NextInstanceID++;
+	Item.TemplateID          = TemplateID;
+	Item.DisplayName         = DisplayName.IsEmpty()
+		? FText::Format(LOCTEXT("ForgedItemDefault", "Forged Item #{0}"), FText::AsNumber(Item.InstanceID))
+		: DisplayName;
+	Item.Slot                = Slot;
+	Item.Powers              = Powers;
+	Item.TotalManaCost       = ComputeForgeCost(Powers, bArtifact);
+	Item.bArtifact           = bArtifact;
+	Item.OwnerWizardIndex    = OwnerWizardIndex;
+	Item.EquippedByHeroID    = 0;
+	Item.ArtVariant          = ArtVariant;
+	Item.DominantRealm       = ComputeDominantRealm(Powers);
+	Item.MaxEnchantments     = Cap;
+	Item.ForgeTurnsTotal     = ComputeForgeTime(Item.TotalManaCost, WizardCastingSkill);
+	Item.ForgeTurnsRemaining = Item.ForgeTurnsTotal;
+
+	AllItems.Add(Item.InstanceID, Item);
+	// Don't fire OnItemForged yet -- it'll fire when ForgeTurnsRemaining
+	// reaches 0 during ProcessForgeTurn. This separates "queued" from "ready"
+	// so toasts and stats only fire on completion.
+	return Item.InstanceID;
+}
+
 bool UCoMItemSubsystem::ArePowersValidForSlot(ECoMItemSlot Slot, const TArray<FCoMItemPower>& Powers) const
 {
 	if (Powers.Num() == 0) return false;

@@ -50,6 +50,11 @@ struct COMCORE_API FCoMItemPower
 
 	/** Human-readable name shown on the hero/vault UI ("Flame Blade", "+2 Attack"). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) FText DisplayName;
+
+	/** Realm this power thematically belongs to. Drives the item's dominant
+	 *  realm glow (Life=gold, Death=violet, Chaos=red, Nature=green,
+	 *  Sorcery=blue, Arcane=silver, etc). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMSpellRealm Realm = ECoMSpellRealm::Arcane;
 };
 
 /**
@@ -88,4 +93,26 @@ struct COMCORE_API FCoMItemInstance
 
 	/** HeroUnitID currently equipping this item. 0 = unequipped (in vault). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 EquippedByHeroID = 0;
+
+	/** Art variant slug (e.g. "sword_02", "ring_01") -- maps to
+	 *  /Game/UI/Items/<ArtVariant>. The forge picks one based on the slot
+	 *  and the dominant power; the player can re-pick during forging. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) FName ArtVariant;
+
+	/** Realm whose colour drives the picture's aura. Set at forge time from
+	 *  the most expensive power's realm, then displayed as a tinted glow
+	 *  in the vault / forge / hero panels (CoM-style). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) ECoMSpellRealm DominantRealm = ECoMSpellRealm::Arcane;
+
+	/** Maximum enchantments allowed on this instance. Defaults to 4
+	 *  (CoM convention); higher tiers allow 6 or 8. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 MaxEnchantments = 4;
+
+	/** Turns remaining to fully forge this item. 0 = ready for use. While
+	 *  > 0 the item lives in the wizard's forging queue, not the vault. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 ForgeTurnsRemaining = 0;
+
+	/** Total turns this item required to forge -- so the UI can show a
+	 *  progress fraction (Remaining / Total). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 ForgeTurnsTotal = 0;
 };

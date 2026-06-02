@@ -21,6 +21,8 @@
 #include "Combat/CoMCombatSubsystem.h"
 #include "Diplomacy/CoMDiplomacySubsystem.h"
 #include "Espionage/CoMEspionageSubsystem.h"
+#include "Items/CoMItemSubsystem.h"
+#include "CoMCore/CoreTypes/CoMConstants.h"
 #include "Magic/CoMMagicSubsystem.h"
 #include "Quests/CoMQuestSubsystem.h"
 #include "Units/CoMDragonSubsystem.h"
@@ -429,6 +431,20 @@ void UCoMTurnSubsystem::ProcessAllSubsystemTurns()
 	if (UCoMEspionageSubsystem* Espionage = GI->GetSubsystem<UCoMEspionageSubsystem>())
 	{
 		COM_TIMED_TICK("Espionage", Espionage->ProcessTurn(CurrentTurn));
+	}
+
+	// ── Item forging ─────────────────────────────────────────────────
+	// Each wizard's in-progress items tick down one turn. OnItemForged
+	// fires for completions; the stats subsystem already listens.
+	if (UCoMItemSubsystem* Items = GI->GetSubsystem<UCoMItemSubsystem>())
+	{
+		COM_TIMED_TICK("ItemForge",
+		{
+			for (int32 W = 0; W < CoM::MAX_WIZARDS; ++W)
+			{
+				Items->ProcessForgeTurn(W);
+			}
+		});
 	}
 
 	// ── Quests ───────────────────────────────────────────────────────
