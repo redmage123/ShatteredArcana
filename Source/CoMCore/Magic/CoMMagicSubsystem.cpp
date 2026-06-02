@@ -1219,22 +1219,26 @@ void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
         }
         if (SpawnTile.X < 0) { LogResolve(TEXT("Summon (no spawn tile)")); break; }
 
-        // Map realm + rarity to a bespoke summoned creature. Rare/Very Rare
-        // summons conjure the realm's stronger creature; common/uncommon the
-        // weaker one. (Earlier this reused racial units as placeholders.)
-        const bool bHighTier =
-            (Info.Rarity == ECoMSpellRarity::Rare || Info.Rarity == ECoMSpellRarity::VeryRare);
-        FName SummonSpec;
-        switch (Info.Realm)
+        // Prefer the explicit binding on the spell (one spell → one creature).
+        // Fall back to the legacy realm+tier switch for spells that haven't
+        // been migrated yet -- including non-CoM realms (Spirit/Binding/
+        // Glamour) which don't have their own summon rosters.
+        FName SummonSpec = Info.SummonSpecID;
+        if (SummonSpec.IsNone())
         {
-        case ECoMSpellRealm::Life:    SummonSpec = bHighTier ? TEXT("Summon_Angel")    : TEXT("Summon_GuardianSpirit"); break;
-        case ECoMSpellRealm::Death:   SummonSpec = bHighTier ? TEXT("Summon_Wraith")   : TEXT("Summon_Skeleton");       break;
-        case ECoMSpellRealm::Nature:  SummonSpec = bHighTier ? TEXT("Summon_Drake")    : TEXT("Summon_WarBear");        break;
-        case ECoMSpellRealm::Chaos:   SummonSpec = bHighTier ? TEXT("Summon_Drake")    : TEXT("Summon_Hellhound");      break;
-        case ECoMSpellRealm::Sorcery: SummonSpec = bHighTier ? TEXT("Summon_Gargoyle") : TEXT("Summon_PhantomWarrior"); break;
-        case ECoMSpellRealm::Spirit:  SummonSpec = bHighTier ? TEXT("Summon_Wraith")   : TEXT("Summon_PhantomWarrior"); break;
-        case ECoMSpellRealm::Arcane:  SummonSpec = bHighTier ? TEXT("Summon_Gargoyle") : TEXT("Summon_PhantomWarrior"); break;
-        default:                      SummonSpec = bHighTier ? TEXT("Summon_Gargoyle") : TEXT("Summon_Hellhound");      break;
+            const bool bHighTier =
+                (Info.Rarity == ECoMSpellRarity::Rare || Info.Rarity == ECoMSpellRarity::VeryRare);
+            switch (Info.Realm)
+            {
+            case ECoMSpellRealm::Life:    SummonSpec = bHighTier ? TEXT("Summon_Angel")    : TEXT("Summon_GuardianSpirit"); break;
+            case ECoMSpellRealm::Death:   SummonSpec = bHighTier ? TEXT("Summon_Wraith")   : TEXT("Summon_Skeleton");       break;
+            case ECoMSpellRealm::Nature:  SummonSpec = bHighTier ? TEXT("Summon_Drake")    : TEXT("Summon_WarBear");        break;
+            case ECoMSpellRealm::Chaos:   SummonSpec = bHighTier ? TEXT("Summon_Drake")    : TEXT("Summon_Hellhound");      break;
+            case ECoMSpellRealm::Sorcery: SummonSpec = bHighTier ? TEXT("Summon_Gargoyle") : TEXT("Summon_PhantomWarrior"); break;
+            case ECoMSpellRealm::Spirit:  SummonSpec = bHighTier ? TEXT("Summon_Wraith")   : TEXT("Summon_PhantomWarrior"); break;
+            case ECoMSpellRealm::Arcane:  SummonSpec = bHighTier ? TEXT("Summon_Gargoyle") : TEXT("Summon_PhantomWarrior"); break;
+            default:                      SummonSpec = bHighTier ? TEXT("Summon_Gargoyle") : TEXT("Summon_Hellhound");      break;
+            }
         }
 
         const int32 NewID = Units->SpawnUnitByName(SummonSpec, Plane, Layer, SpawnTile, Cast.CasterWizardId);

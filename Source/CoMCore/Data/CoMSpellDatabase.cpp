@@ -480,6 +480,7 @@ void CoMSpellDatabase::InitializeDatabase()
 		S.TargetType = ECoMSpellTarget::TileTarget; S.EffectType = ECoMSpellEffect::Summon;
 		S.ResearchCost = 50; S.CastingCost = 5; S.Range = 4;
 		S.bSummon = true; S.bInstant = true;
+		S.SummonSpecID = FName(TEXT("Summon_Skeleton"));
 		RegisterSpell(MoveTemp(S));
 	}
 	{
@@ -585,6 +586,7 @@ void CoMSpellDatabase::InitializeDatabase()
 		S.TargetType = ECoMSpellTarget::TileTarget; S.EffectType = ECoMSpellEffect::Summon;
 		S.ResearchCost = 50; S.CastingCost = 5; S.Range = 4;
 		S.bSummon = true;
+		S.SummonSpecID = FName(TEXT("Summon_WarBear"));
 		RegisterSpell(MoveTemp(S));
 	}
 	{
@@ -621,6 +623,7 @@ void CoMSpellDatabase::InitializeDatabase()
 		S.TargetType = ECoMSpellTarget::TileTarget; S.EffectType = ECoMSpellEffect::Summon;
 		S.ResearchCost = 400; S.CastingCost = 40; S.Range = 8;
 		S.bSummon = true;
+		S.SummonSpecID = FName(TEXT("Summon_EarthElemental"));
 		RegisterSpell(MoveTemp(S));
 	}
 	{
@@ -693,6 +696,7 @@ void CoMSpellDatabase::InitializeDatabase()
 		S.TargetType = ECoMSpellTarget::TileTarget; S.EffectType = ECoMSpellEffect::Summon;
 		S.ResearchCost = 50; S.CastingCost = 5; S.Range = 4;
 		S.bSummon = true;
+		S.SummonSpecID = FName(TEXT("Summon_MagicSpirit"));
 		RegisterSpell(MoveTemp(S));
 	}
 	{
@@ -1370,4 +1374,105 @@ void CoMSpellDatabase::InitializeDatabase()
 		S.UpkeepMana = 0; S.bOngoing = false; S.bInstant = true;
 		RegisterSpell(MoveTemp(S));
 	}
+
+	// ──────────────────────────────────────────────────────────────────────
+	// Summon roster -- one spell per CoM-style summonable creature, each
+	// explicitly bound to its unit SpecID so the resolver doesn't need a
+	// hardcoded realm+tier table.
+	// ──────────────────────────────────────────────────────────────────────
+	auto AddSummon = [](const TCHAR* SpellID, const TCHAR* Display, ECoMSpellRealm Realm,
+	                    ECoMSpellRarity Rarity, const TCHAR* SpecID,
+	                    int32 ResearchCost, int32 CastingCost)
+	{
+		FCoMSpellInfo S;
+		S.SpellID       = FName(SpellID);
+		S.DisplayName   = FText::FromString(Display);
+		S.Realm         = Realm;
+		S.Rarity        = Rarity;
+		S.Scope         = ECoMSpellScope::Overworld;
+		S.TargetType    = ECoMSpellTarget::TileTarget;
+		S.EffectType    = ECoMSpellEffect::Summon;
+		S.ResearchCost  = ResearchCost;
+		S.CastingCost   = CastingCost;
+		S.Range         = 8;
+		S.bSummon       = true;
+		S.bInstant      = true;
+		S.SummonSpecID  = FName(SpecID);
+		RegisterSpell(MoveTemp(S));
+	};
+
+	// Life ----------------------------------------------------------------
+	AddSummon(TEXT("Life_T2_Summon_Unicorns"),       TEXT("Summon Unicorns"),
+	          ECoMSpellRealm::Life,    ECoMSpellRarity::Uncommon, TEXT("Summon_Unicorns"),     150, 15);
+	AddSummon(TEXT("Life_T4_Summon_Arch_Angel"),     TEXT("Summon Arch Angel"),
+	          ECoMSpellRealm::Life,    ECoMSpellRarity::VeryRare, TEXT("Summon_ArchAngel"),    900, 90);
+
+	// Death ---------------------------------------------------------------
+	AddSummon(TEXT("Death_T1_Summon_Ghouls"),        TEXT("Summon Ghouls"),
+	          ECoMSpellRealm::Death,   ECoMSpellRarity::Common,   TEXT("Summon_Ghouls"),        60,  6);
+	AddSummon(TEXT("Death_T1_Summon_Werewolves"),    TEXT("Summon Werewolves"),
+	          ECoMSpellRealm::Death,   ECoMSpellRarity::Common,   TEXT("Summon_Werewolves"),   120, 12);
+	AddSummon(TEXT("Death_T2_Summon_Night_Stalker"), TEXT("Summon Night Stalker"),
+	          ECoMSpellRealm::Death,   ECoMSpellRarity::Uncommon, TEXT("Summon_NightStalker"), 180, 18);
+	AddSummon(TEXT("Death_T2_Summon_Shadow_Demons"), TEXT("Summon Shadow Demons"),
+	          ECoMSpellRealm::Death,   ECoMSpellRarity::Uncommon, TEXT("Summon_ShadowDemons"), 220, 22);
+	AddSummon(TEXT("Death_T4_Summon_Demon_Lord"),    TEXT("Summon Demon Lord"),
+	          ECoMSpellRealm::Death,   ECoMSpellRarity::VeryRare, TEXT("Summon_DemonLord"),    900, 90);
+	AddSummon(TEXT("Death_T4_Summon_Death_Knights"), TEXT("Summon Death Knights"),
+	          ECoMSpellRealm::Death,   ECoMSpellRarity::VeryRare, TEXT("Summon_DeathKnights"), 700, 70);
+
+	// Chaos ---------------------------------------------------------------
+	AddSummon(TEXT("Chaos_T1_Summon_Fire_Elemental"),TEXT("Summon Fire Elemental"),
+	          ECoMSpellRealm::Chaos,   ECoMSpellRarity::Common,   TEXT("Summon_FireElemental"), 80,  8);
+	AddSummon(TEXT("Chaos_T2_Summon_Fire_Giant"),    TEXT("Summon Fire Giant"),
+	          ECoMSpellRealm::Chaos,   ECoMSpellRarity::Uncommon, TEXT("Summon_FireGiant"),    220, 22);
+	AddSummon(TEXT("Chaos_T2_Summon_Doom_Bat"),      TEXT("Summon Doom Bat"),
+	          ECoMSpellRealm::Chaos,   ECoMSpellRarity::Uncommon, TEXT("Summon_DoomBat"),      180, 18);
+	AddSummon(TEXT("Chaos_T2_Summon_Chimera"),       TEXT("Summon Chimera"),
+	          ECoMSpellRealm::Chaos,   ECoMSpellRarity::Uncommon, TEXT("Summon_Chimera"),      240, 24);
+	AddSummon(TEXT("Chaos_T3_Summon_Efreet"),        TEXT("Summon Efreet"),
+	          ECoMSpellRealm::Chaos,   ECoMSpellRarity::Rare,     TEXT("Summon_Efreet"),       420, 42);
+	AddSummon(TEXT("Chaos_T3_Summon_Hydra"),         TEXT("Summon Hydra"),
+	          ECoMSpellRealm::Chaos,   ECoMSpellRarity::Rare,     TEXT("Summon_Hydra"),        500, 50);
+	AddSummon(TEXT("Chaos_T3_Summon_Chaos_Spawn"),   TEXT("Summon Chaos Spawn"),
+	          ECoMSpellRealm::Chaos,   ECoMSpellRarity::Rare,     TEXT("Summon_ChaosSpawn"),   440, 44);
+
+	// Nature --------------------------------------------------------------
+	AddSummon(TEXT("Nature_T1_Summon_Sprites"),      TEXT("Summon Sprites"),
+	          ECoMSpellRealm::Nature,  ECoMSpellRarity::Common,   TEXT("Summon_Sprites"),       60,  6);
+	AddSummon(TEXT("Nature_T2_Summon_Cockatrices"),  TEXT("Summon Cockatrices"),
+	          ECoMSpellRealm::Nature,  ECoMSpellRarity::Uncommon, TEXT("Summon_Cockatrices"),  220, 22);
+	AddSummon(TEXT("Nature_T2_Summon_Basilisk"),     TEXT("Summon Basilisk"),
+	          ECoMSpellRealm::Nature,  ECoMSpellRarity::Uncommon, TEXT("Summon_Basilisk"),     200, 20);
+	AddSummon(TEXT("Nature_T2_Summon_Stone_Giant"),  TEXT("Summon Stone Giant"),
+	          ECoMSpellRealm::Nature,  ECoMSpellRarity::Uncommon, TEXT("Summon_StoneGiant"),   240, 24);
+	// Earth Elemental already had a stub spell; rebind it to the new unit.
+	AddSummon(TEXT("Nature_T3_Summon_Gorgons"),      TEXT("Summon Gorgons"),
+	          ECoMSpellRealm::Nature,  ECoMSpellRarity::Rare,     TEXT("Summon_Gorgons"),      460, 46);
+	AddSummon(TEXT("Nature_T3_Summon_Behemoth"),     TEXT("Summon Behemoth"),
+	          ECoMSpellRealm::Nature,  ECoMSpellRarity::Rare,     TEXT("Summon_Behemoth"),     500, 50);
+	AddSummon(TEXT("Nature_T3_Summon_Colossus"),     TEXT("Summon Colossus"),
+	          ECoMSpellRealm::Nature,  ECoMSpellRarity::Rare,     TEXT("Summon_Colossus"),     560, 56);
+	AddSummon(TEXT("Nature_T4_Summon_Great_Wyrm"),   TEXT("Summon Great Wyrm"),
+	          ECoMSpellRealm::Nature,  ECoMSpellRarity::VeryRare, TEXT("Summon_GreatWyrm"),    900, 90);
+
+	// Sorcery -------------------------------------------------------------
+	AddSummon(TEXT("Sorcery_T2_Summon_Phantom_Beast"),TEXT("Summon Phantom Beast"),
+	          ECoMSpellRealm::Sorcery, ECoMSpellRarity::Uncommon, TEXT("Summon_PhantomBeast"), 180, 18);
+	AddSummon(TEXT("Sorcery_T2_Summon_Air_Elemental"),TEXT("Summon Air Elemental"),
+	          ECoMSpellRealm::Sorcery, ECoMSpellRarity::Uncommon, TEXT("Summon_AirElemental"), 160, 16);
+	AddSummon(TEXT("Sorcery_T2_Summon_Nagas"),       TEXT("Summon Nagas"),
+	          ECoMSpellRealm::Sorcery, ECoMSpellRarity::Uncommon, TEXT("Summon_Nagas"),        200, 20);
+	AddSummon(TEXT("Sorcery_T3_Summon_Storm_Giant"), TEXT("Summon Storm Giant"),
+	          ECoMSpellRealm::Sorcery, ECoMSpellRarity::Rare,     TEXT("Summon_StormGiant"),   500, 50);
+	AddSummon(TEXT("Sorcery_T3_Summon_Djinn"),       TEXT("Summon Djinn"),
+	          ECoMSpellRealm::Sorcery, ECoMSpellRarity::Rare,     TEXT("Summon_Djinn"),        520, 52);
+	AddSummon(TEXT("Sorcery_T4_Summon_Sky_Drake"),   TEXT("Summon Sky Drake"),
+	          ECoMSpellRealm::Sorcery, ECoMSpellRarity::VeryRare, TEXT("Summon_SkyDrake"),     900, 90);
+
+	// Arcane --------------------------------------------------------------
+	// Magic Spirit's stub spell already exists; rebind via SummonSpecID below
+	// during resolve. Floating Island is a new addition.
+	AddSummon(TEXT("Arcane_T2_Summon_Floating_Island"), TEXT("Summon Floating Island"),
+	          ECoMSpellRealm::Arcane,  ECoMSpellRarity::Uncommon, TEXT("Summon_FloatingIsland"), 200, 20);
 }

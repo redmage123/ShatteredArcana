@@ -66,6 +66,10 @@ struct COMCORE_API FCoMSpellInfo
 
 	int32 DamageBase = 0;
 	int32 HealAmount = 0;
+
+	/** For summon spells: explicit SpecID of the conjured creature in
+	 *  CoMUnitDatabase. Empty falls back to the legacy realm+tier switch. */
+	FName SummonSpecID;
 };
 
 /**

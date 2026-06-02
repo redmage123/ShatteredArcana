@@ -770,4 +770,48 @@ void CoMUnitDatabase::InitializeDatabase()
 	AddSummon(TEXT("Summon_Wraith"),         TEXT("Wraith"),           18, 9, 0, 5, 9, 3, 1, 4, true,  true);
 	AddSummon(TEXT("Summon_Angel"),          TEXT("Angel"),            20, 10,0, 8, 10,3, 1, 5, true,  false);
 	AddSummon(TEXT("Summon_Drake"),          TEXT("Great Drake"),      30, 14,8, 8, 9, 4, 1, 6, true,  false);
+
+	// ── Life additions ────────────────────────────────────────────────────
+	AddSummon(TEXT("Summon_Unicorns"),       TEXT("Unicorns"),          6,  7, 0, 4, 8, 3, 4, 3, false, false);
+	AddSummon(TEXT("Summon_ArchAngel"),      TEXT("Arch Angel"),        30, 16, 0, 9, 11, 3, 1, 9, true,  false);
+
+	// ── Death additions ───────────────────────────────────────────────────
+	AddSummon(TEXT("Summon_Ghouls"),         TEXT("Ghouls"),            4,  4, 0, 3, 4, 2, 4, 1, false, false);
+	AddSummon(TEXT("Summon_Werewolves"),     TEXT("Werewolves"),        10, 9, 0, 3, 5, 3, 2, 3, false, false);
+	AddSummon(TEXT("Summon_NightStalker"),   TEXT("Night Stalker"),     16, 8, 0, 4, 8, 3, 1, 4, false, false);
+	AddSummon(TEXT("Summon_ShadowDemons"),   TEXT("Shadow Demons"),     6,  5, 0, 3, 8, 3, 4, 4, true,  true);
+	AddSummon(TEXT("Summon_DemonLord"),      TEXT("Demon Lord"),        30, 18, 0, 8, 10, 3, 1, 10, false, false);
+	AddSummon(TEXT("Summon_DeathKnights"),   TEXT("Death Knights"),     12, 12, 0, 6, 9, 4, 4, 8, false, false);
+
+	// ── Chaos additions ───────────────────────────────────────────────────
+	AddSummon(TEXT("Summon_FireElemental"),  TEXT("Fire Elemental"),    12, 8, 0, 3, 6, 2, 1, 2, true,  false);
+	AddSummon(TEXT("Summon_FireGiant"),      TEXT("Fire Giant"),        20, 12, 8, 5, 7, 3, 1, 5, false, false);
+	AddSummon(TEXT("Summon_DoomBat"),        TEXT("Doom Bat"),          14, 11, 0, 4, 6, 5, 1, 4, true,  false);
+	AddSummon(TEXT("Summon_Chimera"),        TEXT("Chimera"),           18, 12, 0, 5, 7, 3, 1, 5, true,  false);
+	AddSummon(TEXT("Summon_Efreet"),         TEXT("Efreet"),            18, 10, 8, 5, 9, 3, 1, 6, true,  false);
+	AddSummon(TEXT("Summon_Hydra"),          TEXT("Hydra"),             22, 14, 0, 6, 8, 2, 1, 7, false, false);
+	AddSummon(TEXT("Summon_ChaosSpawn"),     TEXT("Chaos Spawn"),       20, 12, 0, 4, 8, 2, 1, 6, false, false);
+
+	// ── Nature additions ──────────────────────────────────────────────────
+	AddSummon(TEXT("Summon_Sprites"),        TEXT("Sprites"),           1,  2, 5, 5, 7, 4, 4, 1, true,  false);
+	AddSummon(TEXT("Summon_Cockatrices"),    TEXT("Cockatrices"),       6,  6, 0, 4, 7, 3, 3, 4, true,  false);
+	AddSummon(TEXT("Summon_Basilisk"),       TEXT("Basilisk"),          16, 10, 0, 4, 6, 1, 1, 4, false, false);
+	AddSummon(TEXT("Summon_StoneGiant"),     TEXT("Stone Giant"),       22, 12, 6, 6, 7, 2, 1, 5, false, false);
+	AddSummon(TEXT("Summon_EarthElemental"), TEXT("Earth Elemental"),   20, 12, 0, 5, 7, 1, 1, 5, false, false);
+	AddSummon(TEXT("Summon_Gorgons"),        TEXT("Gorgons"),           14, 9, 0, 6, 9, 2, 2, 6, false, false);
+	AddSummon(TEXT("Summon_Behemoth"),       TEXT("Behemoth"),          28, 14, 0, 5, 8, 2, 1, 7, false, false);
+	AddSummon(TEXT("Summon_Colossus"),       TEXT("Colossus"),          32, 15, 0, 7, 10, 2, 1, 8, false, false);
+	AddSummon(TEXT("Summon_GreatWyrm"),      TEXT("Great Wyrm"),        35, 18, 0, 8, 10, 3, 1, 11, false, false);
+
+	// ── Sorcery additions ─────────────────────────────────────────────────
+	AddSummon(TEXT("Summon_PhantomBeast"),   TEXT("Phantom Beast"),     10, 7, 0, 5, 7, 3, 1, 3, false, true);
+	AddSummon(TEXT("Summon_AirElemental"),   TEXT("Air Elemental"),     10, 8, 0, 4, 6, 5, 1, 3, true,  false);
+	AddSummon(TEXT("Summon_Nagas"),          TEXT("Nagas"),             8,  6, 0, 4, 8, 3, 2, 4, false, false);
+	AddSummon(TEXT("Summon_StormGiant"),     TEXT("Storm Giant"),       22, 12, 10, 6, 9, 3, 1, 7, false, false);
+	AddSummon(TEXT("Summon_Djinn"),          TEXT("Djinn"),             20, 10, 8, 5, 10, 4, 1, 7, true,  false);
+	AddSummon(TEXT("Summon_SkyDrake"),       TEXT("Sky Drake"),         35, 18, 8, 8, 11, 5, 1, 12, true,  false);
+
+	// ── Arcane additions ──────────────────────────────────────────────────
+	AddSummon(TEXT("Summon_MagicSpirit"),    TEXT("Magic Spirit"),      8,  4, 0, 3, 6, 3, 1, 1, true,  true);
+	AddSummon(TEXT("Summon_FloatingIsland"), TEXT("Floating Island"),   12, 0, 0, 6, 8, 3, 1, 2, true,  false);
 }
