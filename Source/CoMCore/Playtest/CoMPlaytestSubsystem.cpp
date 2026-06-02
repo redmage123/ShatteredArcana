@@ -26,6 +26,7 @@
 #include "CoMCore/Combat/CoMSiegeSubsystem.h"
 #include "CoMCore/Units/CoMDragonSubsystem.h"
 #include "CoMCore/CoreTypes/CoMGameplayTags.h"
+#include "CoMCore/Scenario/CoMScenarioDatabase.h"
 
 #include "Engine/World.h"
 #include "HAL/FileManager.h"
@@ -746,4 +747,85 @@ static FAutoConsoleCommand GPlaytestCmdNoWorld(
 			const int32 Seed     = (Args.Num() > 2) ? FCString::Atoi(*Args[2]) : 42;
 			const int32 Wizards  = (Args.Num() > 3) ? FCString::Atoi(*Args[3]) : 0;
 			Sub->RunPlaytest(Games, MaxTurns, Seed, /*OutFilePath*/ TEXT(""), Wizards);
+		}));
+
+// =============================================================================
+// Scenario mode
+// =============================================================================
+//
+// Bootstraps a single game with the curated scenario settings. The hand-
+// authored deltas (extra mana, extra gold, AI aggression multiplier) layer
+// on top of the default BootstrapGame setup. Use `com.list_scenarios` to
+// see the registered IDs.
+
+static FAutoConsoleCommandWithWorldAndArgs GListScenariosCmd(
+	TEXT("com.list_scenarios"),
+	TEXT("List all curated start-position scenarios."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda(
+		[](const TArray<FString>& /*Args*/, UWorld* /*World*/)
+		{
+			for (const FCoMScenarioDef& S : CoMScenarioDatabase::GetAll())
+			{
+				UE_LOG(LogTemp, Log,
+					TEXT("Scenario [%s] %s -- %d wizards, %d turn cap"),
+					*S.ScenarioID.ToString(),
+					*S.DisplayName.ToString(),
+					S.NumWizards, S.MaxTurns);
+			}
+		}));
+
+static FAutoConsoleCommandWithWorldAndArgs GStartScenarioCmd(
+	TEXT("com.start_scenario"),
+	TEXT("Start one of the curated scenarios. Arg: <scenario_id>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda(
+		[](const TArray<FString>& Args, UWorld* World)
+		{
+			if (Args.Num() < 1)
+			{
+				UE_LOG(LogTemp, Warning,
+					TEXT("com.start_scenario: missing scenario id. Try com.list_scenarios."));
+				return;
+			}
+			const FName ScenarioID(*Args[0]);
+			const FCoMScenarioDef* Def = CoMScenarioDatabase::Find(ScenarioID);
+			if (!Def)
+			{
+				UE_LOG(LogTemp, Warning,
+					TEXT("com.start_scenario: no scenario named '%s'."), *Args[0]);
+				return;
+			}
+			UGameInstance* GI = World ? World->GetGameInstance() : nullptr;
+			if (!GI && GEngine)
+			{
+				for (const FWorldContext& Ctx : GEngine->GetWorldContexts())
+				{
+					if (Ctx.OwningGameInstance) { GI = Ctx.OwningGameInstance; break; }
+				}
+			}
+			if (!GI) return;
+			UCoMPlaytestSubsystem* Sub = GI->GetSubsystem<UCoMPlaytestSubsystem>();
+			if (!Sub) return;
+			UE_LOG(LogTemp, Log,
+				TEXT("Starting scenario [%s] %s (%d wizards, seed %d, cap %d turns)..."),
+				*Def->ScenarioID.ToString(), *Def->DisplayName.ToString(),
+				Def->NumWizards, Def->Seed, Def->MaxTurns);
+
+			Sub->RunPlaytest(/*Games=*/ 1, Def->MaxTurns,
+				Def->Seed != 0 ? Def->Seed : 42,
+				/*OutFilePath=*/ TEXT(""), Def->NumWizards);
+
+			if (UWorld* W2 = GI->GetWorld())
+			{
+				if (ACoMGameState* GS = Cast<ACoMGameState>(W2->GetGameState()))
+				{
+					for (const FCoMScenarioWizardBonus& B : Def->WizardBonuses)
+					{
+						if (ACoMPlayerState* PS = GS->GetWizardByIndex(B.WizardIndex))
+						{
+							PS->Mana += B.ExtraMana;
+							PS->Gold += B.ExtraGold;
+						}
+					}
+				}
+			}
 		}));
