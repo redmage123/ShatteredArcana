@@ -924,6 +924,11 @@ void UCoMMagicSubsystem::ResolveSpell(FCoMSpellCast& Cast)
     if (!GI) return;
 
     const FCoMSpellInfo Info = CoMSpellDatabase::GetSpellInfo(Cast.SpellId);
+
+    // Career-stats hook: every successful resolve fires this so the
+    // stats subsystem can count spells + mana spent toward Archmagi.
+    OnSpellResolved.Broadcast(Cast.CasterWizardId, Cast.SpellId, Info.CastingCost);
+
     const int32 Power        = (Cast.EffectivePower > 0) ? Cast.EffectivePower
                                                           : CalculateSpellPower(Cast.CasterWizardId, Cast.SpellId);
     UCoMUnitSubsystem* Units = GI->GetSubsystem<UCoMUnitSubsystem>();

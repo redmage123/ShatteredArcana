@@ -125,7 +125,14 @@ void UCoMHeroSubsystem::SetHeroTier(int32 HeroUnitID, ECoMHeroTier Tier)
 
 void UCoMHeroSubsystem::SetHeroOwner(int32 HeroUnitID, int32 WizardIndex)
 {
+	const int32 OldOwner = GetHeroOwner(HeroUnitID);
 	HeroOwners.Add(HeroUnitID, WizardIndex);
+	// Career stats + UI hook: fire on first assignment to a real wizard
+	// (initial recruitment), not on bookkeeping reassignment to -1.
+	if (WizardIndex >= 0 && OldOwner != WizardIndex)
+	{
+		OnHeroAccepted.Broadcast(HeroUnitID, WizardIndex);
+	}
 }
 
 int32 UCoMHeroSubsystem::GetHeroOwner(int32 HeroUnitID) const

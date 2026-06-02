@@ -121,6 +121,9 @@ private:
 	UFUNCTION() void HandleCombatResolved(const struct FCoMCombatResult& Result);
 	UFUNCTION() void HandleSiteCleared(int32 SiteID, int32 WizardIndex, int32 GoldReward, int32 ManaReward);
 	UFUNCTION() void HandleItemForged(int32 InstanceID);
+	UFUNCTION() void HandleSpellResolved(int32 CasterWizardId, FName SpellID, int32 ManaCost);
+	UFUNCTION() void HandleCityCaptured(int32 CityID, int32 FormerOwnerWizard, int32 NewOwnerWizard);
+	UFUNCTION() void HandleHeroAccepted(int32 HeroUnitID, int32 OwnerWizardIndex);
 
 	UPROPERTY()
 	FCoMCareerStats Stats;

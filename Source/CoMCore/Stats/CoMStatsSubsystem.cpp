@@ -15,6 +15,9 @@
 #include "CoMCore/Combat/CoMCombatSubsystem.h"
 #include "CoMCore/World/CoMSiteEncounterSubsystem.h"
 #include "CoMCore/Items/CoMItemSubsystem.h"
+#include "CoMCore/Magic/CoMMagicSubsystem.h"
+#include "CoMCore/Economy/CoMCitySubsystem.h"
+#include "CoMCore/Units/CoMHeroSubsystem.h"
 
 namespace
 {
@@ -51,6 +54,18 @@ void UCoMStatsSubsystem::BindToSubsystems()
 	{
 		Items->OnItemForged.AddDynamic(this, &UCoMStatsSubsystem::HandleItemForged);
 	}
+	if (UCoMMagicSubsystem* Magic = GI->GetSubsystem<UCoMMagicSubsystem>())
+	{
+		Magic->OnSpellResolved.AddDynamic(this, &UCoMStatsSubsystem::HandleSpellResolved);
+	}
+	if (UCoMCitySubsystem* Cities = GI->GetSubsystem<UCoMCitySubsystem>())
+	{
+		Cities->OnCityCaptured.AddDynamic(this, &UCoMStatsSubsystem::HandleCityCaptured);
+	}
+	if (UCoMHeroSubsystem* Heroes = GI->GetSubsystem<UCoMHeroSubsystem>())
+	{
+		Heroes->OnHeroAccepted.AddDynamic(this, &UCoMStatsSubsystem::HandleHeroAccepted);
+	}
 }
 
 void UCoMStatsSubsystem::HandleCombatResolved(const FCoMCombatResult& Result)
@@ -68,6 +83,22 @@ void UCoMStatsSubsystem::HandleSiteCleared(int32 /*SiteID*/, int32 /*WizardIndex
 void UCoMStatsSubsystem::HandleItemForged(int32 /*InstanceID*/)
 {
 	Stats.ItemsForged++;
+}
+
+void UCoMStatsSubsystem::HandleSpellResolved(int32 /*CasterWizardId*/, FName /*SpellID*/, int32 ManaCost)
+{
+	Stats.SpellsCast++;
+	Stats.ManaSpent += FMath::Max(0, ManaCost);
+}
+
+void UCoMStatsSubsystem::HandleCityCaptured(int32 /*CityID*/, int32 /*FormerOwner*/, int32 /*NewOwner*/)
+{
+	Stats.CitiesCaptured++;
+}
+
+void UCoMStatsSubsystem::HandleHeroAccepted(int32 /*HeroUnitID*/, int32 /*OwnerWizardIndex*/)
+{
+	Stats.HeroesRecruited++;
 }
 
 void UCoMStatsSubsystem::Deinitialize()

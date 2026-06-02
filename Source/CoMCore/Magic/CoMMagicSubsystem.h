@@ -215,6 +215,11 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnGlobalEnchantmentChanged,
     FString, SpellDisplayName,
     bool, bActive);
 
+/** Fired for every spell that successfully resolves (any tier, any realm).
+ *  Career stats listens to this; the toast widget can ignore it. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnSpellResolved,
+    int32, CasterWizardId, FName, SpellID, int32, ManaCost);
+
 UCLASS()
 class COMCORE_API UCoMMagicSubsystem : public UGameInstanceSubsystem
 {
@@ -232,6 +237,10 @@ public:
     /** Fired when a "big" spell resolves (summon / global enchant / artifact). UI binds. */
     UPROPERTY(BlueprintAssignable, Category = "Magic")
     FOnSpellCastCinematicRequested OnSpellCastCinematicRequested;
+
+    /** Fires on every successful ResolveSpell call. Stats subsystem listens. */
+    UPROPERTY(BlueprintAssignable, Category = "Magic")
+    FOnSpellResolved OnSpellResolved;
 
     /** Fired when any wizard gains/loses a global enchantment (all-player alert). */
     UPROPERTY(BlueprintAssignable, Category = "Magic")

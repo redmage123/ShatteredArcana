@@ -30,6 +30,7 @@ class UCoMRaceDataAsset;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCityFounded, int32, CityID, int32, OwnerWizardIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCityDestroyed, int32, CityID, int32, FormerOwnerWizardIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCityRebelled, int32, CityID, int32, FormerOwnerWizardIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCityCaptured, int32, CityID, int32, FormerOwnerWizard, int32, NewOwnerWizard);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnBuildingCompleted, int32, CityID, int32, BuildingID, int32, OwnerWizardIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnCityPopulationChanged, int32, CityID, int32, OldPop, int32, NewPop);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnUnitRecruited, int32, CityID, FName, UnitSpecID, int32, OwnerWizardIndex);
@@ -352,6 +353,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Cities")
 	FOnCityRebelled OnCityRebelled;
+
+	UPROPERTY(BlueprintAssignable, Category = "CoM|Cities")
+	FOnCityCaptured OnCityCaptured;
 
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Cities")
 	FOnBuildingCompleted OnBuildingCompleted;

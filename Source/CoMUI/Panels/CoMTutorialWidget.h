@@ -32,12 +32,22 @@ protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 	UFUNCTION() void OnDismissClicked();
+	UFUNCTION() void OnNextClicked();
+	UFUNCTION() void OnBackClicked();
 
 private:
 	void BuildLayout();
+	void ShowStep(int32 Index);
 
 	UPROPERTY() TObjectPtr<UBorder>     BackgroundBorder;
 	UPROPERTY() TObjectPtr<UButton>     DismissButton;
+	UPROPERTY() TObjectPtr<UButton>     NextButton;
+	UPROPERTY() TObjectPtr<UButton>     BackButton;
 	UPROPERTY() TObjectPtr<UTextBlock>  TitleText;
+	UPROPERTY() TObjectPtr<UTextBlock>  StepHeader;
+	UPROPERTY() TObjectPtr<UTextBlock>  StepBody;
+	UPROPERTY() TObjectPtr<UTextBlock>  StepCounter;
 	UPROPERTY() TObjectPtr<UVerticalBox> ContentBox;
+
+	int32 CurrentStep = 0;
 };

@@ -349,8 +349,11 @@ bool UCoMCitySubsystem::CaptureCity(int32 CityID, int32 NewOwnerWizard)
 	UE_LOG(LogTemp, Log, TEXT("[City] City %d (%s) captured by wizard %d from wizard %d"),
 		CityID, *City->CityName.ToString(), NewOwnerWizard, FormerOwner);
 
-	// Reuse the rebellion delegate so listeners refresh ownership/UI.
+	// Reuse the rebellion delegate so listeners refresh ownership/UI,
+	// and fire the dedicated capture delegate so stats / notifications
+	// can distinguish a real conquest from an organic revolt.
 	OnCityRebelled.Broadcast(CityID, FormerOwner);
+	OnCityCaptured.Broadcast(CityID, FormerOwner, NewOwnerWizard);
 	return true;
 }
 

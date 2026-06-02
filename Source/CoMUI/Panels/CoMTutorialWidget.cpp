@@ -14,6 +14,7 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Blueprint/WidgetTree.h"
 #include "Engine/GameInstance.h"
+#include "HAL/IConsoleManager.h"
 
 #include "CoMUI/CoMUISubsystem.h"
 
@@ -30,6 +31,45 @@ namespace TutColours
 	static const FLinearColor BtnHov  = FLinearColor(0.10f, 0.07f, 0.22f, 1.0f);
 }
 
+namespace
+{
+	struct FTutorialStep { const TCHAR* Header; const TCHAR* Body; };
+	const TArray<FTutorialStep>& Steps()
+	{
+		static const TArray<FTutorialStep> S = {
+			{ TEXT("Welcome, Wizard"),
+			  TEXT("Shattered Arcana is a fantasy 4X strategy game inspired by Master of Magic. "
+				   "You play a wizard competing with rivals for dominion across eight planes. "
+				   "This quick tour shows you how the game flows. Click NEXT to continue.") },
+			{ TEXT("Each Turn"),
+			  TEXT("A turn cycles every wizard's actions. You move armies, queue city builds, set "
+				   "research and casting, then click END TURN on the right HUD to advance. Buildings "
+				   "complete, mana flows in, research progresses, AI wizards take their turns. ") },
+			{ TEXT("Cities"),
+			  TEXT("Click any of your cities on the overworld to open the city screen. Set a build "
+				   "queue (Granary first, then Marketplace, then Smithy or Barracks). Cities grow "
+				   "from food surplus and produce gold + mana from buildings.") },
+			{ TEXT("Magic & Casting Skill"),
+			  TEXT("Open the Spell Book to research and cast. Damage and heal spells need a target; "
+				   "Global Enchantments and Forge Item cast directly. Your Casting Skill caps mana "
+				   "per turn -- balance Skill against Research and Mana income in the Magic screen.") },
+			{ TEXT("Armies & Combat"),
+			  TEXT("Recruit combat units from cities with a Barracks. Move armies onto enemy stacks "
+				   "to fight on a 12x8 tactical grid -- pick MOVE, ATTACK, DEFEND, or WAIT per unit. "
+				   "AUTO-RESOLVE hands control to the AI if you'd rather not micro every battle.") },
+			{ TEXT("Diplomacy & Espionage"),
+			  TEXT("Open the Diplomacy panel to propose alliances, send gifts, or declare war. "
+				   "Recruit spies in the Espionage panel for sabotage, theft, and assassination "
+				   "missions. The HUD will toast war declarations and treaty resolutions.") },
+			{ TEXT("Winning"),
+			  TEXT("Win by Spell of Mastery (research the Arcane endgame), Domination (own a "
+				   "majority of all cities), or Banishment (kill every rival wizard). At the turn "
+				   "cap, the highest-scoring wizard wins by default. Good luck, Archmagus.") },
+		};
+		return S;
+	}
+}
+
 TSharedRef<SWidget> UCoMTutorialWidget::RebuildWidget()
 {
 	if (WidgetTree)
@@ -44,10 +84,10 @@ void UCoMTutorialWidget::NativeConstruct()
 	Super::NativeConstruct();
 	SetIsFocusable(true);
 	SetVisibility(ESlateVisibility::Visible);
-	if (DismissButton)
-	{
-		DismissButton->OnClicked.AddDynamic(this, &UCoMTutorialWidget::OnDismissClicked);
-	}
+	if (DismissButton) DismissButton->OnClicked.AddDynamic(this, &UCoMTutorialWidget::OnDismissClicked);
+	if (NextButton)    NextButton->OnClicked.AddDynamic(this, &UCoMTutorialWidget::OnNextClicked);
+	if (BackButton)    BackButton->OnClicked.AddDynamic(this, &UCoMTutorialWidget::OnBackClicked);
+	ShowStep(0);
 }
 
 void UCoMTutorialWidget::OnDismissClicked()
@@ -57,6 +97,39 @@ void UCoMTutorialWidget::OnDismissClicked()
 		if (UCoMUISubsystem* UI = GI->GetSubsystem<UCoMUISubsystem>())
 		{
 			UI->HideAllPanels();
+		}
+	}
+	RemoveFromParent();
+}
+
+void UCoMTutorialWidget::OnNextClicked()
+{
+	const int32 Last = Steps().Num() - 1;
+	if (CurrentStep < Last) { ShowStep(CurrentStep + 1); }
+	else { OnDismissClicked(); }
+}
+
+void UCoMTutorialWidget::OnBackClicked()
+{
+	if (CurrentStep > 0) { ShowStep(CurrentStep - 1); }
+}
+
+void UCoMTutorialWidget::ShowStep(int32 Index)
+{
+	CurrentStep = FMath::Clamp(Index, 0, Steps().Num() - 1);
+	const FTutorialStep& S = Steps()[CurrentStep];
+	if (StepHeader)  StepHeader->SetText(FText::FromString(S.Header));
+	if (StepBody)    StepBody->SetText(FText::FromString(S.Body));
+	if (StepCounter) StepCounter->SetText(FText::FromString(
+		FString::Printf(TEXT("Step %d / %d"), CurrentStep + 1, Steps().Num())));
+	if (BackButton) BackButton->SetIsEnabled(CurrentStep > 0);
+	if (NextButton)
+	{
+		UTextBlock* T = NextButton->GetChildAt(0) ? Cast<UTextBlock>(NextButton->GetChildAt(0)) : nullptr;
+		if (T)
+		{
+			T->SetText(FText::FromString(
+				CurrentStep == Steps().Num() - 1 ? TEXT("Finish") : TEXT("Next →")));
 		}
 	}
 }
@@ -70,10 +143,9 @@ void UCoMTutorialWidget::BuildLayout()
 	UOverlay* Root = WidgetTree->ConstructWidget<UOverlay>();
 	BackgroundBorder->AddChild(Root);
 
-	// Centered modal panel.
 	USizeBox* PanelSize = WidgetTree->ConstructWidget<USizeBox>();
-	PanelSize->SetWidthOverride(720.0f);
-	PanelSize->SetHeightOverride(560.0f);
+	PanelSize->SetWidthOverride(740.0f);
+	PanelSize->SetHeightOverride(520.0f);
 
 	UBorder* Panel = WidgetTree->ConstructWidget<UBorder>();
 	Panel->SetBrushColor(TutColours::Panel);
@@ -81,103 +153,79 @@ void UCoMTutorialWidget::BuildLayout()
 	PanelSize->AddChild(Panel);
 
 	UOverlaySlot* PSlot = Root->AddChildToOverlay(PanelSize);
-	if (PSlot)
-	{
-		PSlot->SetHorizontalAlignment(HAlign_Center);
-		PSlot->SetVerticalAlignment(VAlign_Center);
-	}
+	if (PSlot) { PSlot->SetHorizontalAlignment(HAlign_Center); PSlot->SetVerticalAlignment(VAlign_Center); }
 
 	ContentBox = WidgetTree->ConstructWidget<UVerticalBox>();
 	Panel->AddChild(ContentBox);
 
-	// Title.
 	TitleText = WidgetTree->ConstructWidget<UTextBlock>();
 	TitleText->SetText(LOCTEXT("TutTitle", "Welcome to Shattered Arcana"));
 	TitleText->SetColorAndOpacity(FSlateColor(TutColours::Gold));
 	TitleText->SetJustification(ETextJustify::Center);
-	{ FSlateFontInfo F = TitleText->GetFont(); F.Size = 26; TitleText->SetFont(F); }
+	{ FSlateFontInfo F = TitleText->GetFont(); F.Size = 24; TitleText->SetFont(F); }
 	UVerticalBoxSlot* TS = ContentBox->AddChildToVerticalBox(TitleText);
-	if (TS) { TS->SetHorizontalAlignment(HAlign_Center); TS->SetPadding(FMargin(0, 0, 0, 12)); }
+	if (TS) { TS->SetHorizontalAlignment(HAlign_Center); TS->SetPadding(FMargin(0, 0, 0, 8)); }
 
-	auto AddLine = [this](const FText& Body, bool bHeader)
+	StepCounter = WidgetTree->ConstructWidget<UTextBlock>();
+	StepCounter->SetColorAndOpacity(FSlateColor(TutColours::Grey));
+	StepCounter->SetJustification(ETextJustify::Center);
+	{ FSlateFontInfo F = StepCounter->GetFont(); F.Size = 11; StepCounter->SetFont(F); }
+	UVerticalBoxSlot* SCS = ContentBox->AddChildToVerticalBox(StepCounter);
+	if (SCS) { SCS->SetHorizontalAlignment(HAlign_Center); SCS->SetPadding(FMargin(0, 0, 0, 18)); }
+
+	StepHeader = WidgetTree->ConstructWidget<UTextBlock>();
+	StepHeader->SetColorAndOpacity(FSlateColor(TutColours::Gold));
+	{ FSlateFontInfo F = StepHeader->GetFont(); F.Size = 18; StepHeader->SetFont(F); }
+	ContentBox->AddChildToVerticalBox(StepHeader);
+
+	StepBody = WidgetTree->ConstructWidget<UTextBlock>();
+	StepBody->SetColorAndOpacity(FSlateColor(TutColours::Silver));
+	StepBody->SetAutoWrapText(true);
+	{ FSlateFontInfo F = StepBody->GetFont(); F.Size = 13; StepBody->SetFont(F); }
+	UVerticalBoxSlot* BS = ContentBox->AddChildToVerticalBox(StepBody);
+	if (BS) { BS->SetSize(ESlateSizeRule::Fill); BS->SetPadding(FMargin(0, 8, 0, 0)); }
+
+	// Button row: Back | Skip | Next
+	UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
+	auto MakeBtn = [this](TObjectPtr<UButton>& Out, const FString& Label, FLinearColor Tint)
 	{
-		UTextBlock* T = WidgetTree->ConstructWidget<UTextBlock>();
-		T->SetText(Body);
-		T->SetColorAndOpacity(FSlateColor(bHeader ? TutColours::Gold : TutColours::Silver));
-		FSlateFontInfo F = T->GetFont();
-		F.Size = bHeader ? 15 : 13;
-		T->SetFont(F);
-		T->SetAutoWrapText(true);
-		UVerticalBoxSlot* S = ContentBox->AddChildToVerticalBox(T);
-		if (S) { S->SetPadding(FMargin(0, bHeader ? 8 : 2, 0, 2)); }
+		Out = WidgetTree->ConstructWidget<UButton>();
+		FButtonStyle S = Out->GetStyle();
+		S.Normal.DrawAs    = ESlateBrushDrawType::Box; S.Normal.TintColor    = FSlateColor(TutColours::Btn);
+		S.Hovered.DrawAs   = ESlateBrushDrawType::Box; S.Hovered.TintColor   = FSlateColor(TutColours::BtnHov);
+		Out->SetStyle(S);
+		UTextBlock* L = WidgetTree->ConstructWidget<UTextBlock>();
+		L->SetText(FText::FromString(Label));
+		L->SetColorAndOpacity(FSlateColor(Tint));
+		L->SetJustification(ETextJustify::Center);
+		{ FSlateFontInfo F = L->GetFont(); F.Size = 13; L->SetFont(F); }
+		Out->AddChild(L);
+		USizeBox* SB = WidgetTree->ConstructWidget<USizeBox>();
+		SB->SetWidthOverride(150.0f); SB->SetHeightOverride(38.0f);
+		SB->AddChild(Out);
+		return SB;
 	};
+	Row->AddChildToHorizontalBox(MakeBtn(BackButton,    TEXT("← Back"), TutColours::Silver));
+	Row->AddChildToHorizontalBox(MakeBtn(DismissButton, TEXT("Skip"),   TutColours::Grey));
+	Row->AddChildToHorizontalBox(MakeBtn(NextButton,    TEXT("Next →"), TutColours::Gold));
+	UVerticalBoxSlot* RS = ContentBox->AddChildToVerticalBox(Row);
+	if (RS) { RS->SetHorizontalAlignment(HAlign_Center); RS->SetPadding(FMargin(0, 18, 0, 0)); }
 
-	AddLine(LOCTEXT("TutGoal", "Goal"), true);
-	AddLine(LOCTEXT("TutGoalBody",
-		"Become the dominant wizard across the eight planes. Win by casting "
-		"the Spell of Mastery, by conquest, or by banishing every rival."), false);
-
-	AddLine(LOCTEXT("TutEndTurn", "Each Turn"), true);
-	AddLine(LOCTEXT("TutEndTurnBody",
-		"Click End Turn to advance. Cities produce, armies move, mana flows in, "
-		"and your research progresses every turn. AI wizards act too."), false);
-
-	AddLine(LOCTEXT("TutCities", "Cities"), true);
-	AddLine(LOCTEXT("TutCitiesBody",
-		"Click a city for its panel. Set a build queue (Granary first for food, "
-		"Marketplace next, then Smithy / Library / Barracks). Your population "
-		"grows with food surplus."), false);
-
-	AddLine(LOCTEXT("TutMagic", "Magic"), true);
-	AddLine(LOCTEXT("TutMagicBody",
-		"Open the Spell Book to research and cast. Damage and heal spells "
-		"need a target; Global Enchantments and item-creation (Enchant Item / "
-		"Create Artifact) cast directly. Capture mana nodes to fuel research."), false);
-
-	AddLine(LOCTEXT("TutHeroes", "Heroes"), true);
-	AddLine(LOCTEXT("TutHeroesBody",
-		"Heroes appear in your taverns; recruit them, level them up, and equip "
-		"forged items in their hero screen for combat bonuses."), false);
-
-	AddLine(LOCTEXT("TutWorld", "Explore"), true);
-	AddLine(LOCTEXT("TutWorldBody",
-		"Lairs, ruins, and ancient towers hide gold, mana, and spells — "
-		"send an army to clear them. The Tower of Wizardry on each plane "
-		"opens a gateway to the next."), false);
-
-	// Bottom bar with dismiss button.
-	UHorizontalBox* Bottom = WidgetTree->ConstructWidget<UHorizontalBox>();
-	{
-		USizeBox* BSize = WidgetTree->ConstructWidget<USizeBox>();
-		BSize->SetWidthOverride(160.0f); BSize->SetHeightOverride(40.0f);
-
-		DismissButton = WidgetTree->ConstructWidget<UButton>();
-		FButtonStyle Style = DismissButton->GetStyle();
-		Style.Normal.DrawAs    = ESlateBrushDrawType::Box;
-		Style.Normal.TintColor = FSlateColor(TutColours::Btn);
-		Style.Hovered.DrawAs   = ESlateBrushDrawType::Box;
-		Style.Hovered.TintColor = FSlateColor(TutColours::BtnHov);
-		Style.Pressed.DrawAs   = ESlateBrushDrawType::Box;
-		Style.Pressed.TintColor = FSlateColor(TutColours::Btn);
-		DismissButton->SetStyle(Style);
-
-		UTextBlock* Lbl = WidgetTree->ConstructWidget<UTextBlock>();
-		Lbl->SetText(LOCTEXT("TutDismiss", "Got it — let's play"));
-		Lbl->SetColorAndOpacity(FSlateColor(TutColours::Gold));
-		Lbl->SetJustification(ETextJustify::Center);
-		{ FSlateFontInfo F = Lbl->GetFont(); F.Size = 14; Lbl->SetFont(F); }
-		DismissButton->AddChild(Lbl);
-
-		BSize->AddChild(DismissButton);
-		Bottom->AddChildToHorizontalBox(BSize);
-	}
-	UVerticalBoxSlot* BS = ContentBox->AddChildToVerticalBox(Bottom);
-	if (BS) { BS->SetHorizontalAlignment(HAlign_Center); BS->SetPadding(FMargin(0, 18, 0, 0)); }
-
-	if (WidgetTree)
-	{
-		WidgetTree->RootWidget = BackgroundBorder;
-	}
+	if (WidgetTree) { WidgetTree->RootWidget = BackgroundBorder; }
 }
+
+// Console: open the tutorial overlay (single command, replaces the old one-pager
+// open path through CoMUISubsystem).
+static FAutoConsoleCommandWithWorldAndArgs GShowTutorialCmd(
+	TEXT("com.show_tutorial"),
+	TEXT("Open the multi-step tutorial overlay."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda(
+		[](const TArray<FString>& /*Args*/, UWorld* World)
+		{
+			if (!World) return;
+			UCoMTutorialWidget* W = CreateWidget<UCoMTutorialWidget>(
+				World, UCoMTutorialWidget::StaticClass());
+			if (W) { W->AddToViewport(108); }
+		}));
 
 #undef LOCTEXT_NAMESPACE

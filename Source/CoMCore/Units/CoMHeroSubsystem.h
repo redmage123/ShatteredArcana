@@ -30,6 +30,7 @@ struct COMCORE_API FCoMHeroOffer
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHeroOffered, const FCoMHeroOffer&, Offer);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHeroAccepted, int32, HeroUnitID, int32, OwnerWizardIndex);
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -272,6 +273,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "CoM|Heroes")
 	FOnHeroOffered OnHeroOffered;
+
+	UPROPERTY(BlueprintAssignable, Category = "CoM|Heroes")
+	FOnHeroAccepted OnHeroAccepted;
 
 	// -- Tavern offers ------------------------------------------------------
 
